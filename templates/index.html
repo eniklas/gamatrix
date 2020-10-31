@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+    <head>
+        <title>
+            gamatrix-gog
+        </title>
+    </head>
+<body>
+<form action="/compare">
+{% for user in users -%}
+  <div>
+    <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}">
+    <label for="{{ users[user]['username'] }}">{{ users[user]['username'] }}</label>
+  </div>
+{% endfor -%}
+  <br>
+  <input type="submit" value="Giv'er">
+</form>
+</body>
+</html>

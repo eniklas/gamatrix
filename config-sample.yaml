@@ -1,0 +1,17 @@
+db_path: /path/to/gog/dbs
+# Valid values are info or debug
+log_level: info
+# If set to server, runs as a web service; otherwise runs as a CLI
+mode: server
+# The network interface to use when running in server mode
+interface: 0.0.0.0
+# The network port to use when running in server mode
+port: 80
+users:
+  # The GOG user ID matching the result of 'select * from Users;' in the DB
+  12345:
+    username: Bob
+    db: bob-galaxy-2.0.db
+  56789:
+    username: Doug
+    db: doug-galaxy-2.0.db
