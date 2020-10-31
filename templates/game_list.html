@@ -19,10 +19,10 @@
         <th>Title</th>
         <th>ID</th>
     </tr>
-{% for game in games -%}
+{% for game, value in games|dictsort -%}
   <tr>
+    <td>{{ value.title }}</td>
     <td>{{ game }}</td>
-    <td>N/A</td>
   </tr>
 {% endfor -%}
   </table>

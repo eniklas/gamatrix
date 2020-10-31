@@ -35,12 +35,9 @@ def compare_libraries():
     #  remove the DBs for users that we don't want to compare
     # We can't modify config itself as that will affect future calls
     running_config = copy.deepcopy(config)
-    crap = ''
     for user in list(running_config['users']):
-        crap += 'considering user {}, db {}. '.format(user, running_config['users'][user]['db'])
         if user not in user_ids_to_compare and 'db' in running_config['users'][user] and "{}/{}".format(running_config['db_path'], running_config['users'][user]['db']) in running_config['db_list']:
             running_config['db_list'].remove("{}/{}".format(running_config['db_path'], running_config['users'][user]['db']))
-            crap += 'removed {}'.format(running_config['users'][user]['db'])
 
     gog = gogDB(running_config)
     return render_template('game_list.html', games=gog.get_common_games(running_config['db_list']))
@@ -129,18 +126,19 @@ class gogDB:
             owners_to_match.append(userid)
             owned_games = self.get_owned_games(userid)
             logging.debug("owned games = {}".format(owned_games))
-            # A row looks like (release_key, {"title": "Title Name"})
-            for release_key, title_json in owned_games:
+            # A row looks like (release_keys {"title": "Title Name"})
+            for release_keys, title_json in owned_games:
+                # If a game is owned on multiple platforms, the release keys will be comma-separated
+                for release_key in release_keys.split(','):
+                    if release_key not in game_list:
+                        # This is the first we've seen this title, so add it
+                        game_list[release_key] = {
+                            'title': json.loads(title_json)['title'],
+                            'owners': []
+                        }
 
-                if release_key not in game_list:
-                    # This is the first we've seen this title, so add it
-                    game_list[release_key] = {
-                        'title': json.loads(title_json)['title'],
-                        'owners': []
-                    }
-
-                logging.debug("User {} owns {}".format(userid, release_key))
-                game_list[release_key]['owners'].append(userid)
+                    logging.debug("User {} owns {}".format(userid, release_key))
+                    game_list[release_key]['owners'].append(userid)
 
             self.close_connection()
 
@@ -151,11 +149,12 @@ class gogDB:
         games_in_common = []
         owners_to_match.sort()
         logging.debug("owners_to_match: {}".format(owners_to_match))
+        final_game_list = copy.deepcopy(game_list)
         for k in game_list:
-            if game_list[k]['owners'] == owners_to_match:
-                games_in_common.append(game_list[k]['title'])
+            if game_list[k]['owners'] != owners_to_match:
+                del final_game_list[k]
 
-        return games_in_common
+        return final_game_list
 
 
 def build_config(args):
@@ -270,6 +269,9 @@ if __name__ == "__main__":
 
     usernames_str = ''
     if usernames:
-        usernames_str = " between {}".format(usernames)
+        usernames_str = " between {}".format(sorted(usernames, key=str.lower))
 
-    print("{}\n{} games in common{}".format(games_in_common, len(games_in_common), usernames_str))
+    print("{}\n{} games in common{}".format(
+        sorted([games_in_common[t]['title'] for t in games_in_common.keys()]),
+        len(games_in_common.keys()),
+        usernames_str))
