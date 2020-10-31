@@ -17,8 +17,11 @@
 </head>
 
 <body>
+  <a href="/">Back to home page</a>
+  <br><br>
+  {{ debug_str }}
   <table>
-    <caption>Games in common</caption>
+    <caption>{{ caption }}</caption>
     <tr>
       <th>Title</th>
       <th>Platform</th>
@@ -30,6 +33,8 @@
     </tr>
     {% endfor -%}
   </table>
+  <br><br>
+  <a href="/">Back to home page</a>
 </body>
 
 </html>
