@@ -142,6 +142,8 @@ class gogDB:
 
                     self.logger.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]['owners'].append(userid)
+                    # Release keys start with the platform
+                    game_list[release_key]['platform'] = release_key.split('_')[0]
 
             self.close_connection()
 

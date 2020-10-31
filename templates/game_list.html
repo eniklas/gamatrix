@@ -1,30 +1,35 @@
 <!doctype html>
 <html>
-  <head>
-    <style>
-    table, th, td {
-    border: 1px solid black;
-    border-collapse: collapse;
-    padding: 3px;
+
+<head>
+  <style>
+    table,
+    th,
+    td {
+      border: 1px solid black;
+      border-collapse: collapse;
+      padding: 3px;
     }
-    </style>
-    <title>
-      Games in common
-    </title>
-  </head>
+  </style>
+  <title>
+    Games in common
+  </title>
+</head>
+
 <body>
   <table>
     <caption>Games in common</caption>
     <tr>
-        <th>Title</th>
-        <th>ID</th>
+      <th>Title</th>
+      <th>Platform</th>
     </tr>
-{% for game, value in games|dictsort -%}
-  <tr>
-    <td>{{ value.title }}</td>
-    <td>{{ game }}</td>
-  </tr>
-{% endfor -%}
+    {% for game, value in games|dictsort -%}
+    <tr>
+      <td>{{ value.title }}</td>
+      <td>{{ value.platform }}</td>
+    </tr>
+    {% endfor -%}
   </table>
 </body>
+
 </html>
