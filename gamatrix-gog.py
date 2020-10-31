@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import constants
 import copy
 import json
 import logging
@@ -45,12 +46,14 @@ def compare_libraries():
 class gogDB:
     def __init__(self, config):
         self.config = config
+
         if config['log_level'].lower() == 'debug':
-            logging.basicConfig(level=logging.DEBUG)
+            level = logging.DEBUG
         else:
-            logging.basicConfig(level=logging.INFO)
+            level = logging.INFO
 
         self.logger = logging.getLogger('gogDB')
+        self.logger.setLevel(level)
 
     def use_db(self, db):
         if not os.path.exists(db):
@@ -106,11 +109,11 @@ class gogDB:
             ', '.join(og_resultGroupBy)
         )
 
-        logging.debug("Running query: {}".format(owned_game_database))
+        self.logger.debug("Running query: {}".format(owned_game_database))
         self.cursor.execute(owned_game_database)
-        logging.debug("Running query: {}".format(og_query))
+        self.logger.debug("Running query: {}".format(og_query))
         self.cursor.execute(og_query)
-        logging.debug("Running query: {}".format(unique_game_data))
+        self.logger.debug("Running query: {}".format(unique_game_data))
         self.cursor.execute(unique_game_data)
 
         return self.cursor.fetchall()
@@ -120,12 +123,12 @@ class gogDB:
         owners_to_match = []
 
         for db_file in db_list:
-            logger.debug("Using DB {}".format(db_file))
+            self.logger.debug("Using DB {}".format(db_file))
             self.use_db(db_file)
             userid = self.get_user()[0]
             owners_to_match.append(userid)
             owned_games = self.get_owned_games(userid)
-            logging.debug("owned games = {}".format(owned_games))
+            self.logger.debug("owned games = {}".format(owned_games))
             # A row looks like (release_keys {"title": "Title Name"})
             for release_keys, title_json in owned_games:
                 # If a game is owned on multiple platforms, the release keys will be comma-separated
@@ -137,7 +140,7 @@ class gogDB:
                             'owners': []
                         }
 
-                    logging.debug("User {} owns {}".format(userid, release_key))
+                    self.logger.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]['owners'].append(userid)
 
             self.close_connection()
@@ -148,7 +151,7 @@ class gogDB:
 
         games_in_common = []
         owners_to_match.sort()
-        logging.debug("owners_to_match: {}".format(owners_to_match))
+        self.logger.debug("owners_to_match: {}".format(owners_to_match))
         final_game_list = copy.deepcopy(game_list)
         for k in game_list:
             if game_list[k]['owners'] != owners_to_match:
