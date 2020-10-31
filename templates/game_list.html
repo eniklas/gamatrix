@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <head>
+    <style>
+    table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 3px;
+    }
+    </style>
+    <title>
+      Games in common
+    </title>
+  </head>
+<body>
+  <table>
+    <caption>Games in common</caption>
+    <tr>
+        <th>Title</th>
+        <th>ID</th>
+    </tr>
+{% for game in games -%}
+  <tr>
+    <td>{{ game }}</td>
+    <td>N/A</td>
+  </tr>
+{% endfor -%}
+  </table>
+</body>
+</html>

@@ -43,7 +43,7 @@ def compare_libraries():
             crap += 'removed {}'.format(running_config['users'][user]['db'])
 
     gog = gogDB(running_config)
-    return jsonify(gog.get_common_games(running_config['db_list']))
+    return render_template('game_list.html', games=gog.get_common_games(running_config['db_list']))
 
 class gogDB:
     def __init__(self, config):
