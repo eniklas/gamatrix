@@ -28,7 +28,7 @@
       <th>Max Players</th>
       <th>Comment</th>
     </tr>
-    {% for game, value in games|dictsort -%}
+    {% for game, value in games.items() -%}
     <tr>
       <td>{{ value.title }}</td>
       <td>{{ value.platform }}</td>
