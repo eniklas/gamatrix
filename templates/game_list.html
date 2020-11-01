@@ -25,11 +25,15 @@
     <tr>
       <th>Title</th>
       <th>Platform</th>
+      <th>Max Players</th>
+      <th>Comment</th>
     </tr>
     {% for game, value in games|dictsort -%}
     <tr>
       <td>{{ value.title }}</td>
       <td>{{ value.platform }}</td>
+      <td>{{ value.max_players }}</td>
+      <td>{{ value.comment }}</td>
     </tr>
     {% endfor -%}
   </table>

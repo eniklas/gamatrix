@@ -159,10 +159,21 @@ class gogDB:
                 for release_key in release_keys.split(","):
                     if release_key not in game_list:
                         # This is the first we've seen this title, so add it
+                        title = json.loads(title_json)["title"]
                         game_list[release_key] = {
-                            "title": json.loads(title_json)["title"],
+                            "title": title,
                             "owners": [],
                         }
+
+                        # Add metadata from the config file if we have any
+                        if title in self.config["metadata"]:
+                            for k in self.config["metadata"][title]:
+                                self.logger.debug(
+                                    "Adding metadata {} to title {}".format(k, title)
+                                )
+                                game_list[release_key][k] = self.config["metadata"][
+                                    title
+                                ][k]
 
                     self.logger.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]["owners"].append(userid)
@@ -325,5 +336,6 @@ if __name__ == "__main__":
 
     gog = gogDB(config, user_ids_to_compare)
     games_in_common = gog.get_common_games()
-    print(sorted([games_in_common[t]["title"] for t in games_in_common.keys()]))
+    for title in sorted([games_in_common[t]["title"] for t in games_in_common.keys()]):
+        print(title)
     print(gog.get_caption(len(games_in_common)))
