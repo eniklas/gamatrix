@@ -6,7 +6,6 @@ import logging
 import os
 import sqlite3
 import sys
-import time
 from flask import Flask, request, render_template
 from ruamel.yaml import YAML
 
@@ -365,10 +364,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if "mode" in config and config["mode"] == "server":
-        # Run in server mode; start flask and sleep forever
+        # Start Flask to run in server mode until killed
         app.run(host=config["interface"], port=config["port"])
-        while not time.sleep(1000):
-            pass
+        sys.exit(0)
 
     if args.userid is None:
         user_ids_to_compare = [u for u in config["users"].keys()]
