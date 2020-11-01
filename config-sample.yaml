@@ -15,3 +15,23 @@ users:
   56789:
     username: Doug
     db: doug-galaxy-2.0.db
+metadata:
+  # Each title must match exactly as listed with --all; normal YAML quoting rules apply
+  "7 Days to Die":
+    # Each of these is optional
+    max_players: no limit
+    comment: I will die in less than 7 days
+  "Broforce":
+    max_players: 4
+    comment: so many bros
+  "Clue/Cluedo: The Classic Mystery Game":
+    max_players: 6
+# The games that will be filtered out if "Include single-player games" is unchecked
+single_player:
+  - "10 Second Ninja"
+  - "1... 2... 3... KICK IT! (Drop That Beat Like an Ugly Baby)"
+# These games will always be filtered out
+hidden:
+  - "ARK Editor"
+  - "DARQ DLC"
+  - "For Honor - Public Test"
