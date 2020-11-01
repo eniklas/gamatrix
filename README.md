@@ -38,7 +38,7 @@ optional arguments:
                         the GOG user IDs to compare
 ```
 
-`db`: a GOG database to use. You can usually find a user's DB in `C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db`. Multiple DBs can be listed.
+`db`: a GOG database to use. You can usually find a user's DB in `C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db`. Multiple DBs can be listed. Not compatible with `-u`.
 
 `-a/--all-games`: list all the games owned by the selected users (user selection is covered below). This is useful when you want to add a game to the [config file](#configuration), as you'll need the exact title as listed by this option.
 
@@ -48,7 +48,7 @@ optional arguments:
 
 `-s/--server`: run in server mode. This will use Flask to serve a small web page where you can select the options you want, and will output the results there.
 
-`-u/--userid`: a list of GOG user IDs to compare. The IDs must be in the [config file](#configuration). You can find the user ID by running `sqlite3 /path/to/galaxy-2.0.db "select * from Users;"`.
+`-u/--userid`: a list of GOG user IDs to compare. The IDs must be in the [config file](#configuration). You can find the user ID by running `sqlite3 /path/to/galaxy-2.0.db "select * from Users;"`. If you use this option, you can't list DBs; they must be provided for the user IDs in the config file.
 
 ### <a name=cli></a>Command-line mode
 
@@ -132,3 +132,7 @@ DROP       tcp  --  anywhere             anywhere             tcp dpt:http
 ```
 
 Now you can open the port on your router. For more information on using iptables with Docker, see [here](https://docs.docker.com/network/iptables/).
+
+## Contributing
+
+PR's welcome! If you're making nontrivial changes, please include test output if possible. Update [version.py](version.py) following [SemVer](https://semver.org/) conventions.

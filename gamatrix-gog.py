@@ -8,6 +8,7 @@ import sqlite3
 import sys
 from flask import Flask, request, render_template
 from ruamel.yaml import YAML
+from version import VERSION
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -242,6 +243,10 @@ def build_config(args):
     """Returns a config dict created from the config file and
     command-line arguments, with the latter taking precedence
     """
+    if args.version:
+        print("{} version {}".format(os.path.basename(__file__), VERSION))
+        sys.exit(0)
+
     if args.config_file:
         yaml = YAML(typ="safe")
         with open(args.config_file) as config_file:
@@ -354,6 +359,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-u", "--userid", type=int, nargs="*", help="the GOG user IDs to compare"
+    )
+    parser.add_argument(
+        "-v", "--version", action="store_true", help="print version and exit"
     )
 
     args = parser.parse_args()

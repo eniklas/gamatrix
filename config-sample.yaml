@@ -16,7 +16,7 @@ users:
     username: Doug
     db: doug-galaxy-2.0.db
 metadata:
-  # Each title must match exactly as listed with --all; normal YAML quoting rules apply
+  # Each title must match exactly as listed with --all-games; normal YAML quoting rules apply
   "7 Days to Die":
     # Each of these is optional
     max_players: no limit
