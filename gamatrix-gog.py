@@ -172,7 +172,8 @@ class gogDB:
                         title = json.loads(title_json)["title"]
                         # Skip this title if it's single player and we didn't ask for them
                         if (
-                            not self.config["include_single_player"]
+                            not self.config["all_games"]
+                            and not self.config["include_single_player"]
                             and title in self.config["single_player"]
                         ):
                             continue
@@ -211,7 +212,11 @@ class gogDB:
             if game_list[k]["owners"] != owners_to_match:
                 del final_game_list[k]
 
-        return final_game_list
+        # If -a was used, list all games (no filtering)
+        if self.config["all_games"]:
+            return game_list
+        else:
+            return final_game_list
 
     def get_caption(self, num_games):
         """Returns the caption string"""
@@ -224,8 +229,13 @@ class gogDB:
             else:
                 usernames.append(str(userid))
 
-        return "{} games in common between {}".format(
-            num_games, sorted(usernames, key=str.lower)
+        if self.config["all_games"]:
+            caption_middle = "total games owned by"
+        else:
+            caption_middle = "games in common between"
+
+        return "{} {} {}".format(
+            num_games, caption_middle, sorted(usernames, key=str.lower)
         )
 
 
@@ -253,6 +263,11 @@ def build_config(args):
     #  provide a sane default if it's missing from the config file
     if "db_path" not in config:
         config["db_path"] = "."
+
+    if args.all_games:
+        config["all_games"] = True
+    else:
+        config["all_games"] = False
 
     if args.debug:
         config["log_level"] = "debug"
@@ -314,6 +329,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Show games owned by multiple users.")
     parser.add_argument(
         "db", type=str, nargs="*", help="the GOG DB for a user; multiple can be listed"
+    )
+    parser.add_argument(
+        "-a",
+        "--all-games",
+        action="store_true",
+        help="list all games owned by the selected users",
     )
     parser.add_argument("-c", "--config-file", type=str, help="the config file to use")
     parser.add_argument("-d", "--debug", action="store_true", help="debug output")
