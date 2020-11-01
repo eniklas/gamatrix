@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import constants
 import copy
 import json
 import logging
@@ -27,11 +26,21 @@ def compare_libraries():
     if request.method != "GET":
         return
 
+    include_single_player = False
     user_ids_to_compare = []
-    for user in request.args.keys():
-        user_ids_to_compare.append(int(user))
 
-    gog = gogDB(config, user_ids_to_compare)
+    # Check boxes get passed in as "on" if checked, or not at all if unchecked
+    for k in request.args.keys():
+        if k == "include_single_player":
+            include_single_player = True
+        else:
+            user_ids_to_compare.append(int(k))
+
+    # If no users were selected, just refresh the page
+    if not user_ids_to_compare:
+        return root()
+
+    gog = gogDB(config, user_ids_to_compare, include_single_player)
     common_games = gog.get_common_games()
     debug_str = ""
     return render_template(
@@ -43,15 +52,16 @@ def compare_libraries():
 
 
 class gogDB:
-    def __init__(self, config, user_ids_to_compare=[]):
+    def __init__(self, config, user_ids_to_compare=[], include_single_player=False):
         self.config = copy.deepcopy(config)
-        self.user_ids_to_compare = user_ids_to_compare
+        self.config["user_ids_to_compare"] = user_ids_to_compare
+        self.config["include_single_player"] = include_single_player
 
         # All DBs defined in the config file will be in db_list;
         #  remove the DBs for users that we don't want to compare
         for user in list(self.config["users"]):
             if (
-                user not in user_ids_to_compare
+                user not in self.config["user_ids_to_compare"]
                 and "db" in self.config["users"][user]
                 and "{}/{}".format(
                     self.config["db_path"], self.config["users"][user]["db"]
@@ -160,6 +170,13 @@ class gogDB:
                     if release_key not in game_list:
                         # This is the first we've seen this title, so add it
                         title = json.loads(title_json)["title"]
+                        # Skip this title if it's single player and we didn't ask for them
+                        if (
+                            not self.config["include_single_player"]
+                            and title in self.config["single_player"]
+                        ):
+                            continue
+
                         game_list[release_key] = {
                             "title": title,
                             "owners": [],
@@ -201,7 +218,7 @@ class gogDB:
 
         # List the username if possible, otherwise the user ID
         usernames = []
-        for userid in self.user_ids_to_compare:
+        for userid in self.config["user_ids_to_compare"]:
             if "username" in self.config["users"][userid]:
                 usernames.append(self.config["users"][userid]["username"])
             else:
@@ -286,6 +303,9 @@ def build_config(args):
                 config["db_list"].append(
                     "{}/{}".format(config["db_path"], config["users"][userid]["db"])
                 )
+
+    if "single_player" not in config:
+        config["single_player"] = []
 
     return config
 

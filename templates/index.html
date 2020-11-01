@@ -1,20 +1,40 @@
 <!doctype html>
 <html>
-    <head>
-        <title>
-            gamatrix-gog
-        </title>
-    </head>
+
+<head>
+  <style>
+    table,
+    th,
+    td {
+      padding: 20px;
+    }
+  </style>
+  <title>
+    gamatrix-gog
+  </title>
+</head>
+
 <body>
-<form action="/compare">
-{% for user in users -%}
-  <div>
-    <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}">
-    <label for="{{ users[user]['username'] }}">{{ users[user]['username'] }}</label>
-  </div>
-{% endfor -%}
+  <table>
+    <tr>
+      <td>
+        <form action="/compare">
+          {% for user in users -%}
+          <div>
+            <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked>
+            <label for="{{ users[user]['username'] }}">{{ users[user]['username'] }}</label>
+          </div>
+          {% endfor -%}
+      </td>
+      <td style="vertical-align:top">
+        <input type="checkbox" id="Include single player games" name="include_single_player">
+        <label for="Include single player games">Include single player games</label>
+      </td>
+    </tr>
+  </table>
   <br>
   <input type="submit" value="Giv'er">
-</form>
+  </form>
 </body>
+
 </html>
