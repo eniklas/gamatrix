@@ -235,7 +235,7 @@ class gogDB:
             caption_middle = "games in common between"
 
         return "{} {} {}".format(
-            num_games, caption_middle, sorted(usernames, key=str.lower)
+            num_games, caption_middle, ", ".join(sorted(usernames, key=str.lower))
         )
 
 
