@@ -3,12 +3,6 @@
 
 <head>
   <style>
-    table,
-    th,
-    td {
-      padding: 20px;
-    }
-
     body {
       font-size: x-large;
     }
@@ -20,28 +14,26 @@
 
 <body>
   <h3>Who's playing?</h3>
-  <table>
-    <tr>
-      <td>
-        <form action="/compare">
-          {% for user in users -%}
-          <div>
-            <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked>
-            <label for="{{ users[user]['username'] }}">{{ users[user]['username'] }}</label>
-          </div>
-          {% endfor -%}
-      </td>
-      <td style="vertical-align:top">
+  <form action="/select">
+    <input type="radio" id="Game grid" name="select" value="grid">
+    <label for="grid">Game grid</label><br>
+    <input type="radio" id="Compare users" name="select" value="compare" checked>
+    <label for="compare">Compare users</label><br>
+    <div class="sub1">
+      <blockquote>
+        {% for user in users -%}
+        <div>
+          <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked>
+          <label for="{{ users[user]['username'] }}">{{ users[user]['username'] }}</label>
+        </div>
+        {% endfor -%}
         <input type="checkbox" id="Include single-player games" name="include_single_player">
-        <label for="Include single player games">Include single player games</label>
-        <br>
-        <span style='font-size:50px;'>&#9757;</span>Still WIP: you can help <a
-          href=https://github.com/eniklas/gamatrix-gog-configs>here!</a>
-      </td>
-    </tr>
-  </table>
-  <br>
-  <input type="submit" value="Giv'er">
+        <label for="Include single-player games">Include single-player games
+          (Still WIP: you can help <a href=https://github.com/eniklas/gamatrix-gog-configs>here!</a>)</label>
+      </blockquote>
+    </div>
+    <br>
+    <input type="submit" value="Giv'er">
   </form>
 </body>
 

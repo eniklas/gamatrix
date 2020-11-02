@@ -6,7 +6,7 @@ import logging
 import os
 import sqlite3
 import sys
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 from ruamel.yaml import YAML
 from version import VERSION
 
@@ -21,11 +21,22 @@ def root():
     return render_template("index.html", users=config["users"])
 
 
-@app.route("/compare", methods=["GET", "POST"])
-def compare_libraries():
-    if request.method != "GET":
-        return
+@app.route("/select", methods=["GET"])
+def select():
+    """Routes based on the radio button selection"""
+    if request.args["select"] == "grid":
+        return grid()
 
+    return compare_libraries()
+
+
+@app.route("/grid", methods=["POST"])
+def grid():
+    return jsonify("made it to grid")
+
+
+@app.route("/compare", methods=["POST"])
+def compare_libraries():
     include_single_player = False
     user_ids_to_compare = []
 
@@ -33,7 +44,7 @@ def compare_libraries():
     for k in request.args.keys():
         if k == "include_single_player":
             include_single_player = True
-        else:
+        elif k != "select":
             user_ids_to_compare.append(int(k))
 
     # If no users were selected, just refresh the page
