@@ -31,7 +31,6 @@ def compare_libraries():
     for k in request.args.keys():
         if k == "include_single_player":
             include_single_player = True
-        # TODO: should be able to remove this
         elif k != "option":
             user_ids_to_compare.append(int(k))
 
@@ -180,8 +179,7 @@ class gogDB:
                         title = json.loads(title_json)["title"]
                         # Skip this title if it's single player and we didn't ask for them
                         if (
-                            not self.config["all_games"]
-                            and not self.config["include_single_player"]
+                            not self.config["include_single_player"]
                             and title in self.config["single_player"]
                         ):
                             continue
