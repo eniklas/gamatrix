@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import collections
 import copy
 import json
 import logging
@@ -247,7 +246,7 @@ class gogDB:
     def get_usernames_from_ids(self, userids):
         """Returns an OrderedDict of usernames mapped by user ID"""
         usernames = {}
-        sorted_usernames = collections.OrderedDict()
+        sorted_usernames = {}
 
         for userid in userids:
             if "username" in self.config["users"][userid]:
