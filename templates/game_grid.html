@@ -1,0 +1,54 @@
+<!doctype html>
+<html>
+
+<head>
+  <style>
+    table,
+    th,
+    td {
+      border: 1px solid black;
+      border-collapse: collapse;
+      padding: 3px;
+    }
+  </style>
+  <title>
+    gamatrix-gog results
+  </title>
+</head>
+
+<body>
+  <a href="/">Back to home page</a>
+  <br><br>
+  {{ debug_str }}
+  <table>
+    <caption>{{ caption }}</caption>
+    <tr>
+      <th>Title</th>
+      {% for userid, username in users.items() -%}
+      <th>{{ username }}</th>
+      {% endfor -%}
+      <th>Platform</th>
+      <th>Players</th>
+      <th>Comment</th>
+    </tr>
+    {% for game, value in games.items() -%}
+    <tr>
+      <td>{{ value.title }}</td>
+      {% for userid, username in users.items() -%}
+      {% if userid in value.owners -%}
+      <td style="background-color:rgb(182,215,168)">{{ username }}</td>
+      {% else %}
+      <td style="background-color:rgb(234,153,153)">{{ username }}</td>
+      {% endif %}
+      {% endfor -%}
+      <td>{{ value.platform }}</td>
+      <td>{{ value.max_players }}</td>
+      <td>{{ value.comment }}</td>
+    </tr>
+    {% endfor -%}
+  </table>
+  <br><br>
+  <a href="/">Back to home page</a>
+</body>
+
+</html>

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import collections
 import copy
 import json
 import logging
@@ -21,21 +22,7 @@ def root():
     return render_template("index.html", users=config["users"])
 
 
-@app.route("/select", methods=["GET"])
-def select():
-    """Routes based on the radio button selection"""
-    if request.args["select"] == "grid":
-        return grid()
-
-    return compare_libraries()
-
-
-@app.route("/grid", methods=["POST"])
-def grid():
-    return jsonify("made it to grid")
-
-
-@app.route("/compare", methods=["POST"])
+@app.route("/compare", methods=["GET", "POST"])
 def compare_libraries():
     include_single_player = False
     user_ids_to_compare = []
@@ -44,7 +31,8 @@ def compare_libraries():
     for k in request.args.keys():
         if k == "include_single_player":
             include_single_player = True
-        elif k != "select":
+        # TODO: should be able to remove this
+        elif k != "option":
             user_ids_to_compare.append(int(k))
 
     # If no users were selected, just refresh the page
@@ -52,12 +40,21 @@ def compare_libraries():
         return root()
 
     gog = gogDB(config, user_ids_to_compare, include_single_player)
+
+    if request.args["option"] == "grid":
+        gog.config["all_games"] = True
+        template = "game_grid.html"
+    else:
+        template = "game_list.html"
+
+    users = gog.get_usernames_from_ids(gog.config["user_ids_to_compare"])
     common_games = gog.get_common_games()
     debug_str = ""
     return render_template(
-        "game_list.html",
+        template,
         debug_str=debug_str,
         games=common_games,
+        users=users,
         caption=gog.get_caption(len(common_games)),
     )
 
@@ -231,23 +228,37 @@ class gogDB:
 
     def get_caption(self, num_games):
         """Returns the caption string"""
-
-        # List the username if possible, otherwise the user ID
-        usernames = []
-        for userid in self.config["user_ids_to_compare"]:
-            if "username" in self.config["users"][userid]:
-                usernames.append(self.config["users"][userid]["username"])
-            else:
-                usernames.append(str(userid))
-
         if self.config["all_games"]:
             caption_middle = "total games owned by"
         else:
             caption_middle = "games in common between"
 
+        usernames = self.get_usernames_from_ids(self.config["user_ids_to_compare"])
+
         return "{} {} {}".format(
-            num_games, caption_middle, ", ".join(sorted(usernames, key=str.lower))
+            num_games, caption_middle, ", ".join(usernames.values())
         )
+
+    def get_usernames_from_ids(self, userids):
+        """Returns an OrderedDict of usernames mapped by user ID"""
+        usernames = {}
+        sorted_usernames = collections.OrderedDict()
+
+        for userid in userids:
+            if "username" in self.config["users"][userid]:
+                usernames[userid] = self.config["users"][userid]["username"]
+            else:
+                usernames[userid] = str(userid)
+
+        # Order by value (username) to avoid having to do it in the templates
+        for username in sorted(usernames.values(), key=str.lower):
+            for userid in list(usernames.keys()):
+                if usernames[userid] == username:
+                    sorted_usernames[userid] = username
+                    # Avoid issues if two users have the same username
+                    del usernames[userid]
+
+        return sorted_usernames
 
 
 def build_config(args):

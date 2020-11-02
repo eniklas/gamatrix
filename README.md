@@ -131,6 +131,12 @@ ACCEPT     all  --  5.6.7.8              anywhere
 DROP       tcp  --  anywhere             anywhere             tcp dpt:http
 ```
 
+Save it so it persists after reboot:
+
+```pre
+# iptables-save
+```
+
 Now you can open the port on your router. For more information on using iptables with Docker, see [here](https://docs.docker.com/network/iptables/).
 
 ## Contributing
