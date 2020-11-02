@@ -7,7 +7,7 @@ import logging
 import os
 import sqlite3
 import sys
-from flask import Flask, request, render_template, jsonify
+from flask import Flask, request, render_template
 from ruamel.yaml import YAML
 from version import VERSION
 
@@ -208,23 +208,30 @@ class gogDB:
 
             self.close_connection()
 
-        # Sort the owner lists so we can compare them easily
-        for k in game_list:
-            game_list[k]["owners"].sort()
+        # Sort by title to avoid headaches in the templates
+        ordered_game_list = {
+            k: v
+            for k, v in sorted(
+                game_list.items(), key=lambda item: item[1]["title"].lower()
+            )
+        }
 
-        games_in_common = []
+        # Sort the owner lists so we can compare them easily
+        for k in ordered_game_list:
+            ordered_game_list[k]["owners"].sort()
+
         owners_to_match.sort()
         self.logger.debug("owners_to_match: {}".format(owners_to_match))
-        final_game_list = copy.deepcopy(game_list)
-        for k in game_list:
-            if game_list[k]["owners"] != owners_to_match:
-                del final_game_list[k]
+        ordered_game_list_matches_only = copy.deepcopy(ordered_game_list)
+        for k in ordered_game_list:
+            if ordered_game_list[k]["owners"] != owners_to_match:
+                del ordered_game_list_matches_only[k]
 
         # If -a was used, list all games (no filtering)
         if self.config["all_games"]:
-            return game_list
+            return ordered_game_list
         else:
-            return final_game_list
+            return ordered_game_list_matches_only
 
     def get_caption(self, num_games):
         """Returns the caption string"""
@@ -251,12 +258,9 @@ class gogDB:
                 usernames[userid] = str(userid)
 
         # Order by value (username) to avoid having to do it in the templates
-        for username in sorted(usernames.values(), key=str.lower):
-            for userid in list(usernames.keys()):
-                if usernames[userid] == username:
-                    sorted_usernames[userid] = username
-                    # Avoid issues if two users have the same username
-                    del usernames[userid]
+        sorted_usernames = {
+            k: v for k, v in sorted(usernames.items(), key=lambda item: item[1].lower())
+        }
 
         return sorted_usernames
 
