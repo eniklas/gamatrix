@@ -22,20 +22,20 @@
   {{ debug_str }}
   <table>
     <caption>{{ caption }}</caption>
-    <tr>
+    <tr style="background-color: rgb(124,207,228)">
       <th>Title</th>
       <th>Platform</th>
       <th>Players</th>
       <th>Comment</th>
     </tr>
     {% for game, value in games.items() -%}
-    <tr>
+    <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
       <td>{{ value.title }}</td>
       <td><img src="/static/{{ value.platform }}.png" width="20" height="20"></td>
       <td>{{ value.max_players }}</td>
       <td>{{ value.comment }}</td>
     </tr>
-    {% endfor -%}
+    {%- endfor -%}
   </table>
   <br><br>
   <a href="/">Back to home page</a>

@@ -22,30 +22,30 @@
   {{ debug_str }}
   <table>
     <caption>{{ caption }}</caption>
-    <tr>
+    <tr style="background-color: rgb(124,207,228)">
       <th>Title</th>
       {% for userid, username in users.items() -%}
       <th>{{ username }}</th>
-      {% endfor -%}
+      {%- endfor %}
       <th>Platform</th>
       <th>Players</th>
       <th>Comment</th>
     </tr>
     {% for game, value in games.items() -%}
-    <tr>
+    <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
       <td>{{ value.title }}</td>
       {% for userid, username in users.items() -%}
       {% if userid in value.owners -%}
       <td style="background-color:rgb(182,215,168)"></td>
-      {% else %}
+      {%- else -%}
       <td style="background-color:rgb(234,153,153)"></td>
-      {% endif %}
-      {% endfor -%}
-      <td>{{ value.platform }}</td>
+      {%- endif %}
+      {%- endfor %}
+      <td><img src="/static/{{ value.platform }}.png" width="20" height="20"></td>
       <td>{{ value.max_players }}</td>
       <td>{{ value.comment }}</td>
     </tr>
-    {% endfor -%}
+    {%- endfor %}
   </table>
   <br><br>
   <a href="/">Back to home page</a>
