@@ -176,8 +176,8 @@ class gogDB:
                     if release_key not in game_list:
                         # This is the first we've seen this title, so add it
                         title = json.loads(title_json)["title"]
-                        # Skip this title if it's single player and we didn't ask for them
-                        if (
+                        # Skip this title if it's hidden or single player and we didn't ask for them
+                        if title in self.config["hidden"] or (
                             not self.config["include_single_player"]
                             and title in self.config["single_player"]
                         ):
