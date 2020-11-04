@@ -31,7 +31,7 @@
     {% for game, value in games.items() -%}
     <tr>
       <td>{{ value.title }}</td>
-      <td>{{ value.platform }}</td>
+      <td><img src="/static/{{ value.platform }}.png" width="20" height="20"></td>
       <td>{{ value.max_players }}</td>
       <td>{{ value.comment }}</td>
     </tr>
