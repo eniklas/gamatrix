@@ -201,7 +201,7 @@ class gogDB:
                     self.logger.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]["owners"].append(userid)
                     # Release keys start with the platform
-                    game_list[release_key]["platform"] = release_key.split("_")[0]
+                    game_list[release_key]["platforms"] = [release_key.split("_")[0]]
 
             self.close_connection()
 
@@ -219,16 +219,68 @@ class gogDB:
 
         owners_to_match.sort()
         self.logger.debug("owners_to_match: {}".format(owners_to_match))
-        ordered_game_list_matches_only = copy.deepcopy(ordered_game_list)
-        for k in ordered_game_list:
-            if ordered_game_list[k]["owners"] != owners_to_match:
-                del ordered_game_list_matches_only[k]
 
-        # If -a was used, list all games (no filtering)
-        if self.config["all_games"]:
-            return ordered_game_list
-        else:
-            return ordered_game_list_matches_only
+        # Merge entries that have the same title and platforms
+        keys = list(ordered_game_list)
+        for k in keys:
+            # We may have deleted this earlier
+            if k not in ordered_game_list:
+                continue
+
+            title = ordered_game_list[k]["title"]
+            owners = ordered_game_list[k]["owners"]
+            platforms = ordered_game_list[k]["platforms"]
+
+            if keys.index(k) >= len(keys) - 2:
+                break
+
+            # Go through any subsequent keys with the same title
+            next_key = keys[keys.index(k) + 1]
+            while ordered_game_list[next_key]["title"] == title:
+                self.logger.debug("Found duplicate title {}".format(title))
+                if ordered_game_list[next_key]["owners"] == owners:
+                    self.logger.debug(
+                        "Owners are the same: {} {}".format(
+                            owners, ordered_game_list[next_key]["owners"]
+                        )
+                    )
+                    platform = ordered_game_list[next_key]["platforms"][0]
+                    if platform not in platforms:
+                        self.logger.debug(
+                            "Adding new platform {} to {}".format(platform, platforms)
+                        )
+                        platforms.append(platform)
+                    else:
+                        self.logger.debug(
+                            "Platform {} already in {}".format(platform, platforms)
+                        )
+
+                    self.logger.debug(
+                        "Deleting duplicate {} as it has been merged into {}".format(
+                            ordered_game_list[next_key], ordered_game_list[k]
+                        )
+                    )
+                    del ordered_game_list[next_key]
+                    ordered_game_list[k]["platforms"] = sorted(platforms)
+                else:
+                    self.logger.debug(
+                        "Owners are different: {} {}".format(
+                            owners, ordered_game_list[next_key]["owners"]
+                        )
+                    )
+
+                if keys.index(k) >= len(keys) - 2:
+                    break
+
+                next_key = keys[keys.index(next_key) + 1]
+
+        if not self.config["all_games"]:
+            # Delete any entries that don't have the owner list we're looking for
+            for k in list(ordered_game_list):
+                if ordered_game_list[k]["owners"] != owners_to_match:
+                    del ordered_game_list[k]
+
+        return ordered_game_list
 
     def get_caption(self, num_games):
         """Returns the caption string"""

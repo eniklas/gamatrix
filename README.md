@@ -61,6 +61,8 @@ $ pip3 install -r requirements.txt
 $ ./gamatrix-gog.py
 ```
 
+Python 3.7+ is recommended. It may work with earlier versions, but this has not been tested.
+
 ### Server mode
 
 If you use the `-s` option or set `mode: server` in the [config file](#configuration), a Flask web server is started and runs until the script is killed. This serves a web page with a check box for all users defined in the config file; users can select who they want to compare and a table is generated for the matching games.

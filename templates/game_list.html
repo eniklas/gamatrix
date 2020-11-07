@@ -31,7 +31,11 @@
     {% for game, value in games.items() -%}
     <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
       <td>{{ value.title }}</td>
-      <td><img src="/static/{{ value.platform }}.png" width="20" height="20"></td>
+      <td>
+        {% for platform in value.platforms -%}
+        <img src="/static/{{ platform }}.png" width="20" height="20">&nbsp;
+        {%- endfor -%}
+      </td>
       <td>{{ value.max_players }}</td>
       <td>{{ value.comment }}</td>
     </tr>
