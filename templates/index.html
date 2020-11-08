@@ -27,9 +27,12 @@
           <label for="{{ users[user]['username'] }}">{{ users[user]['username'] }}</label>
         </div>
         {% endfor -%}
-        <input type="checkbox" id="Include single-player games" name="include_single_player">
-        <label for="Include single-player games">Include single-player games
-          (Still WIP: you can help <a href=https://github.com/eniklas/gamatrix-gog-configs>here!</a>)</label>
+        <br>
+        <input type="checkbox" id="single_player" name="single_player">
+        <label for="single_player">Include single-player games</label><br>
+        <input type="checkbox" id="exclusive" name="exclusive">
+        <label for="exclusive">Exclusively owned only (games <i>not</i> owned by
+          unselected users; ignored for game grid)</label>
       </blockquote>
     </div>
     <br>

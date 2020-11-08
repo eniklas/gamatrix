@@ -18,18 +18,23 @@ app = Flask(__name__)
 
 @app.route("/")
 def root():
+    logger.info("Request from {}".format(request.remote_addr))
     return render_template("index.html", users=config["users"])
 
 
 @app.route("/compare", methods=["GET", "POST"])
 def compare_libraries():
+    logger.info("Request from {}".format(request.remote_addr))
     include_single_player = False
+    exclusive = False
     user_ids_to_compare = []
 
     # Check boxes get passed in as "on" if checked, or not at all if unchecked
     for k in request.args.keys():
-        if k == "include_single_player":
+        if k == "single_player":
             include_single_player = True
+        elif k == "exclusive":
+            exclusive = True
         elif k != "option":
             user_ids_to_compare.append(int(k))
 
@@ -37,7 +42,7 @@ def compare_libraries():
     if not user_ids_to_compare:
         return root()
 
-    gog = gogDB(config, user_ids_to_compare, include_single_player)
+    gog = gogDB(config, user_ids_to_compare, include_single_player, exclusive)
 
     if request.args["option"] == "grid":
         gog.config["all_games"] = True
@@ -58,27 +63,38 @@ def compare_libraries():
 
 
 class gogDB:
-    def __init__(self, config, user_ids_to_compare=[], include_single_player=False):
+    def __init__(
+        self,
+        config,
+        user_ids_to_compare=[],
+        include_single_player=False,
+        exclusive=False,
+    ):
         self.config = copy.deepcopy(config)
         self.config["user_ids_to_compare"] = user_ids_to_compare
         self.config["include_single_player"] = include_single_player
+        self.config["exclusive"] = exclusive
+        self.config["user_ids_to_exclude"] = []
 
-        # All DBs defined in the config file will be in db_list;
-        #  remove the DBs for users that we don't want to compare
+        # All DBs defined in the config file will be in db_list. Remove the DBs for
+        # users that we don't want to compare, unless exclusive was specified, in
+        # which case we need to look at all DBs
         for user in list(self.config["users"]):
-            if (
-                user not in self.config["user_ids_to_compare"]
-                and "db" in self.config["users"][user]
-                and "{}/{}".format(
-                    self.config["db_path"], self.config["users"][user]["db"]
-                )
-                in self.config["db_list"]
-            ):
-                self.config["db_list"].remove(
-                    "{}/{}".format(
+            if user not in self.config["user_ids_to_compare"]:
+                if exclusive:
+                    self.config["user_ids_to_exclude"].append(user)
+                elif (
+                    "db" in self.config["users"][user]
+                    and "{}/{}".format(
                         self.config["db_path"], self.config["users"][user]["db"]
                     )
-                )
+                    in self.config["db_list"]
+                ):
+                    self.config["db_list"].remove(
+                        "{}/{}".format(
+                            self.config["db_path"], self.config["users"][user]["db"]
+                        )
+                    )
 
         if config["log_level"].lower() == "debug":
             level = logging.DEBUG
@@ -149,12 +165,9 @@ class gogDB:
             )
         )
 
-        self.logger.debug("Running query: {}".format(owned_game_database))
-        self.cursor.execute(owned_game_database)
-        self.logger.debug("Running query: {}".format(og_query))
-        self.cursor.execute(og_query)
-        self.logger.debug("Running query: {}".format(unique_game_data))
-        self.cursor.execute(unique_game_data)
+        for query in [owned_game_database, og_query, unique_game_data]:
+            self.logger.debug("Running query: {}".format(query))
+            self.cursor.execute(query)
 
         return self.cursor.fetchall()
 
@@ -207,7 +220,7 @@ class gogDB:
             self.close_connection()
 
         # Sort by title to avoid headaches in the templates;
-        # dicts maintain inseration order as of Python 3.7
+        # dicts maintain insertion order as of Python 3.7
         ordered_game_list = {
             k: v
             for k, v in sorted(
@@ -271,13 +284,37 @@ class gogDB:
                 if keys.index(k) < len(keys) - 2:
                     next_key = keys[keys.index(next_key) + 1]
 
-        if not self.config["all_games"]:
-            # Delete any entries that don't have the owner list we're looking for
+        # If -a was used, were done
+        if self.config["all_games"]:
+            return ordered_game_list
+
+        if self.config["exclusive"]:
             for k in list(ordered_game_list):
+                # Delete entries that are owned by someone in the exclude list,
+                # or not owned by someone in the include list
+                for userid in ordered_game_list[k]["owners"]:
+                    if (
+                        userid in self.config["user_ids_to_exclude"]
+                        or userid not in self.config["user_ids_to_compare"]
+                    ):
+                        self.logger.debug(
+                            "Deleting {} as it's either owned by someone in the exclude list, or not owned by someone"
+                            " in the include list; userid = {}, include list = {}, exclude list = {}".format(
+                                ordered_game_list[k]["title"],
+                                userid,
+                                self.config["user_ids_to_compare"],
+                                self.config["user_ids_to_exclude"],
+                            )
+                        )
+                        del ordered_game_list[k]
+                        break
+        else:
+            for k in list(ordered_game_list):
+                # Delete any entries that don't have the owner list we're looking for
                 if ordered_game_list[k]["owners"] != owners_to_match:
                     self.logger.debug(
                         "Deleting {} as it doesn't match owner list {}".format(
-                            ordered_game_list[k], owners_to_match
+                            ordered_game_list[k]["title"], owners_to_match
                         )
                     )
                     del ordered_game_list[k]
@@ -286,19 +323,30 @@ class gogDB:
 
     def get_caption(self, num_games):
         """Returns the caption string"""
+        usernames = self.get_usernames_from_ids(self.config["user_ids_to_compare"])
+
         if self.config["all_games"]:
             caption_middle = "total games owned by"
+        elif len(usernames) == 1:
+            caption_middle = "games owned by"
         else:
             caption_middle = "games in common between"
 
-        usernames = self.get_usernames_from_ids(self.config["user_ids_to_compare"])
+        caption_end = ""
+        if len(self.config["user_ids_to_exclude"]) > 1:
+            usernames_to_exclude = self.get_usernames_from_ids(
+                self.config["user_ids_to_exclude"]
+            )
+            caption_end = " and not owned by {}".format(
+                ", ".join(usernames_to_exclude.values())
+            )
 
-        return "{} {} {}".format(
-            num_games, caption_middle, ", ".join(usernames.values())
+        return "{} {} {}{}".format(
+            num_games, caption_middle, ", ".join(usernames.values()), caption_end
         )
 
     def get_usernames_from_ids(self, userids):
-        """Returns an OrderedDict of usernames mapped by user ID"""
+        """Returns a dict of usernames mapped by user ID"""
         usernames = {}
         sorted_usernames = {}
 
