@@ -162,6 +162,7 @@ class gogDB:
         game_list = {}
         owners_to_match = []
 
+        # Loop through all the DBs and get info on all owned titles
         for db_file in self.config["db_list"]:
             self.logger.debug("Using DB {}".format(db_file))
             self.use_db(db_file)
@@ -205,7 +206,8 @@ class gogDB:
 
             self.close_connection()
 
-        # Sort by title to avoid headaches in the templates
+        # Sort by title to avoid headaches in the templates;
+        # dicts maintain inseration order as of Python 3.7
         ordered_game_list = {
             k: v
             for k, v in sorted(
@@ -223,16 +225,13 @@ class gogDB:
         # Merge entries that have the same title and platforms
         keys = list(ordered_game_list)
         for k in keys:
-            # We may have deleted this earlier
-            if k not in ordered_game_list:
+            # Skip if we deleted this earlier, or we're at the end of the dict
+            if k not in ordered_game_list or keys.index(k) >= len(keys) - 2:
                 continue
 
             title = ordered_game_list[k]["title"]
             owners = ordered_game_list[k]["owners"]
             platforms = ordered_game_list[k]["platforms"]
-
-            if keys.index(k) >= len(keys) - 2:
-                break
 
             # Go through any subsequent keys with the same title
             next_key = keys[keys.index(k) + 1]
@@ -269,15 +268,18 @@ class gogDB:
                         )
                     )
 
-                if keys.index(k) >= len(keys) - 2:
-                    break
-
-                next_key = keys[keys.index(next_key) + 1]
+                if keys.index(k) < len(keys) - 2:
+                    next_key = keys[keys.index(next_key) + 1]
 
         if not self.config["all_games"]:
             # Delete any entries that don't have the owner list we're looking for
             for k in list(ordered_game_list):
                 if ordered_game_list[k]["owners"] != owners_to_match:
+                    self.logger.debug(
+                        "Deleting {} as it doesn't match owner list {}".format(
+                            ordered_game_list[k], owners_to_match
+                        )
+                    )
                     del ordered_game_list[k]
 
         return ordered_game_list
@@ -458,6 +460,19 @@ if __name__ == "__main__":
 
     gog = gogDB(config, user_ids_to_compare)
     games_in_common = gog.get_common_games()
-    for title in sorted([games_in_common[t]["title"] for t in games_in_common.keys()]):
-        print(title)
+
+    for key in games_in_common:
+        print(
+            "{} ({})".format(
+                games_in_common[key]["title"],
+                ", ".join(games_in_common[key]["platforms"]),
+            ),
+            end="",
+        )
+        if "max_players" in games_in_common[key]:
+            print(" Players: {}".format(games_in_common[key]["max_players"]), end="")
+        if "comment" in games_in_common[key]:
+            print(" Comment: {}".format(games_in_common[key]["comment"]), end="")
+        print("")
+
     print(gog.get_caption(len(games_in_common)))
