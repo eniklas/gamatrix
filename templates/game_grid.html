@@ -27,13 +27,19 @@
       {% for userid, username in users.items() -%}
       <th>{{ username }}</th>
       {%- endfor %}
-      <th></th>
       <th>Players</th>
       <th>Comment</th>
     </tr>
     {% for game, value in games.items() -%}
     <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
-      <td>{{ value.title }}</td>
+      <td>
+        {{ value.title }}
+        <div style="float:right">
+          {% for platform in value.platforms -%}
+          <img src="/static/{{ platform }}.png" width="20" height="20">&nbsp;
+          {%- endfor -%}
+        </div>
+      </td>
       {% for userid, username in users.items() -%}
       {% if userid in value.owners -%}
       <td style="background-color:rgb(182,215,168)"></td>
@@ -41,11 +47,6 @@
       <td style="background-color:rgb(234,153,153)"></td>
       {%- endif %}
       {%- endfor %}
-      <td>
-        {% for platform in value.platforms -%}
-        <img src="/static/{{ platform }}.png" width="20" height="20">&nbsp;
-        {%- endfor -%}
-      </td>
       <td>{{ value.max_players }}</td>
       <td>{{ value.comment }}</td>
     </tr>
