@@ -136,6 +136,7 @@ DROP       tcp  --  anywhere             anywhere             tcp dpt:http
 Save it so it persists after reboot:
 
 ```pre
+# apt install iptables-persistent
 # iptables-save
 ```
 

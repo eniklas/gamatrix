@@ -333,7 +333,7 @@ class gogDB:
             caption_middle = "games in common between"
 
         caption_end = ""
-        if len(self.config["user_ids_to_exclude"]) > 1:
+        if len(self.config["user_ids_to_exclude"]) > 0:
             usernames_to_exclude = self.get_usernames_from_ids(
                 self.config["user_ids_to_exclude"]
             )
