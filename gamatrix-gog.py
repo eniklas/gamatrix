@@ -173,14 +173,14 @@ class gogDB:
 
     def get_common_games(self):
         game_list = {}
-        owners_to_match = []
+        self.owners_to_match = []
 
         # Loop through all the DBs and get info on all owned titles
         for db_file in self.config["db_list"]:
             self.logger.debug("Using DB {}".format(db_file))
             self.use_db(db_file)
             userid = self.get_user()[0]
-            owners_to_match.append(userid)
+            self.owners_to_match.append(userid)
             owned_games = self.get_owned_games(userid)
             self.logger.debug("owned games = {}".format(owned_games))
             # A row looks like (release_keys {"title": "Title Name"})
@@ -232,94 +232,110 @@ class gogDB:
         for k in ordered_game_list:
             ordered_game_list[k]["owners"].sort()
 
-        owners_to_match.sort()
-        self.logger.debug("owners_to_match: {}".format(owners_to_match))
+        self.owners_to_match.sort()
+        self.logger.debug("owners_to_match: {}".format(self.owners_to_match))
 
+        new_ordered_game_list = self.merge_duplicate_titles(ordered_game_list)
+
+        # If -a was used, we're done
+        if self.config["all_games"]:
+            return new_ordered_game_list
+
+        new_ordered_game_list = self.filter_games(new_ordered_game_list)
+        return new_ordered_game_list
+
+    def merge_duplicate_titles(self, game_list):
+        working_game_list = copy.deepcopy(game_list)
         # Merge entries that have the same title and platforms
-        keys = list(ordered_game_list)
+        keys = list(game_list)
         for k in keys:
             # Skip if we deleted this earlier, or we're at the end of the dict
-            if k not in ordered_game_list or keys.index(k) >= len(keys) - 2:
+            if k not in working_game_list or keys.index(k) >= len(keys) - 2:
                 continue
 
-            title = ordered_game_list[k]["title"]
-            owners = ordered_game_list[k]["owners"]
-            platforms = ordered_game_list[k]["platforms"]
+            title = game_list[k]["title"]
+            owners = game_list[k]["owners"]
+            platforms = game_list[k]["platforms"]
 
             # Go through any subsequent keys with the same title
             next_key = keys[keys.index(k) + 1]
-            while ordered_game_list[next_key]["title"] == title:
-                self.logger.debug("Found duplicate title {}".format(title))
-                if ordered_game_list[next_key]["owners"] == owners:
+            while game_list[next_key]["title"] == title:
+                self.logger.debug(
+                    "Found duplicate title {}, keys {}, {}".format(title, k, next_key)
+                )
+                if game_list[next_key]["owners"] == owners:
                     self.logger.debug(
-                        "Owners are the same: {} {}".format(
-                            owners, ordered_game_list[next_key]["owners"]
+                        "{}: owners are the same: {}, {}".format(
+                            next_key, owners, game_list[next_key]["owners"]
                         )
                     )
-                    platform = ordered_game_list[next_key]["platforms"][0]
+                    platform = game_list[next_key]["platforms"][0]
                     if platform not in platforms:
                         self.logger.debug(
-                            "Adding new platform {} to {}".format(platform, platforms)
+                            "{}: adding new platform {} to {}".format(
+                                next_key, platform, platforms
+                            )
                         )
                         platforms.append(platform)
                     else:
                         self.logger.debug(
-                            "Platform {} already in {}".format(platform, platforms)
-                        )
-
-                    self.logger.debug(
-                        "Deleting duplicate {} as it has been merged into {}".format(
-                            ordered_game_list[next_key], ordered_game_list[k]
-                        )
-                    )
-                    del ordered_game_list[next_key]
-                    ordered_game_list[k]["platforms"] = sorted(platforms)
-                else:
-                    self.logger.debug(
-                        "Owners are different: {} {}".format(
-                            owners, ordered_game_list[next_key]["owners"]
-                        )
-                    )
-
-                if keys.index(k) < len(keys) - 2:
-                    next_key = keys[keys.index(next_key) + 1]
-
-        # If -a was used, were done
-        if self.config["all_games"]:
-            return ordered_game_list
-
-        if self.config["exclusive"]:
-            for k in list(ordered_game_list):
-                # Delete entries that are owned by someone in the exclude list,
-                # or not owned by someone in the include list
-                for userid in ordered_game_list[k]["owners"]:
-                    if (
-                        userid in self.config["user_ids_to_exclude"]
-                        or userid not in self.config["user_ids_to_compare"]
-                    ):
-                        self.logger.debug(
-                            "Deleting {} as it's either owned by someone in the exclude list, or not owned by someone"
-                            " in the include list; userid = {}, include list = {}, exclude list = {}".format(
-                                ordered_game_list[k]["title"],
-                                userid,
-                                self.config["user_ids_to_compare"],
-                                self.config["user_ids_to_exclude"],
+                            "{}: platform {} already in {}".format(
+                                next_key, platform, platforms
                             )
                         )
-                        del ordered_game_list[k]
-                        break
-        else:
-            for k in list(ordered_game_list):
-                # Delete any entries that don't have the owner list we're looking for
-                if ordered_game_list[k]["owners"] != owners_to_match:
+
                     self.logger.debug(
-                        "Deleting {} as it doesn't match owner list {}".format(
-                            ordered_game_list[k]["title"], owners_to_match
+                        "{}: deleting duplicate {} as it has been merged into {}".format(
+                            next_key, game_list[next_key], game_list[k]
                         )
                     )
-                    del ordered_game_list[k]
+                    del working_game_list[next_key]
+                    working_game_list[k]["platforms"] = sorted(platforms)
+                else:
+                    self.logger.debug(
+                        "{}: owners are different: {} {}".format(
+                            next_key, owners, game_list[next_key]["owners"]
+                        )
+                    )
 
-        return ordered_game_list
+                if keys.index(next_key) >= len(keys) - 2:
+                    break
+
+                next_key = keys[keys.index(next_key) + 1]
+
+        return working_game_list
+
+    def filter_games(self, game_list):
+        working_game_list = copy.deepcopy(game_list)
+
+        for k in list(game_list):
+            # Delete any entries that aren't owned by all users we want
+            for owner in self.config["user_ids_to_compare"]:
+                if owner not in game_list[k]["owners"]:
+                    self.logger.info(
+                        "Deleting {} as owners {} does not include {}".format(
+                            game_list[k]["title"],
+                            game_list[k]["owners"],
+                            owner,
+                        )
+                    )
+                    del working_game_list[k]
+                    break
+            else:
+                self.logger.info("In the second loop")
+                for owner in self.config["user_ids_to_exclude"]:
+                    if owner in game_list[k]["owners"]:
+                        self.logger.info(
+                            "Deleting {} as owners {} includes {} and exclusive is true".format(
+                                game_list[k]["title"],
+                                game_list[k]["owners"],
+                                owner,
+                            )
+                        )
+                        del working_game_list[k]
+                        break
+
+        return working_game_list
 
     def get_caption(self, num_games):
         """Returns the caption string"""
