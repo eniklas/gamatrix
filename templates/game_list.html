@@ -26,6 +26,9 @@
       <th>Title</th>
       <th>Players</th>
       <th>Comment</th>
+      {% if show_keys -%}
+      <th>Release Key</th>
+      {%- endif %}
     </tr>
     {% for game, value in games.items() -%}
     <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
@@ -39,6 +42,9 @@
       </td>
       <td>{{ value.max_players }}</td>
       <td>{{ value.comment }}</td>
+      {% if show_keys -%}
+      <td>{{ game }}</td>
+      {%- endif %}
     </tr>
     {%- endfor -%}
   </table>

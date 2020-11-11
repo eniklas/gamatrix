@@ -29,6 +29,7 @@ def compare_libraries():
     logger.info("Request from {}".format(request.remote_addr))
     include_single_player = False
     exclusive = False
+    show_keys = False
     user_ids_to_compare = []
 
     # Check boxes get passed in as "on" if checked, or not at all if unchecked
@@ -37,6 +38,8 @@ def compare_libraries():
             include_single_player = True
         elif k == "exclusive":
             exclusive = True
+        elif k == "show_keys":
+            show_keys = True
         elif k != "option":
             user_ids_to_compare.append(int(k))
 
@@ -61,6 +64,7 @@ def compare_libraries():
         games=common_games,
         users=users,
         caption=gog.get_caption(len(common_games)),
+        show_keys=show_keys,
     )
 
 
