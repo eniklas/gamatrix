@@ -235,14 +235,12 @@ class gogDB:
         self.owners_to_match.sort()
         self.logger.debug("owners_to_match: {}".format(self.owners_to_match))
 
-        new_ordered_game_list = self.merge_duplicate_titles(ordered_game_list)
+        deduped_game_list = self.merge_duplicate_titles(ordered_game_list)
 
-        # If -a was used, we're done
         if self.config["all_games"]:
-            return new_ordered_game_list
+            return deduped_game_list
 
-        new_ordered_game_list = self.filter_games(new_ordered_game_list)
-        return new_ordered_game_list
+        return self.filter_games(deduped_game_list)
 
     def merge_duplicate_titles(self, game_list):
         working_game_list = copy.deepcopy(game_list)
@@ -308,11 +306,11 @@ class gogDB:
     def filter_games(self, game_list):
         working_game_list = copy.deepcopy(game_list)
 
-        for k in list(game_list):
+        for k in game_list:
             # Delete any entries that aren't owned by all users we want
             for owner in self.config["user_ids_to_compare"]:
                 if owner not in game_list[k]["owners"]:
-                    self.logger.info(
+                    self.logger.debug(
                         "Deleting {} as owners {} does not include {}".format(
                             game_list[k]["title"],
                             game_list[k]["owners"],
@@ -321,11 +319,11 @@ class gogDB:
                     )
                     del working_game_list[k]
                     break
+            # This only executes if the for loop didn't break
             else:
-                self.logger.info("In the second loop")
                 for owner in self.config["user_ids_to_exclude"]:
                     if owner in game_list[k]["owners"]:
-                        self.logger.info(
+                        self.logger.debug(
                             "Deleting {} as owners {} includes {} and exclusive is true".format(
                                 game_list[k]["title"],
                                 game_list[k]["owners"],
