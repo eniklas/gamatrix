@@ -206,13 +206,13 @@ class gogDB:
                         }
 
                         # Add metadata from the config file if we have any
-                        if title in self.config["metadata"]:
-                            for k in self.config["metadata"][title]:
+                        if sanitized_title in self.config["metadata"]:
+                            for k in self.config["metadata"][sanitized_title]:
                                 self.logger.debug(
                                     "Adding metadata {} to title {}".format(k, title)
                                 )
                                 game_list[release_key][k] = self.config["metadata"][
-                                    title
+                                    sanitized_title
                                 ][k]
 
                     self.logger.debug("User {} owns {}".format(userid, release_key))
@@ -474,6 +474,13 @@ def build_config(args):
     for k in ["multiplayer", "hidden"]:
         for i in range(len(config[k])):
             config[k][i] = alphanum_pattern.sub("", config[k][i]).lower()
+
+    sanitized_metadata = {}
+    for title in config["metadata"]:
+        sanitized_title = alphanum_pattern.sub("", title).lower()
+        sanitized_metadata[sanitized_title] = config["metadata"][title]
+
+    config["metadata"] = sanitized_metadata
 
     return config
 
