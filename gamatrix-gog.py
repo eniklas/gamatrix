@@ -31,7 +31,7 @@ def compare_libraries():
 
     # Check boxes get passed in as "on" if checked, or not at all if unchecked
     for k in request.args.keys():
-        if k == "single_player":
+        if k == "include_single_player":
             include_single_player = True
         elif k == "exclusive":
             exclusive = True
@@ -193,7 +193,7 @@ class gogDB:
                         # Skip this title if it's hidden or single player and we didn't ask for them
                         if title in self.config["hidden"] or (
                             not self.config["include_single_player"]
-                            and title in self.config["single_player"]
+                            and title not in self.config["multiplayer"]
                         ):
                             continue
 
@@ -462,8 +462,8 @@ def build_config(args):
                     "{}/{}".format(config["db_path"], config["users"][userid]["db"])
                 )
 
-    if "single_player" not in config:
-        config["single_player"] = []
+    if "multiplayer" not in config:
+        config["multiplayer"] = []
 
     return config
 
