@@ -1,0 +1,7 @@
+__pycache__
+config*
+Dockerfile
+.dockerignore
+.git*
+venv
+.vscode
