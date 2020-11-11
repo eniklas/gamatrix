@@ -61,7 +61,7 @@ $ pip3 install -r requirements.txt
 $ ./gamatrix-gog.py
 ```
 
-Python 3.7+ is recommended. It may work with earlier versions, but this has not been tested.
+Python 3.7+ is recommended. Dictionaries are assumed to be ordered, which is a 3.7+ feature.
 
 ### Server mode
 
@@ -82,7 +82,7 @@ $ docker build -t gamatrix-gog .
 Then run it:
 
 ```bash
-$ docker run -d --name gamatrix-gog -p 80:80/tcp -v /path/to/gog_dbs:/usr/src/app/gog_dbs gamatrix-gog
+$ docker run -d --name gamatrix-gog -p 80:80/tcp -v /path/to/gog_dbs:/usr/src/app/gog_dbs -v /path/to/config.yaml:/usr/src/app/config/config.yaml gamatrix-gog
 ```
 
 Now you should be able to access the web page. If not, use `docker logs` to see what went wrong.
