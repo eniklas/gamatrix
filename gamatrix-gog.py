@@ -202,6 +202,7 @@ class gogDB:
 
                         game_list[release_key] = {
                             "title": title,
+                            "sanitized_title": sanitized_title,
                             "owners": [],
                         }
 
@@ -222,12 +223,12 @@ class gogDB:
 
             self.close_connection()
 
-        # Sort by title to avoid headaches in the templates;
+        # Sort by sanitized title to avoid headaches in the templates;
         # dicts maintain insertion order as of Python 3.7
         ordered_game_list = {
             k: v
             for k, v in sorted(
-                game_list.items(), key=lambda item: item[1]["title"].lower()
+                game_list.items(), key=lambda item: item[1]["sanitized_title"]
             )
         }
 
@@ -254,15 +255,17 @@ class gogDB:
             if k not in working_game_list or keys.index(k) >= len(keys) - 2:
                 continue
 
-            title = game_list[k]["title"]
+            sanitized_title = game_list[k]["sanitized_title"]
             owners = game_list[k]["owners"]
             platforms = game_list[k]["platforms"]
 
-            # Go through any subsequent keys with the same title
+            # Go through any subsequent keys with the same (sanitized) title
             next_key = keys[keys.index(k) + 1]
-            while game_list[next_key]["title"] == title:
+            while game_list[next_key]["sanitized_title"] == sanitized_title:
                 self.logger.debug(
-                    "Found duplicate title {}, keys {}, {}".format(title, k, next_key)
+                    "Found duplicate title {} (sanitized: {}), keys {}, {}".format(
+                        game_list[k]["title"], sanitized_title, k, next_key
+                    )
                 )
                 if game_list[next_key]["owners"] == owners:
                     self.logger.debug(
