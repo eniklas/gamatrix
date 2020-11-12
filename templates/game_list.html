@@ -31,7 +31,13 @@
       {%- endif %}
     </tr>
     {% for game, value in games.items() -%}
-    <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
+    {% set max_players = value.max_players|default("0", true)|int -%}
+    {# Alternate row colors, and grey out titles that support fewer players than selected #}
+    <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})
+      {%- if (max_players > 0 and max_players < users|length) -%}
+      ;color: grey;
+      {%- endif -%}
+      ">
       <td>
         {{ value.title }}
         <div style="float:right">
@@ -44,7 +50,7 @@
       <td>{{ value.comment }}</td>
       {% if show_keys -%}
       <td>{{ game }}</td>
-      {%- endif %}
+      {%- endif -%}
     </tr>
     {%- endfor -%}
   </table>

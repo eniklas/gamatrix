@@ -219,6 +219,9 @@ class gogDB:
                                 game_list[release_key][k] = self.config["metadata"][
                                     sanitized_title
                                 ][k]
+                        # Set max players to 1 for single player games
+                        elif sanitized_title not in self.config["multiplayer"]:
+                            game_list[release_key]["max_players"] = 1
 
                     self.logger.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]["owners"].append(userid)
