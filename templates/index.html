@@ -13,33 +13,61 @@
 </head>
 
 <body>
-  <h3>Who's playing?</h3>
-  <form action="/compare">
-    <input type="radio" id="Game grid" name="option" value="grid">
-    <label for="grid">Game grid</label><br>
-    <input type="radio" id="Compare users" name="option" value="list" checked>
-    <label for="compare">Compare users</label><br>
-    <div class="sub1">
-      <blockquote>
-        {% for user in users -%}
-        <div>
-          <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked>
-          <label for="{{ users[user]['username'] }}">{{ users[user]['username'] }}</label>
-        </div>
-        {% endfor -%}
-        <br>
-        <input type="checkbox" id="include_single_player" name="include_single_player">
-        <label for="include_single_player">Include single-player games</label><br>
-        <input type="checkbox" id="exclusive" name="exclusive">
-        <label for="exclusive">Exclusively owned only (games <i>not</i> owned by
-          unselected users; ignored for game grid)</label><br>
-        <input type="checkbox" id="show_keys" name="show_keys">
-        <label for="show_keys">Show product keys</label><br>
-      </blockquote>
-    </div>
-    <br>
-    <input type="submit" value="Giv'er">
-  </form>
+  <h2>gamatrix-gog</h2>
+  <table>
+    <form action="/compare">
+      <tr>
+        <td>
+          <input type="radio" id="Compare users" name="option" value="list" checked>
+          <label for="compare">Compare users</label><br>
+          <div class="sub1">
+            <blockquote>
+              {% for user in users -%}
+              <div>
+                <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked>
+                <label for="{{ users[user]['username'] }}">{{ users[user]['username'] }}</label>
+              </div>
+              {% endfor -%}
+              <br>
+              <input type="checkbox" id="exclusive" name="exclusive">
+              <label for="exclusive">Exclusively owned (games<br><i>not</i> owned by
+                unselected users)</label><br>
+              <blockquote>
+          </div>
+        </td>
+        <td valign="top">
+          <input type="radio" id="Game grid" name="option" value="grid">
+          <label for="grid">Game grid</label><br>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <center>
+            <input type="checkbox" id="include_single_player" name="include_single_player">
+            <label for="include_single_player">Include single-player games</label><br>
+            <input type="checkbox" id="show_keys" name="show_keys">
+            <label for="show_keys">Show product keys</label><br><br>
+            Exclude platforms:
+            <blockquote>
+              <input type="checkbox" id="epic" name="exclude_platform_epic">
+              <label for="epic">Epic</label><br>
+              <input type="checkbox" id="gog" name="exclude_platform_gog">
+              <label for="gog">GOG</label><br>
+              <input type="checkbox" id="origin" name="exclude_platform_origin">
+              <label for="origin">Origin</label><br>
+              <input type="checkbox" id="steam" name="exclude_platform_steam">
+              <label for="steam">Steam</label><br>
+              <input type="checkbox" id="uplay" name="exclude_platform_uplay">
+              <label for="uplay">Uplay</label><br>
+              <input type="checkbox" id="xboxone" name="exclude_platform_xboxone">
+              <label for="xboxone">Xbox</label><br>
+              <input type="submit" value="Giv'er">
+            </blockquote>
+          </center>
+        </td>
+      </tr>
+    </form>
+  </table>
 </body>
 
 </html>

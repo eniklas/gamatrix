@@ -27,27 +27,26 @@ def root():
 @app.route("/compare", methods=["GET", "POST"])
 def compare_libraries():
     logger.info("Request from {}".format(request.remote_addr))
-    include_single_player = False
-    exclusive = False
-    show_keys = False
-    user_ids_to_compare = []
+
+    opts = init_opts()
 
     # Check boxes get passed in as "on" if checked, or not at all if unchecked
     for k in request.args.keys():
-        if k == "include_single_player":
-            include_single_player = True
-        elif k == "exclusive":
-            exclusive = True
-        elif k == "show_keys":
-            show_keys = True
-        elif k != "option":
-            user_ids_to_compare.append(int(k))
+        # Only user IDs are ints
+        try:
+            int(k)
+            opts["user_ids_to_compare"].append(int(k))
+        except ValueError:
+            if k.startswith("exclude_platform_"):
+                opts["exclude_platforms"].append(k.split("_")[-1])
+            else:
+                opts[k] = True
 
     # If no users were selected, just refresh the page
-    if not user_ids_to_compare:
+    if not opts["user_ids_to_compare"]:
         return root()
 
-    gog = gogDB(config, user_ids_to_compare, include_single_player, exclusive)
+    gog = gogDB(config, opts)
 
     if request.args["option"] == "grid":
         gog.config["all_games"] = True
@@ -64,7 +63,7 @@ def compare_libraries():
         games=common_games,
         users=users,
         caption=gog.get_caption(len(common_games)),
-        show_keys=show_keys,
+        show_keys=opts["show_keys"],
     )
 
 
@@ -72,14 +71,12 @@ class gogDB:
     def __init__(
         self,
         config,
-        user_ids_to_compare=[],
-        include_single_player=False,
-        exclusive=False,
+        opts,
     ):
+        # Server mode only reads the config once, so we don't want to modify it
         self.config = copy.deepcopy(config)
-        self.config["user_ids_to_compare"] = user_ids_to_compare
-        self.config["include_single_player"] = include_single_player
-        self.config["exclusive"] = exclusive
+        for k in opts:
+            self.config[k] = opts[k]
         self.config["user_ids_to_exclude"] = []
 
         # All DBs defined in the config file will be in db_list. Remove the DBs for
@@ -87,7 +84,7 @@ class gogDB:
         # which case we need to look at all DBs
         for user in list(self.config["users"]):
             if user not in self.config["user_ids_to_compare"]:
-                if exclusive:
+                if self.config["exclusive"]:
                     self.config["user_ids_to_exclude"].append(user)
                 elif (
                     "db" in self.config["users"][user]
@@ -194,6 +191,13 @@ class gogDB:
                 # If a game is owned on multiple platforms, the release keys will be comma-separated
                 for release_key in release_keys.split(","):
                     if release_key not in game_list:
+                        # Skip this key if it's for a platform we don't want
+                        if (
+                            release_key.split("_")[0]
+                            in self.config["exclude_platforms"]
+                        ):
+                            continue
+
                         # This is the first we've seen this title, so add it
                         title = json.loads(title_json)["title"]
                         sanitized_title = alphanum_pattern.sub("", title).lower()
@@ -359,17 +363,29 @@ class gogDB:
         else:
             caption_middle = "games in common between"
 
-        caption_end = ""
-        if len(self.config["user_ids_to_exclude"]) > 0:
+        userids_excluded = ""
+        if self.config["user_ids_to_exclude"]:
             usernames_to_exclude = self.get_usernames_from_ids(
                 self.config["user_ids_to_exclude"]
             )
-            caption_end = " and not owned by {}".format(
+            userids_excluded = " and not owned by {}".format(
                 ", ".join(usernames_to_exclude.values())
             )
 
-        return "{} {} {}{}".format(
-            num_games, caption_middle, ", ".join(usernames.values()), caption_end
+        platforms_excluded = ""
+        if self.config["exclude_platforms"]:
+            platforms_excluded = " ({} excluded)".format(
+                ", ".join(self.config["exclude_platforms"]).title()
+            )
+
+        self.logger.info("DEBUG: platforms_excluded = {}".format(platforms_excluded))
+
+        return "{} {} {}{}{}".format(
+            num_games,
+            caption_middle,
+            ", ".join(usernames.values()),
+            userids_excluded,
+            platforms_excluded,
         )
 
     def get_usernames_from_ids(self, userids):
@@ -389,6 +405,17 @@ class gogDB:
         }
 
         return sorted_usernames
+
+
+def init_opts():
+    """Initializes the options to pass to the gogDB class"""
+    return {
+        "include_single_player": False,
+        "exclusive": False,
+        "show_keys": False,
+        "user_ids_to_compare": [],
+        "exclude_platforms": [],
+    }
 
 
 def build_config(args):
@@ -547,7 +574,9 @@ if __name__ == "__main__":
     else:
         user_ids_to_compare = args.userid
 
-    gog = gogDB(config, user_ids_to_compare)
+    opts = init_opts()
+    opts["user_ids_to_compare"] = user_ids_to_compare
+    gog = gogDB(config, opts)
     games_in_common = gog.get_common_games()
 
     for key in games_in_common:

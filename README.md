@@ -65,7 +65,9 @@ Python 3.7+ is recommended. Dictionaries are assumed to be ordered, which is a 3
 
 ### Server mode
 
-If you use the `-s` option or set `mode: server` in the [config file](#configuration), a Flask web server is started and runs until the script is killed. This serves a web page with a check box for all users defined in the config file; users can select who they want to compare and a table is generated for the matching games.
+If you use the `-s` option or set `mode: server` in the [config file](#configuration), a Flask web server is started and runs until the script is killed. This serves a web page with a check box for all users defined in the config file; users can select who they want to compare and a table is generated for the matching games. There is also a game grid layout that shows all games with color-coded cells indicating who owns which games.
+
+Server mode is the intended use case, and supports all options, unlike CLI mode, which may not.
 
 ## <a name="configuration"></a>Configuration
 
@@ -73,7 +75,7 @@ A YAML file provides the runtime configuration; by default, this is `config.yaml
 
 ## <a name=docker></a>Running in Docker
 
-A [Dockerfile](Dockerfile) is provided for running gamatrix-gog in a container. Put your `config.yaml` in the same directory as the script (you'll need to update the Dockerfile to use a different config file), and build it:
+A [Dockerfile](Dockerfile) is provided for running gamatrix-gog in a container. Build it with:
 
 ```bash
 $ docker build -t gamatrix-gog .
@@ -85,7 +87,7 @@ Then run it:
 $ docker run -d --name gamatrix-gog -p 80:80/tcp -v /path/to/gog_dbs:/usr/src/app/gog_dbs -v /path/to/config.yaml:/usr/src/app/config/config.yaml gamatrix-gog
 ```
 
-Now you should be able to access the web page. If not, use `docker logs` to see what went wrong.
+Now you should be able to access the web page. If not, use `docker logs` to see what went wrong. The DBs are read on every call, so you can update them and they'll be used immediately. If you change the config file you'll need to restart the container for it to take effect.
 
 ### Restricting access
 
@@ -137,7 +139,7 @@ Save it so it persists after reboot:
 
 ```pre
 # apt install iptables-persistent
-# iptables-save
+# iptables-save > /etc/iptables/rules.v4
 ```
 
 Now you can open the port on your router. For more information on using iptables with Docker, see [here](https://docs.docker.com/network/iptables/).
