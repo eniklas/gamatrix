@@ -21,7 +21,11 @@ app = Flask(__name__)
 @app.route("/")
 def root():
     logger.info("Request from {}".format(request.remote_addr))
-    return render_template("index.html", users=config["users"])
+    return render_template(
+        "index.html",
+        users=config["users"],
+        platforms=["epic", "gog", "origin", "steam", "uplay", "xboxone"],
+    )
 
 
 @app.route("/compare", methods=["GET", "POST"])

@@ -10,7 +10,6 @@
     table,
     th,
     td {
-      border: 0px solid rgb(180, 227, 239);
       border-collapse: collapse;
     }
   </style>
@@ -21,10 +20,10 @@
 
 <body style="background-color:white;">
   <h2>gamatrix-gog</h2>
-  <table style="width: 600px">
+  <table style="width:500px;">
     <form action="/compare">
       <tr>
-        <td style="background-color: rgb(180,227,239);">
+        <td>
           <input type="radio" id="Compare users" name="option" value="list" checked>
           <label for="compare">Compare users</label><br>
           <div class="sub1">
@@ -44,7 +43,7 @@
           </div>
         </td>
         <td></td>
-        <td valign="top" style="background-color: rgb(180,227,239);">
+        <td valign="top">
           <input type="radio" id="Game grid" name="option" value="grid">
           <label for="grid">Game grid</label><br>
         </td>
@@ -53,28 +52,27 @@
         <td></td>
       </tr>
       <tr>
-        <td colspan="3" style="background-color: rgb(180,227,239);">
-          <div style="width:300px; margin: 0 auto;">
-            Exclude platforms:<br>
-            <blockquote>
-              <input type="checkbox" id="epic" name="exclude_platform_epic">
-              <label for="epic">Epic</label><br>
-              <input type="checkbox" id="gog" name="exclude_platform_gog">
-              <label for="gog">GOG</label><br>
-              <input type="checkbox" id="origin" name="exclude_platform_origin">
-              <label for="origin">Origin</label><br>
-              <input type="checkbox" id="steam" name="exclude_platform_steam">
-              <label for="steam">Steam</label><br>
-              <input type="checkbox" id="uplay" name="exclude_platform_uplay">
-              <label for="uplay">Uplay</label><br>
-              <input type="checkbox" id="xboxone" name="exclude_platform_xboxone">
-              <label for="xboxone">Xbox</label><br>
-            </blockquote>
-            <p style="text-align: left;">
-              <input type="checkbox" id="include_single_player" name="include_single_player">
-              <label for="include_single_player">Include single-player games</label><br>
-              <input type="checkbox" id="show_keys" name="show_keys">
-              <label for="show_keys">Show product keys</label><br>
+        <td colspan="3">
+          <div style="width:250px; margin: 0 auto;">
+            <p style="text-align: center;">
+            <table>
+              <td colspan="2">Exclude platforms:</td>
+              {% for batch in platforms|batch(2) -%}
+              <tr>
+                {%- for platform in batch %}
+                <td>
+                  <input type="checkbox" id="{{ platform }}" name="exclude_platform_{{ platform }}">
+                  <label for="{{ platform }}">{{ platform|capitalize }}</label>
+                </td>
+                {%- endfor %}
+              </tr>
+              {% endfor -%}
+            </table>
+            <br>
+            <input type="checkbox" id="include_single_player" name="include_single_player">
+            <label for="include_single_player">Include single-player</label><br>
+            <input type="checkbox" id="show_keys" name="show_keys">
+            <label for="show_keys">Show product keys</label><br>
             </p>
           </div>
           <center><input type="submit" value="Giv'er" style="font-size:x-large; height:35px; width:80px"></center>
