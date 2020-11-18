@@ -34,6 +34,7 @@
       {%- endif %}
     </tr>
     {% for game, value in games.items() -%}
+    {%- set outer_loop = loop -%}
     <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
       <td>
         {{ value.title }}
@@ -45,10 +46,14 @@
       </td>
       {% for userid, username in users.items() -%}
       {% if userid in value.owners -%}
-      <td style="background-color:rgb(182,215,168)"></td>
-      {%- else -%}
-      <td style="background-color:rgb(234,153,153)"></td>
-      {%- endif %}
+      <td style="background-color:rgb(182,215,168)">
+        {%- else -%}
+      <td style="background-color:rgb(234,153,153)">
+        {%- endif -%}
+        {% if outer_loop.index is divisibleby 25 -%}
+        {{ username }}
+        {%- endif -%}
+      </td>
       {%- endfor %}
       <td>{{ value.max_players }}</td>
       <td>{{ value.comment }}</td>
