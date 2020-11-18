@@ -31,7 +31,10 @@
               {% for user in users -%}
               <div>
                 <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked>
-                <label for="{{ users[user]['username'] }}">{{ users[user]['username'] }}</label>
+                <label for="{{ users[user]['username'] }}"><img
+                    src="/static/{{ users[user]['pic']|default('question_block.jpg') }}" width="20" height="20">
+                  {{ users[user]['username'] }}
+                </label>
               </div>
               {% endfor -%}
               <br>

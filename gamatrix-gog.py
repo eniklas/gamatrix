@@ -382,7 +382,7 @@ class gogDB:
                 ", ".join(self.config["exclude_platforms"]).title()
             )
 
-        self.logger.info("DEBUG: platforms_excluded = {}".format(platforms_excluded))
+        self.logger.debug("platforms_excluded = {}".format(platforms_excluded))
 
         return "{} {} {}{}{}".format(
             num_games,
