@@ -10,18 +10,28 @@ class IGDBHelper:
         self.client_id = client_id
         self.client_secret = client_secret
         self.cache_file = cache_file
-        self.logger = logging.getLogger(__name__)
-        self.access_token = {}
+        self.log = logging.getLogger(__name__)
         # https://api-docs.igdb.com/#external-game-enums
-        self.platform_id = {
+        # TODO: does "windows" == "xboxone"?
+        self.platform_ids = {
             "steam": 1,
             "gog": 5,
-            "xboxone": 11,
         }
+        self.max_player_keys = [
+            "offlinecoopmax",
+            "offlinemax",
+            "onlinecoopmax",
+            "onlinemax",
+        ]
+        self.access_token = {}
         self.cache = {}
+
         if os.path.exists(self.cache_file):
             with open(self.cache_file, "r") as f:
                 self.cache = json.load(f)
+
+        if "access_token" in self.cache:
+            self.access_token = self.cache["access_token"]
 
     def get_access_token(self):
         url = "https://id.twitch.tv/oauth2/token"
@@ -33,20 +43,21 @@ class IGDBHelper:
         r = requests.post(url, params=payload)
 
         if r.status_code != 200:
-            self.logger.error(
+            self.log.error(
                 "Failed to get access token: {} (status code {})".format(
                     r.text, r.status_code
                 )
             )
         elif "access_token" not in r.json():
-            self.logger.error(
+            self.log.error(
                 "Request succeded, but access_token not found in response: {}".format(
                     r.text
                 )
             )
         else:
-            self.logger.debug(f"Access token request succeeded, response: {r.text}")
+            self.log.debug(f"Access token request succeeded, response: {r.text}")
             self.access_token = r.json()["access_token"]
+            self.cache["access_token"] = self.access_token
 
     def api_request(self, url, body):
         """Makes an API request, retrying if the rate limit is hit"""
@@ -61,11 +72,11 @@ class IGDBHelper:
             if r.status_code == 200:
                 return r.json()
             elif r.status_code == 429:
-                self.logger.info("Rate limit exceeded, sleeping 1s")
+                self.log.info("Rate limit exceeded, sleeping 1s")
                 time.sleep(1)
                 continue
             else:
-                self.logger.error(
+                self.log.error(
                     f"Request failed: {r.text} (status code {r.status_code})"
                 )
                 return {}
@@ -75,16 +86,77 @@ class IGDBHelper:
             json.dump(self.cache, f)
 
     def get_max_players(self, release_key):
-        pass
+        """Sets the max players for release_key"""
+        if release_key in self.cache["game_data"]:
+            self.log.debug("Found max players {} for release key {} in cache".format(
+                self.cache["game_data"][release_key][max_players], release_key
+            )
+            return
+
+        # release_key is e.g. steam_379720
+        platform, platform_key = release_key.split("_")
+
+        body = f'fields game; where uid = "{platform_key}"'
+        # If we have a platform ID, specify it
+        if platform in self.platform_id:
+            body += f" & category = {self.platform_id[platform]"
+
+        body += ";"
+        url = "https://api.igdb.com/v4/external_games"
+
+        self.log.debug(f"Sending API request to {url}, body = {body}")
+        response = self.api_request(url, body)
+
+        if "game" not in response:
+            self.log.error('"game" missing from response trying to get IGDB ID')
+            return
+
+        # That gives [{"id": 8104, "game": 7351}]; game is the igdb id
+        # The response is a list of all external IDs; they'll all have the same
+        # value for "game" so just get the first one
+        igdb_id = response[0]["game"]
+
+        # Now we can get the multiplayer info
+        url = "https://api.igdb.com/v4/multiplayer_modes"
+        body = f"fields *; where game = {igdb_id};"
+        self.log.debug(f"Sending API request to {url}, body = {body}")
+        response = self.api_request(url, body)
+
+        # max_players will have the maximum players found from IGDB, or from the
+        # metadata in the config file if it exists, with the latter taking precedence
+        self.cache["game_data"][release_key] = {
+            "igdb_id": igdb_id,
+            "max_players": 0,
+        }
+
+        # TODO: probably want to know if the max we found was for offline, and all onlines are 0/null
+        # response now has the multiplayer data for all platforms it has data for;
+        # e.g., "Xbox One" and "All platforms". Each of these can have some or all
+        # of the keys we're looking for, and the data can be inconsistent between
+        # platforms. So, loop through all platforms and grab the max value we see
+        for platform in response:
+            for k in self.max_player_keys:
+                self.cache["game_data"][release_key][k] = 0
+                if k in platform:
+                    if platform[k] > self.cache["game_data"][release_key]["max_players"]:
+                        log.debug(
+                            f"Found new max_players {platform[k]}, key {k}"
+                        )
+                        self.cache["game_data"][release_key]["max_players"] = platform[k]
+                    if platform[k] > self.cache["game_data"][release_key][k]:
+                        log.debug(
+                            f"Found new max {platform[k]} for key {k}"
+                        )
+                        self.cache[release_key]["game_data"][k] = platform[k]
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger()
+    log = logging.getLogger()
     client_id = ""
     secret = ""
 
-    igdb = IGDBHelper(client_id, secret, ".igdb_cache")
+    igdb = IGDBHelper(client_id, secret, ".igdb_cache.json")
     igdb.access_token = ""
     if not igdb.access_token:
         igdb.get_access_token()
@@ -140,7 +212,7 @@ if __name__ == "__main__":
     # body = "fields *; where game = 7351;"
     body = f"fields *; where game = {igdb_id};"
     mm_req = igdb.api_request(url, body)
-    logger.debug(f"mm_req = {mm_req}")
+    log.debug(f"mm_req = {mm_req}")
     igdb.cache[release_key] = {
         "igdb_id": igdb_id,
         "max_players": 0,
@@ -153,12 +225,12 @@ if __name__ == "__main__":
         for k in ["offlinecoopmax", "offlinemax", "onlinecoopmax", "onlinemax"]:
             if k in platform:
                 if platform[k] > igdb.cache[release_key]["max_players"]:
-                    logger.debug(
+                    log.debug(
                         f"Found new max_players {platform[k]}, platform {platform}, k {k}"
                     )
                     igdb.cache[release_key]["max_players"] = platform[k]
                 if platform[k] > igdb.cache[release_key][k]:
-                    logger.debug(
+                    log.debug(
                         f"Found new max {platform[k]}, platform {platform}, k {k}"
                     )
                     igdb.cache[release_key][k] = platform[k]
