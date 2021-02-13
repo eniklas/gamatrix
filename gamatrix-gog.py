@@ -8,6 +8,7 @@ import re
 import sqlite3
 import sys
 from flask import Flask, request, render_template
+from helpers.igdb_helper import IGDBHelper
 from ruamel.yaml import YAML
 from version import VERSION
 
@@ -194,14 +195,12 @@ class gogDB:
             for release_keys, title_json in owned_games:
                 # If a game is owned on multiple platforms, the release keys will be comma-separated
                 for release_key in release_keys.split(","):
-                    if release_key not in game_list:
-                        # Skip this key if it's for a platform we don't want
-                        if (
-                            release_key.split("_")[0]
-                            in self.config["exclude_platforms"]
-                        ):
-                            continue
-
+                    # Release keys start with the platform
+                    platform = release_key.split("_")[0]
+                    if (
+                        release_key not in game_list
+                        and platform not in self.config["exclude_platforms"]
+                    ):
                         # This is the first we've seen this title, so add it
                         title = json.loads(title_json)["title"]
                         sanitized_title = alphanum_pattern.sub("", title).lower()
@@ -233,8 +232,7 @@ class gogDB:
 
                     self.logger.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]["owners"].append(userid)
-                    # Release keys start with the platform
-                    game_list[release_key]["platforms"] = [release_key.split("_")[0]]
+                    game_list[release_key]["platforms"] = [platform]
 
             self.close_connection()
 
@@ -583,6 +581,7 @@ if __name__ == "__main__":
     gog = gogDB(config, opts)
     games_in_common = gog.get_common_games()
 
+    """
     for key in games_in_common:
         print(
             "{} ({})".format(
@@ -596,5 +595,7 @@ if __name__ == "__main__":
         if "comment" in games_in_common[key]:
             print(" Comment: {}".format(games_in_common[key]["comment"]), end="")
         print("")
+    """
+    print(json.dumps(games_in_common))
 
-    print(gog.get_caption(len(games_in_common)))
+    # print(gog.get_caption(len(games_in_common)))
