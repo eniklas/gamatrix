@@ -134,4 +134,4 @@ dmypy.json
 
 # User's config file
 config.yaml
-.igdb_cache.json
+.cache.json
