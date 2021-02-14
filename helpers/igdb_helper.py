@@ -4,6 +4,13 @@ import os
 import requests
 import time
 
+from .constants import (
+    IGDB_API_CALL_DELAY,
+    IGDB_GAME_MODE,
+    IGDB_MAX_PLAYER_KEYS,
+    IGDB_PLATFORM_ID,
+)
+
 
 class IGDBHelper:
     def __init__(self, client_id, client_secret, cache_file):
@@ -13,29 +20,11 @@ class IGDBHelper:
         self.cache_file = cache_file
         self.log = logging.getLogger(__name__)
         self.api_failures = 0
-        # The API has a rate limit of 4 requests/sec
-        self.api_call_delay = 0.25
         self.last_api_call_time = time.time()
-        # https://api-docs.igdb.com/#external-game-enums
-        # TODO: does "windows" == "xboxone"?
-        # Only steam keys match up
-        self.platform_id = {
-            "steam": 1,
-        }
-        self.game_mode = {
-            "singleplayer": 1,
-            "multiplayer": 2,
-            "coop": 3,
-            "splitscreen": 4,
-            "mmo": 5,
-            "battleroyale": 6,
-        }
-        self.max_player_keys = [
-            "offlinecoopmax",
-            "offlinemax",
-            "onlinecoopmax",
-            "onlinemax",
-        ]
+        self.platform_id = IGDB_PLATFORM_ID
+        self.game_mode = IGDB_GAME_MODE
+        self.max_player_keys = IGDB_MAX_PLAYER_KEYS
+        self.api_call_delay = IGDB_API_CALL_DELAY
         self.access_token = {}
         self._init_cache()
         self.log.debug(f"cache = {self.cache}")
@@ -144,25 +133,40 @@ class IGDBHelper:
         with open(self.cache_file, "w") as f:
             json.dump(self.cache, f)
 
-    def get_multiplayer_info(self, release_key):
-        """Gets the multiplayer info for release_key.
+    def get_game_info(self, release_key):
+        """Gets some game info for release_key.
         Returns True on success, False on failure
         """
-        if (
-            release_key in self.cache["igdb"]["games"]
-            and "max_players" in self.cache["igdb"]["games"][release_key]
-        ):
+        if release_key not in self.cache["igdb"]["games"]:
+            self.log.error(f"{release_key} not in cache; use get_igdb_id() first")
+            return False
+        elif "info" in self.cache["igdb"]["games"][release_key]:
+            self.log.debug(f"Found game info for {release_key} in cache")
+            return True
+        elif "igdb_id" not in self.cache["igdb"]["games"][release_key]:
+            self.log.error("IGDB ID not found, can't get game info")
+            return False
+
+        # Get the game info from IGDB
+        url = "https://api.igdb.com/v4/games"
+        body = "fields game_modes,name,url; where id = {};".format(
+            {self.cache["igdb"]["games"][release_key]["igdb_id"]})
+
+        response = self.api_request(url, body)
+        self.cache["igdb"]["games"][release_key]["info"] = response
+        return True
+
+    def get_igdb_id(self, release_key):
+        """Gets the IDGB ID for release_key"""
+        if release_key not in self.cache["igdb"]["games"]:
+            self.cache["igdb"]["games"][release_key] = {}
+        elif "igdb_id" in self.cache["igdb"]["games"][release_key]:
             self.log.debug(
-                "Found max players {} for release key {} in cache".format(
-                    self.cache["igdb"]["games"][release_key]["max_players"],
-                    release_key,
+                "Found IGDB ID {} for {} in cache".format(
+                    self.cache["igdb"]["games"][release_key]["igdb_id"], release_key
                 )
             )
-            return True
 
-        self.cache["igdb"]["games"][release_key] = {}
-
-        # We don't have it in the cache, so get it from IGDB
         # release_key is e.g. steam_379720
         platform, platform_key = release_key.split("_")
 
@@ -176,21 +180,40 @@ class IGDBHelper:
 
         response = self.api_request(url, body)
 
-        # Whether we find something or not, set max_players
-        # so we know we've looked this game up before
-        if not response:
-            self.log.info(f"{release_key} not found in IGDB, setting max_players to 0")
-            self.cache["igdb"]["games"][release_key]["max_players"] = 0
+        if response:
+            # That gives [{"id": 8104, "game": 7351}]; game is the igdb id
+            # The response is a list of all external IDs; they'll all have the same
+            # value for "game" so just get the first one
+            self.cache["igdb"]["games"][release_key]["igdb_id"] = response[0]["game"]
+        else:
+            # If we don't get an ID, set it to 0 so we know we've looked this game up before
+            self.log.info(f"{release_key} not found in IGDB, setting ID to 0")
+            self.cache["igdb"]["games"][release_key]["igdb_id"] = 0
+
+    def get_multiplayer_info(self, release_key):
+        """Gets the multiplayer info for release_key.
+        Returns True on success, False on failure
+        """
+        if release_key not in self.cache["igdb"]["games"]:
+            self.log.error(f"{release_key} not in cache; use get_igdb_id() first")
             return False
 
-        # That gives [{"id": 8104, "game": 7351}]; game is the igdb id
-        # The response is a list of all external IDs; they'll all have the same
-        # value for "game" so just get the first one
-        igdb_id = response[0]["game"]
+        elif "max_players" in self.cache["igdb"]["games"][release_key]:
+            self.log.debug(
+                "Found max players {} for release key {} in cache".format(
+                    self.cache["igdb"]["games"][release_key]["max_players"],
+                    release_key,
+                )
+            )
+            return True
 
-        # Now we can get the multiplayer info
+        if "igdb_id" not in self.cache["igdb"]["games"][release_key]:
+            self.log.error("IGDB ID not found, can't get max players")
+            return False
+
+        # Get the multiplayer info
         url = "https://api.igdb.com/v4/multiplayer_modes"
-        body = f"fields *; where game = {igdb_id};"
+        body = f"fields *; where game = {self.cache["igdb"]["games"][release_key]["igdb_id"]};"
         response = self.api_request(url, body)
 
         self.cache["igdb"]["games"][release_key]["multiplayer"] = response

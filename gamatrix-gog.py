@@ -267,6 +267,8 @@ if __name__ == "__main__":
     )
     # TODO: handle not getting an access token
     for release_key in list(games_in_common.keys()):
+        igdb.get_igdb_id(release_key)
+        igdb.get_game_info(release_key)
         igdb.get_multiplayer_info(release_key)
 
     igdb.save_cache()
