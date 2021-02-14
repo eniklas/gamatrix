@@ -72,7 +72,11 @@ def compare_libraries():
 
 
 def init_opts():
-    """Initializes the options to pass to the gogDB class"""
+    """Initializes the options to pass to the gogDB class. Since the
+    config is only read once, we need to be able to reinit any options
+    that can be passed from the web UI
+    """
+
     return {
         "include_single_player": False,
         "exclusive": False,
@@ -114,6 +118,10 @@ def build_config(args):
     config["all_games"] = False
     if args.all_games:
         config["all_games"] = True
+
+    config["include_single_player"] = False
+    if args.include_single_player:
+        config["include_single_player"] = True
 
     if args.server:
         config["mode"] = "server"
@@ -192,7 +200,7 @@ if __name__ == "__main__":
         "-a",
         "--all-games",
         action="store_true",
-        help="list all games owned by the selected users",
+        help="list all games owned by the selected users (doesn't include single player unless -I is used)",
     )
     parser.add_argument("-c", "--config-file", type=str, help="the config file to use")
     parser.add_argument("-d", "--debug", action="store_true", help="debug output")
@@ -201,6 +209,12 @@ if __name__ == "__main__":
         "--interface",
         type=str,
         help="the network interface to use if running in server mode; defaults to 0.0.0.0",
+    )
+    parser.add_argument(
+        "-I",
+        "--include-single-player",
+        action="store_true",
+        help="Include single player games",
     )
     parser.add_argument(
         "-p",
@@ -224,6 +238,7 @@ if __name__ == "__main__":
 
     try:
         config = build_config(args)
+        log.debug(f"config = {config}")
     except ValueError as e:
         print(e)
         sys.exit(1)
@@ -238,7 +253,10 @@ if __name__ == "__main__":
     else:
         user_ids_to_compare = args.userid
 
+    # init_opts() is meant for server mode; any CLI options that are also
+    # web UI options need to be overridden
     opts = init_opts()
+    opts["include_single_player"] = args.include_single_player
     opts["user_ids_to_compare"] = user_ids_to_compare
     gog = gogDB(config, opts)
     games_in_common = gog.get_common_games()

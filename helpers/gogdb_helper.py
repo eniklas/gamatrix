@@ -139,6 +139,9 @@ class gogDB:
                             not self.config["include_single_player"]
                             and sanitized_title not in self.config["multiplayer"]
                         ):
+                            self.log.debug(
+                                f"Skipping {release_key} ({title}) as it's either hidden or single player"
+                            )
                             continue
 
                         game_list[release_key] = {
@@ -183,9 +186,14 @@ class gogDB:
         self.log.debug("owners_to_match: {}".format(self.owners_to_match))
 
         deduped_game_list = self.merge_duplicate_titles(ordered_game_list)
+        self.log.debug(
+            f"ordered_game_list (before dedup) = {ordered_game_list}, size = {len(ordered_game_list)}\n"
+        )
+        self.log.debug(
+            f"deduped_game_list = {deduped_game_list}, size = {len(deduped_game_list)}"
+        )
 
         if self.config["all_games"]:
-            print("DEBUG: all_games = {}".format(self.config["all_games"]))
             return deduped_game_list
 
         return self.filter_games(deduped_game_list)
