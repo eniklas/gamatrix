@@ -13,8 +13,6 @@ from helpers.igdb_helper import IGDBHelper
 from ruamel.yaml import YAML
 from version import VERSION
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger()
 alphanum_pattern = re.compile("[^\s\w]+")
 
 app = Flask(__name__)
@@ -22,7 +20,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def root():
-    logger.info("Request from {}".format(request.remote_addr))
+    log.info("Request from {}".format(request.remote_addr))
     return render_template(
         "index.html",
         users=config["users"],
@@ -32,7 +30,7 @@ def root():
 
 @app.route("/compare", methods=["GET", "POST"])
 def compare_libraries():
-    logger.info("Request from {}".format(request.remote_addr))
+    log.info("Request from {}".format(request.remote_addr))
 
     opts = init_opts()
 
@@ -105,15 +103,8 @@ class gogDB:
                         )
                     )
 
-        # FIXME: this should happen at the top level
-        if config["log_level"].lower() == "debug":
-            level = logging.DEBUG
-        else:
-            level = logging.INFO
-
-        self.logger = logging.getLogger("gogDB")
-        self.logger.setLevel(level)
-        self.logger.debug("db_list = {}".format(self.config["db_list"]))
+        self.log = logging.getLogger("gogDB")
+        self.log.debug("db_list = {}".format(self.config["db_list"]))
 
     def use_db(self, db):
         if not os.path.exists(db):
@@ -134,7 +125,7 @@ class gogDB:
         user = self.cursor.fetchall()[0]
 
         if user_query.rowcount > 1:
-            self.logger.warning(
+            self.log.warning(
                 "Found multiple users in the DB; using the first one ({})".format(user)
             )
 
@@ -176,7 +167,7 @@ class gogDB:
         )
 
         for query in [owned_game_database, og_query, unique_game_data]:
-            self.logger.debug("Running query: {}".format(query))
+            self.log.debug("Running query: {}".format(query))
             self.cursor.execute(query)
 
         return self.cursor.fetchall()
@@ -187,12 +178,12 @@ class gogDB:
 
         # Loop through all the DBs and get info on all owned titles
         for db_file in self.config["db_list"]:
-            self.logger.debug("Using DB {}".format(db_file))
+            self.log.debug("Using DB {}".format(db_file))
             self.use_db(db_file)
             userid = self.get_user()[0]
             self.owners_to_match.append(userid)
             owned_games = self.get_owned_games(userid)
-            self.logger.debug("owned games = {}".format(owned_games))
+            self.log.debug("owned games = {}".format(owned_games))
             # A row looks like (release_keys {"title": "Title Name"})
             for release_keys, title_json in owned_games:
                 # If a game is owned on multiple platforms, the release keys will be comma-separated
@@ -222,7 +213,7 @@ class gogDB:
                         # Add metadata from the config file if we have any
                         if sanitized_title in self.config["metadata"]:
                             for k in self.config["metadata"][sanitized_title]:
-                                self.logger.debug(
+                                self.log.debug(
                                     "Adding metadata {} to title {}".format(k, title)
                                 )
                                 game_list[release_key][k] = self.config["metadata"][
@@ -232,7 +223,7 @@ class gogDB:
                         elif sanitized_title not in self.config["multiplayer"]:
                             game_list[release_key]["max_players"] = 1
 
-                    self.logger.debug("User {} owns {}".format(userid, release_key))
+                    self.log.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]["owners"].append(userid)
                     game_list[release_key]["platforms"] = [platform]
 
@@ -252,7 +243,7 @@ class gogDB:
             ordered_game_list[k]["owners"].sort()
 
         self.owners_to_match.sort()
-        self.logger.debug("owners_to_match: {}".format(self.owners_to_match))
+        self.log.debug("owners_to_match: {}".format(self.owners_to_match))
 
         deduped_game_list = self.merge_duplicate_titles(ordered_game_list)
 
@@ -278,33 +269,33 @@ class gogDB:
             # Go through any subsequent keys with the same (sanitized) title
             next_key = keys[keys.index(k) + 1]
             while game_list[next_key]["sanitized_title"] == sanitized_title:
-                self.logger.debug(
+                self.log.debug(
                     "Found duplicate title {} (sanitized: {}), keys {}, {}".format(
                         game_list[k]["title"], sanitized_title, k, next_key
                     )
                 )
                 if game_list[next_key]["owners"] == owners:
-                    self.logger.debug(
+                    self.log.debug(
                         "{}: owners are the same: {}, {}".format(
                             next_key, owners, game_list[next_key]["owners"]
                         )
                     )
                     platform = game_list[next_key]["platforms"][0]
                     if platform not in platforms:
-                        self.logger.debug(
+                        self.log.debug(
                             "{}: adding new platform {} to {}".format(
                                 next_key, platform, platforms
                             )
                         )
                         platforms.append(platform)
                     else:
-                        self.logger.debug(
+                        self.log.debug(
                             "{}: platform {} already in {}".format(
                                 next_key, platform, platforms
                             )
                         )
 
-                    self.logger.debug(
+                    self.log.debug(
                         "{}: deleting duplicate {} as it has been merged into {}".format(
                             next_key, game_list[next_key], game_list[k]
                         )
@@ -312,7 +303,7 @@ class gogDB:
                     del working_game_list[next_key]
                     working_game_list[k]["platforms"] = sorted(platforms)
                 else:
-                    self.logger.debug(
+                    self.log.debug(
                         "{}: owners are different: {} {}".format(
                             next_key, owners, game_list[next_key]["owners"]
                         )
@@ -332,7 +323,7 @@ class gogDB:
             # Delete any entries that aren't owned by all users we want
             for owner in self.config["user_ids_to_compare"]:
                 if owner not in game_list[k]["owners"]:
-                    self.logger.debug(
+                    self.log.debug(
                         "Deleting {} as owners {} does not include {}".format(
                             game_list[k]["title"],
                             game_list[k]["owners"],
@@ -345,7 +336,7 @@ class gogDB:
             else:
                 for owner in self.config["user_ids_to_exclude"]:
                     if owner in game_list[k]["owners"]:
-                        self.logger.debug(
+                        self.log.debug(
                             "Deleting {} as owners {} includes {} and exclusive is true".format(
                                 game_list[k]["title"],
                                 game_list[k]["owners"],
@@ -383,7 +374,7 @@ class gogDB:
                 ", ".join(self.config["exclude_platforms"]).title()
             )
 
-        self.logger.debug("platforms_excluded = {}".format(platforms_excluded))
+        self.log.debug("platforms_excluded = {}".format(platforms_excluded))
 
         return "{} {} {}{}{}".format(
             num_games,
@@ -456,11 +447,6 @@ def build_config(args):
     if args.all_games:
         config["all_games"] = True
 
-    if args.debug:
-        config["log_level"] = "debug"
-    elif "log_level" not in config:
-        config["log_level"] = "info"
-
     if args.server:
         config["mode"] = "server"
 
@@ -527,6 +513,9 @@ def build_config(args):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger()
+
     parser = argparse.ArgumentParser(description="Show games owned by multiple users.")
     parser.add_argument(
         "db", type=str, nargs="*", help="the GOG DB for a user; multiple can be listed"
@@ -562,6 +551,9 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    if args.debug:
+        log.setLevel(logging.DEBUG)
+
     try:
         config = build_config(args)
     except ValueError as e:

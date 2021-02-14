@@ -12,7 +12,6 @@ class IGDBHelper:
         # TODO: this should come out of here, it's not igdb-specific
         self.cache_file = cache_file
         self.log = logging.getLogger(__name__)
-        self.log.setLevel(logging.DEBUG)
         self.api_failures = 0
         # The API has a rate limit of 4 requests/sec
         self.api_call_delay = 0.25
