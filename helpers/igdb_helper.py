@@ -9,9 +9,14 @@ class IGDBHelper:
     def __init__(self, client_id, client_secret, cache_file):
         self.client_id = client_id
         self.client_secret = client_secret
+        # TODO: this should come out of here, it's not igdb-specific
         self.cache_file = cache_file
         self.log = logging.getLogger(__name__)
+        self.log.setLevel(logging.DEBUG)
         self.api_failures = 0
+        # The API has a rate limit of 4 requests/sec
+        self.api_call_delay = 0.25
+        self.last_api_call_time = time.time()
         # https://api-docs.igdb.com/#external-game-enums
         # TODO: does "windows" == "xboxone"?
         # Only steam keys match up
@@ -86,7 +91,9 @@ class IGDBHelper:
         return False
 
     def api_request(self, url, body):
-        """Makes an API request, retrying if the rate limit is hit"""
+        """Makes an API request with retries, honoring the rate
+        limit and backing off when we have failed calls
+        """
         headers = {
             "Client-ID": self.client_id,
             "Authorization": f"Bearer {self.access_token}",
@@ -95,9 +102,20 @@ class IGDBHelper:
         # Back off when we have failed requests
         if self.api_failures > 0:
             sleep_secs = time.sleep(5) * self.api_failures
-            log.info(f"{self.api_failures} API failures, sleeping {sleep_secs}")
+            self.log.info(f"{self.api_failures} API failures, sleeping {sleep_secs}")
 
         while True:
+            # Respect the API rate limit
+            secs_since_last_call = time.time() - self.last_api_call_time
+
+            if secs_since_last_call < self.api_call_delay:
+                secs_to_wait = self.api_call_delay - secs_since_last_call
+                self.log.debug(
+                    f"{secs_since_last_call}s since last API call, waiting {secs_to_wait}"
+                )
+                time.sleep(secs_to_wait)
+
+            self.last_api_call_time = time.time()
             self.log.debug(f"Sending API request to {url}, body = '{body}'")
             r = requests.post(url, headers=headers, data=body)
             self.log.debug(f"Response = {r.text} (status code {r.status_code})")
@@ -111,9 +129,11 @@ class IGDBHelper:
                 if not self.get_access_token():
                     self.api_failures += 1
                     return {}
+            # This shouldn't happen, but just in case
             elif r.status_code == 429:
-                self.log.info("Rate limit exceeded, sleeping 1s")
-                time.sleep(1)
+                sleep_secs = self.api_call_delay * 2
+                self.log.info(f"Rate limit exceeded, sleeping {self.api_call_delay}s")
+                time.sleep(self.api_call_delay)
             else:
                 self.log.error(
                     f"Request failed, response: {r.text} (status code {r.status_code})"
@@ -273,6 +293,6 @@ if __name__ == "__main__":
         "steam_271670",
     ]:
         time.sleep(0.5)
-        igdb.get_multiplayer_info(release_key)
+        # igdb.get_multiplayer_info(release_key)
 
-    igdb.save_cache()
+    # igdb.save_cache()

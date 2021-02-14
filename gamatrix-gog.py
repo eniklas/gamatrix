@@ -7,6 +7,7 @@ import os
 import re
 import sqlite3
 import sys
+import time
 from flask import Flask, request, render_template
 from helpers.igdb_helper import IGDBHelper
 from ruamel.yaml import YAML
@@ -104,6 +105,7 @@ class gogDB:
                         )
                     )
 
+        # FIXME: this should happen at the top level
         if config["log_level"].lower() == "debug":
             level = logging.DEBUG
         else:
@@ -255,6 +257,7 @@ class gogDB:
         deduped_game_list = self.merge_duplicate_titles(ordered_game_list)
 
         if self.config["all_games"]:
+            print("DEBUG: all_games = {}".format(self.config["all_games"]))
             return deduped_game_list
 
         return self.filter_games(deduped_game_list)
@@ -449,10 +452,9 @@ def build_config(args):
     if "db_path" not in config:
         config["db_path"] = "."
 
+    config["all_games"] = False
     if args.all_games:
         config["all_games"] = True
-    else:
-        config["all_games"] = False
 
     if args.debug:
         config["log_level"] = "debug"
@@ -581,7 +583,16 @@ if __name__ == "__main__":
     gog = gogDB(config, opts)
     games_in_common = gog.get_common_games()
 
-    """
+    # Get multiplayer info from IGDB
+    igdb = IGDBHelper(
+        config["igdb_client_id"], config["igdb_client_secret"], config["cache"]
+    )
+    # TODO: handle not getting an access token
+    for release_key in list(games_in_common.keys()):
+        igdb.get_multiplayer_info(release_key)
+
+    igdb.save_cache()
+
     for key in games_in_common:
         print(
             "{} ({})".format(
@@ -595,7 +606,5 @@ if __name__ == "__main__":
         if "comment" in games_in_common[key]:
             print(" Comment: {}".format(games_in_common[key]["comment"]), end="")
         print("")
-    """
-    print(json.dumps(games_in_common))
 
-    # print(gog.get_caption(len(games_in_common)))
+    print(gog.get_caption(len(games_in_common)))
