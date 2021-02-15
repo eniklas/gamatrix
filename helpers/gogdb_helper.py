@@ -134,13 +134,9 @@ class gogDB:
                         # This is the first we've seen this title, so add it
                         title = json.loads(title_json)["title"]
                         sanitized_title = ALPHANUM_PATTERN.sub("", title).lower()
-                        # Skip this title if it's hidden or single player and we didn't ask for them
-                        if sanitized_title in self.config["hidden"] or (
-                            not self.config["include_single_player"]
-                            and sanitized_title not in self.config["multiplayer"]
-                        ):
+                        if sanitized_title in self.config["hidden"]:
                             self.log.debug(
-                                f"Skipping {release_key} ({title}) as it's either hidden or single player"
+                                f"Skipping {release_key} ({title}) as it's hidden"
                             )
                             continue
 
@@ -159,9 +155,6 @@ class gogDB:
                                 game_list[release_key][k] = self.config["metadata"][
                                     sanitized_title
                                 ][k]
-                        # Set max players to 1 for single player games
-                        elif sanitized_title not in self.config["multiplayer"]:
-                            game_list[release_key]["max_players"] = 1
 
                     self.log.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]["owners"].append(userid)
@@ -193,10 +186,7 @@ class gogDB:
             f"deduped_game_list = {deduped_game_list}, size = {len(deduped_game_list)}"
         )
 
-        if self.config["all_games"]:
-            return deduped_game_list
-
-        return self.filter_games(deduped_game_list)
+        return deduped_game_list
 
     def merge_duplicate_titles(self, game_list):
         working_game_list = copy.deepcopy(game_list)
@@ -262,9 +252,19 @@ class gogDB:
         return working_game_list
 
     def filter_games(self, game_list):
+        """Removes games that don't fit the search criteria"""
         working_game_list = copy.deepcopy(game_list)
 
         for k in game_list:
+            # Remove single-player games if we didn't ask for them
+            if (
+                not self.config["include_single_player"]
+                and "max_players" in game_list
+                and game_list[k]["max_players"] == 1
+            ):
+                del working_game_list[k]
+                continue
+
             # Delete any entries that aren't owned by all users we want
             for owner in self.config["user_ids_to_compare"]:
                 if owner not in game_list[k]["owners"]:

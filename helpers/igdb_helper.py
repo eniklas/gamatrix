@@ -10,14 +10,14 @@ from .constants import (
     IGDB_MAX_PLAYER_KEYS,
     IGDB_PLATFORM_ID,
 )
+from helpers.cache_helper import Cache
 
 
 class IGDBHelper:
-    def __init__(self, client_id, client_secret, cache_file):
+    def __init__(self, client_id, client_secret, cache):
+        self.cache = cache
         self.client_id = client_id
         self.client_secret = client_secret
-        # TODO: this should come out of here, it's not igdb-specific
-        self.cache_file = cache_file
         self.log = logging.getLogger(__name__)
         self.api_failures = 0
         self.last_api_call_time = time.time()
@@ -32,14 +32,7 @@ class IGDBHelper:
             raise ValueError("Failed to get IGDB access token")
 
     def _init_cache(self):
-        """Initialize the cache"""
-        self.cache = {}
-
-        if os.path.exists(self.cache_file):
-            with open(self.cache_file, "r") as f:
-                self.cache = json.load(f)
-
-        if not "igdb" in self.cache:
+        if "igdb" not in self.cache:
             self.cache["igdb"] = {}
         if "games" not in self.cache["igdb"]:
             self.cache["igdb"]["games"] = {}
@@ -99,7 +92,7 @@ class IGDBHelper:
             if secs_since_last_call < self.api_call_delay:
                 secs_to_wait = self.api_call_delay - secs_since_last_call
                 self.log.debug(
-                    f"{secs_since_last_call}s since last API call, waiting {secs_to_wait}"
+                    f"{secs_since_last_call}s since last API call, waiting {secs_to_wait}s"
                 )
                 time.sleep(secs_to_wait)
 
@@ -129,10 +122,6 @@ class IGDBHelper:
                 self.api_failures += 1
                 return {}
 
-    def save_cache(self):
-        with open(self.cache_file, "w") as f:
-            json.dump(self.cache, f)
-
     def get_game_info(self, release_key):
         """Gets some game info for release_key.
         Returns True on success, False on failure
@@ -150,7 +139,8 @@ class IGDBHelper:
         # Get the game info from IGDB
         url = "https://api.igdb.com/v4/games"
         body = "fields game_modes,name,url; where id = {};".format(
-            {self.cache["igdb"]["games"][release_key]["igdb_id"]})
+            {self.cache["igdb"]["games"][release_key]["igdb_id"]}
+        )
 
         response = self.api_request(url, body)
         self.cache["igdb"]["games"][release_key]["info"] = response
@@ -213,7 +203,7 @@ class IGDBHelper:
 
         # Get the multiplayer info
         url = "https://api.igdb.com/v4/multiplayer_modes"
-        body = f"fields *; where game = {self.cache["igdb"]["games"][release_key]["igdb_id"]};"
+        body = f'fields *; where game = {self.cache["igdb"]["games"][release_key]["igdb_id"]};'
         response = self.api_request(url, body)
 
         self.cache["igdb"]["games"][release_key]["multiplayer"] = response
@@ -246,7 +236,8 @@ if __name__ == "__main__":
     client_id = ""
     secret = ""
 
-    igdb = IGDBHelper(client_id, secret, ".cache.json")
+    cache = Cache(".cache.json")
+    igdb = IGDBHelper(client_id, secret, cache)
 
     # print(json.dumps(igdb.cache))
     # Show all info on Spelunky
@@ -317,4 +308,4 @@ if __name__ == "__main__":
         time.sleep(0.5)
         # igdb.get_multiplayer_info(release_key)
 
-    # igdb.save_cache()
+    # cache.save()

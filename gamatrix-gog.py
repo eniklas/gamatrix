@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import copy
+from helpers.cache_helper import Cache
 import json
 import logging
 import os
@@ -9,7 +10,7 @@ import sqlite3
 import sys
 import time
 from flask import Flask, request, render_template
-from helpers.constants import ALPHANUM_PATTERN
+from helpers.constants import ALPHANUM_PATTERN, IGDB_GAME_MODE
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
 from ruamel.yaml import YAML
@@ -188,6 +189,52 @@ def build_config(args):
     return config
 
 
+def set_max_players(game_list, cache):
+    """Sets the max_players for each release key; precedence is:
+    - max_players in the config yaml
+    - max_players from IGDB
+    - 1 if the above aren't available and the only game mode from IGDB is single player
+    - 0 (unknown) otherwise
+    """
+    for k in game_list:
+        max_players = 0
+
+        if game_list[k]["max_players"]:
+            log.debug(
+                f'{k}: max players {game_list[k]["max_players"]} from config file'
+            )
+            continue
+
+        if k not in cache["igdb"]["games"]:
+            reason = "no IGDB info in cache, did you call get_igdb_id()?"
+            log.warning(f"{k}: {reason}")
+
+        elif "max_players" not in cache["igdb"]["games"][k]:
+            reason = "IGDB max_players not found, did you call get_multiplayer_info()?"
+            log.warning(f"{k}: {reason}")
+
+        elif cache["igdb"]["games"][k]["max_players"] > 0:
+            max_players = cache["igdb"]["games"][k]["max_players"]
+            reason = "from IGDB cache"
+
+        elif (
+            "info" in cache["igdb"]["games"][k]
+            and "game_modes" in cache["igdb"]["games"][k]["info"]
+            and (
+                cache["igdb"]["games"][k]["info"]["game_modes"]
+                == [IGDB_GAME_MODE["singleplayer"]]
+            )
+        ):
+            max_players = 1
+            reason = "as IGDB has single player as the only game mode"
+
+        else:
+            reason = "as we have no max player info"
+
+        log.debug(f"{k}: max players {max_players} {reason}")
+        game_list[k]["max_players"] = max_players
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     log = logging.getLogger()
@@ -261,17 +308,20 @@ if __name__ == "__main__":
     gog = gogDB(config, opts)
     games_in_common = gog.get_common_games()
 
-    # Get multiplayer info from IGDB
-    igdb = IGDBHelper(
-        config["igdb_client_id"], config["igdb_client_secret"], config["cache"]
-    )
+    if not config["all_games"]:
+        games_in_common = gog.filter_games(games_in_common)
+
+    cache = Cache(config["cache"])
+
+    # Get multiplayer info from IGDB and save it to the cache
+    igdb = IGDBHelper(config["igdb_client_id"], config["igdb_client_secret"], cache)
     # TODO: handle not getting an access token
     for release_key in list(games_in_common.keys()):
         igdb.get_igdb_id(release_key)
         igdb.get_game_info(release_key)
         igdb.get_multiplayer_info(release_key)
 
-    igdb.save_cache()
+    cache.save()
 
     for key in games_in_common:
         print(
