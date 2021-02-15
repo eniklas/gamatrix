@@ -80,6 +80,7 @@ def init_opts():
 
     return {
         "include_single_player": False,
+        "include_zero_players": False,
         "exclusive": False,
         "show_keys": False,
         "user_ids_to_compare": [],
@@ -169,15 +170,12 @@ def build_config(args):
                     "{}/{}".format(config["db_path"], config["users"][userid]["db"])
                 )
 
-    if "multiplayer" not in config:
-        config["multiplayer"] = []
     if "hidden" not in config:
         config["hidden"] = []
 
     # Lowercase and remove non-alphanumeric characters for better matching
-    for k in ["multiplayer", "hidden"]:
-        for i in range(len(config[k])):
-            config[k][i] = ALPHANUM_PATTERN.sub("", config[k][i]).lower()
+    for i in range(len(config["hidden"])):
+        config["hidden"][i] = ALPHANUM_PATTERN.sub("", config["hidden"][i]).lower()
 
     sanitized_metadata = {}
     for title in config["metadata"]:
@@ -199,7 +197,7 @@ def set_max_players(game_list, cache):
     for k in game_list:
         max_players = 0
 
-        if game_list[k]["max_players"]:
+        if "max_players" in game_list[k]:
             log.debug(
                 f'{k}: max players {game_list[k]["max_players"]} from config file'
             )
@@ -217,6 +215,7 @@ def set_max_players(game_list, cache):
             max_players = cache["igdb"]["games"][k]["max_players"]
             reason = "from IGDB cache"
 
+        # TODO: didn't get a single case of this, figure out why/remove
         elif (
             "info" in cache["igdb"]["games"][k]
             and "game_modes" in cache["igdb"]["games"][k]["info"]
@@ -278,6 +277,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-v", "--version", action="store_true", help="print version and exit"
     )
+    parser.add_argument(
+        "-z",
+        "--include-zero-players",
+        action="store_true",
+        help="Show games with unknown max players",
+    )
 
     args = parser.parse_args()
     if args.debug:
@@ -304,17 +309,22 @@ if __name__ == "__main__":
     # web UI options need to be overridden
     opts = init_opts()
     opts["include_single_player"] = args.include_single_player
+    opts["include_zero_players"] = args.include_zero_players
     opts["user_ids_to_compare"] = user_ids_to_compare
-    gog = gogDB(config, opts)
-    games_in_common = gog.get_common_games()
-
-    if not config["all_games"]:
-        games_in_common = gog.filter_games(games_in_common)
 
     cache = Cache(config["cache"])
+    gog = gogDB(config, opts)
+    games_in_common = gog.get_common_games()
+    set_max_players(games_in_common, cache.data)
+
+    if not config["all_games"]:
+        log.info(f'DEBUG: include_zero_players = {gog.config["include_zero_players"]}')
+        games_in_common = gog.filter_games(games_in_common)
 
     # Get multiplayer info from IGDB and save it to the cache
-    igdb = IGDBHelper(config["igdb_client_id"], config["igdb_client_secret"], cache)
+    igdb = IGDBHelper(
+        config["igdb_client_id"], config["igdb_client_secret"], cache.data
+    )
     # TODO: handle not getting an access token
     for release_key in list(games_in_common.keys()):
         igdb.get_igdb_id(release_key)

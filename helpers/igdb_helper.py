@@ -139,7 +139,7 @@ class IGDBHelper:
         # Get the game info from IGDB
         url = "https://api.igdb.com/v4/games"
         body = "fields game_modes,name,url; where id = {};".format(
-            {self.cache["igdb"]["games"][release_key]["igdb_id"]}
+            self.cache["igdb"]["games"][release_key]["igdb_id"]
         )
 
         response = self.api_request(url, body)
@@ -156,6 +156,7 @@ class IGDBHelper:
                     self.cache["igdb"]["games"][release_key]["igdb_id"], release_key
                 )
             )
+            return
 
         # release_key is e.g. steam_379720
         platform, platform_key = release_key.split("_")
