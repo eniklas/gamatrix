@@ -215,12 +215,12 @@ def set_max_players(game_list, cache):
             max_players = cache["igdb"]["games"][k]["max_players"]
             reason = "from IGDB cache"
 
-        # TODO: didn't get a single case of this, figure out why/remove
+        # FIXME: this aint' working
         elif (
             "info" in cache["igdb"]["games"][k]
             and "game_modes" in cache["igdb"]["games"][k]["info"]
             and (
-                cache["igdb"]["games"][k]["info"]["game_modes"]
+                cache["igdb"]["games"][k]["info"][0]["game_modes"]
                 == [IGDB_GAME_MODE["singleplayer"]]
             )
         ):
@@ -318,7 +318,6 @@ if __name__ == "__main__":
     set_max_players(games_in_common, cache.data)
 
     if not config["all_games"]:
-        log.info(f'DEBUG: include_zero_players = {gog.config["include_zero_players"]}')
         games_in_common = gog.filter_games(games_in_common)
 
     # Get multiplayer info from IGDB and save it to the cache

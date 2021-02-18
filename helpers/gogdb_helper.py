@@ -4,7 +4,9 @@ import logging
 import os
 import re
 import sqlite3
+
 from .constants import ALPHANUM_PATTERN
+from functools import cmp_to_key
 from ruamel.yaml import YAML
 
 
@@ -164,12 +166,8 @@ class gogDB:
 
         # Sort by sanitized title to avoid headaches in the templates;
         # dicts maintain insertion order as of Python 3.7
-        # TODO: put steam first so we don't delete those during dedup
         ordered_game_list = {
-            k: v
-            for k, v in sorted(
-                game_list.items(), key=lambda item: item[1]["sanitized_title"]
-            )
+            k: v for k, v in sorted(game_list.items(), key=cmp_to_key(self._sort))
         }
 
         # Sort the owner lists so we can compare them easily
@@ -358,3 +356,27 @@ class gogDB:
         }
 
         return sorted_usernames
+
+    # Props to nradoicic!
+    def _sort(self, a, b):
+        """Does a primary sort by sanitized title, and secondary sort by
+        platforms so that steam is first; we prefer the steam key when
+        removing dups, as we can currently only get IGDB data for steam
+        """
+        platforms = ("steam", "gog", "epic", "origin", "uplay", "xboxone")
+        title_a = a[1]["sanitized_title"]
+        title_b = b[1]["sanitized_title"]
+        if title_a == title_b:
+            platform_a = a[1]["platforms"][0]
+            platform_b = b[1]["platforms"][0]
+            index_a = platforms.index(platform_a)
+            index_b = platforms.index(platform_b)
+            if index_a < index_b:
+                return -1
+            if index_a > index_b:
+                return 1
+            return 0
+        if title_a < title_b:
+            return -1
+        if title_a > title_b:
+            return 1
