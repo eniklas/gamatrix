@@ -2,87 +2,91 @@
 <html>
 
 <head>
-  <style>
-    body {
-      font-size: x-large;
-    }
+    <style>
+        body {
+            font-size: x-large;
+        }
 
-    table,
-    th,
-    td {
-      border-collapse: collapse;
-    }
-  </style>
-  <title>
-    gamatrix-gog
-  </title>
+        table,
+        th,
+        td {
+            border-collapse: collapse;
+        }
+    </style>
+    <title>
+        gamatrix-gog
+    </title>
 </head>
 
 <body style="background-color: rgb(50, 50, 50); color: lightgray;">
-  <h2>gamatrix-gog</h2>
-  <table style="width:500px;">
-    <form action="/compare">
-      <tr>
-        <td>
-          <input type="radio" id="Compare users" name="option" value="list" checked>
-          <label for="compare">Compare users</label><br>
-          <div class="sub1">
-            <blockquote>
-              {% for user in users -%}
-              <div>
-                <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked>
-                <label for="{{ users[user]['username'] }}"><img
-                    src="/static/{{ users[user]['pic']|default('question_block.jpg') }}" width="20" height="20">
-                  {{ users[user]['username'] }}
-                </label>
-              </div>
-              {% endfor -%}
-              <br>
-              <div title="Games owned by the selected users, and not owned by unselected users">
-                <input type="checkbox" id="exclusive" name="exclusive">
-                <label for="exclusive">Exclusively owned</label>
-              </div>
-              <blockquote>
-          </div>
-        </td>
-        <td></td>
-        <td valign="top">
-          <input type="radio" id="Game grid" name="option" value="grid">
-          <label for="grid">Game grid</label><br>
-        </td>
-      </tr>
-      <tr>
-        <td></td>
-      </tr>
-      <tr>
-        <td colspan="3">
-          <div style="width:250px; margin: 0 auto;">
-            <p style="text-align: center;">
-            <table width="100%">
-              <td colspan="2">Exclude platforms:</td>
-              {% for batch in platforms|batch(2) -%}
-              <tr>
-                {%- for platform in batch %}
+    <h2>gamatrix-gog</h2>
+    <table style="width:500px;">
+        <form action="/compare">
+            <tr>
                 <td>
-                  <input type="checkbox" id="{{ platform }}" name="exclude_platform_{{ platform }}">
-                  <label for="{{ platform }}">{{ platform|capitalize }}</label>
+                    <input type="radio" id="Compare users" name="option" value="list" checked>
+                    <label for="compare">Compare users</label><br>
+                    <div class="sub1">
+                        <blockquote>
+                            {% for user in users -%}
+                            <div>
+                                <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked>
+                                <label for="{{ users[user]['username'] }}"><img
+                                        src="/static/{{ users[user]['pic']|default('question_block.jpg') }}" width="20"
+                                        height="20">
+                                    {{ users[user]['username'] }}
+                                </label>
+                            </div>
+                            {% endfor -%}
+                            <br>
+                            <div title="Games owned by the selected users, and not owned by unselected users">
+                                <input type="checkbox" id="exclusive" name="exclusive">
+                                <label for="exclusive">Exclusively owned</label>
+                            </div>
+                            <blockquote>
+                    </div>
                 </td>
-                {%- endfor %}
-              </tr>
-              {% endfor -%}
-            </table>
-            <br>
-            <input type="checkbox" id="include_single_player" name="include_single_player">
-            <label for="include_single_player">Include single-player</label><br>
-            <input type="checkbox" id="show_keys" name="show_keys">
-            <label for="show_keys">Show product keys</label><br>
-            </p>
-          </div>
-          <center><input type="submit" value="Giv'er" style="font-size:x-large; height:35px; width:80px"></center>
-        </td>
-      </tr>
-    </form>
-  </table>
+                <td></td>
+                <td valign="top">
+                    <input type="radio" id="Game grid" name="option" value="grid">
+                    <label for="grid">Game grid</label><br>
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="3">
+                    <div style="width:250px; margin: 0 auto;">
+                        <p style="text-align: center;">
+                        <table width="100%">
+                            <td colspan="2">Exclude platforms:</td>
+                            {% for batch in platforms|batch(2) -%}
+                            <tr>
+                                {%- for platform in batch %}
+                                <td>
+                                    <input type="checkbox" id="{{ platform }}" name="exclude_platform_{{ platform }}">
+                                    <label for="{{ platform }}">{{ platform|capitalize }}</label>
+                                </td>
+                                {%- endfor %}
+                            </tr>
+                            {% endfor -%}
+                        </table>
+                        <br>
+                        <input type="checkbox" id="include_single_player" name="include_single_player">
+                        <label for="include_single_player">Include single-player</label><br>
+                        <input type="checkbox" id="include_zero_players" name="include_zero_players" checked>
+                        <label for="include_zero_players">Include unknown max players</label><br>
+                        <input type="checkbox" id="show_keys" name="show_keys">
+                        <label for="show_keys">Show product keys</label><br>
+                        </p>
+                    </div>
+                    <center><input type="submit" value="Giv'er" style="font-size:x-large; height:35px; width:80px">
+                    </center>
+                </td>
+            </tr>
+        </form>
+    </table>
 </body>
 
 </html>

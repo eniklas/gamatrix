@@ -60,7 +60,11 @@
                     {%- endfor -%}
                 </div>
             </td>
-            <td>{{ value.max_players }}</td>
+            <td>
+                {%- if value.max_players > 0 -%}
+                {{ value.max_players }}
+                {%- endif -%}
+            </td>
             <td>{{ value.comment }}</td>
             {% if show_keys -%}
             <td>{{ game }}</td>
