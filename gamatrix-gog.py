@@ -61,6 +61,16 @@ def compare_libraries():
 
     users = gog.get_usernames_from_ids(gog.config["user_ids_to_compare"])
     common_games = gog.get_common_games()
+    set_max_players(common_games, cache.data)
+
+    if not gog.config["all_games"]:
+        common_games = gog.filter_games(common_games)
+
+    for release_key in list(common_games.keys()):
+        igdb.get_igdb_id(release_key)
+        igdb.get_game_info(release_key)
+        igdb.get_multiplayer_info(release_key)
+
     debug_str = ""
     return render_template(
         template,
@@ -295,6 +305,12 @@ if __name__ == "__main__":
         print(e)
         sys.exit(1)
 
+    cache = Cache(config["cache"])
+    # Get multiplayer info from IGDB and save it to the cache
+    igdb = IGDBHelper(
+        config["igdb_client_id"], config["igdb_client_secret"], cache.data
+    )
+
     if "mode" in config and config["mode"] == "server":
         # Start Flask to run in server mode until killed
         app.run(host=config["interface"], port=config["port"])
@@ -312,38 +328,33 @@ if __name__ == "__main__":
     opts["include_zero_players"] = args.include_zero_players
     opts["user_ids_to_compare"] = user_ids_to_compare
 
-    cache = Cache(config["cache"])
     gog = gogDB(config, opts)
-    games_in_common = gog.get_common_games()
-    set_max_players(games_in_common, cache.data)
+    common_games = gog.get_common_games()
+    set_max_players(common_games, cache.data)
 
     if not config["all_games"]:
-        games_in_common = gog.filter_games(games_in_common)
+        common_games = gog.filter_games(common_games)
 
-    # Get multiplayer info from IGDB and save it to the cache
-    igdb = IGDBHelper(
-        config["igdb_client_id"], config["igdb_client_secret"], cache.data
-    )
     # TODO: handle not getting an access token
-    for release_key in list(games_in_common.keys()):
+    for release_key in list(common_games.keys()):
         igdb.get_igdb_id(release_key)
         igdb.get_game_info(release_key)
         igdb.get_multiplayer_info(release_key)
 
     cache.save()
 
-    for key in games_in_common:
+    for key in common_games:
         print(
             "{} ({})".format(
-                games_in_common[key]["title"],
-                ", ".join(games_in_common[key]["platforms"]),
+                common_games[key]["title"],
+                ", ".join(common_games[key]["platforms"]),
             ),
             end="",
         )
-        if "max_players" in games_in_common[key]:
-            print(" Players: {}".format(games_in_common[key]["max_players"]), end="")
-        if "comment" in games_in_common[key]:
-            print(" Comment: {}".format(games_in_common[key]["comment"]), end="")
+        if "max_players" in common_games[key]:
+            print(" Players: {}".format(common_games[key]["max_players"]), end="")
+        if "comment" in common_games[key]:
+            print(" Comment: {}".format(common_games[key]["comment"]), end="")
         print("")
 
-    print(gog.get_caption(len(games_in_common)))
+    print(gog.get_caption(len(common_games)))

@@ -2,77 +2,83 @@
 <html>
 
 <head>
-  <style>
-    table,
-    th,
-    td {
-      border: 1px solid black;
-      border-collapse: collapse;
-      padding: 3px;
-    }
+    <style>
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding: 3px;
+        }
 
-    a:visited {
-      color: lightseagreen;
-    }
+        a:visited {
+            color: lightseagreen;
+        }
 
-    a:link {
-      color: oldlace;
-    }
-  </style>
-  <title>
-    gamatrix-gog results
-  </title>
+        a:link {
+            color: oldlace;
+        }
+    </style>
+    <title>
+        gamatrix-gog results
+    </title>
 </head>
 
 <body style="background-color: rgb(50, 50, 50);">
-  <a href="/">Back to home page</a>
-  <br><br>
-  {{ debug_str }}
-  <table>
-    <caption style="color: lightgray;">{{ caption }}</caption>
-    <tr style="background-color: rgb(124,207,228)">
-      <th>Title</th>
-      {% for userid, username in users.items() -%}
-      <th>{{ username }}</th>
-      {%- endfor %}
-      <th>Players</th>
-      <th>Comment</th>
-      {% if show_keys -%}
-      <th>Release Key</th>
-      {%- endif %}
-    </tr>
-    {% for game, value in games.items() -%}
-    {%- set outer_loop = loop -%}
-    <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
-      <td>
-        {{ value.title }}
-        <div style="float:right">
-          {% for platform in value.platforms -%}
-          <img src="/static/{{ platform }}.png" width="20" height="20">&nbsp;
-          {%- endfor -%}
-        </div>
-      </td>
-      {% for userid, username in users.items() -%}
-      {% if userid in value.owners -%}
-      <td style="background-color:rgb(182,215,168)">
-        {%- else -%}
-      <td style="background-color:rgb(234,153,153)">
-        {%- endif -%}
-        {% if outer_loop.index is divisibleby 25 -%}
-        {{ username }}
-        {%- endif -%}
-      </td>
-      {%- endfor %}
-      <td>{{ value.max_players }}</td>
-      <td>{{ value.comment }}</td>
-      {% if show_keys -%}
-      <td>{{ game }}</td>
-      {%- endif -%}
-    </tr>
-    {%- endfor %}
-  </table>
-  <br><br>
-  <a href="/">Back to home page</a>
+    <a href="/">Back to home page</a>
+    <br><br>
+    {{ debug_str }}
+    <table>
+        <caption style="color: lightgray;">{{ caption }}</caption>
+        <tr style="background-color: rgb(124,207,228)">
+            <th>Title</th>
+            {% for userid, username in users.items() -%}
+            <th>{{ username }}</th>
+            {%- endfor %}
+            <th>Players</th>
+            <th>Comment</th>
+            {% if show_keys -%}
+            <th>Release Key</th>
+            {%- endif %}
+        </tr>
+        {% for game, value in games.items() -%}
+        {%- set outer_loop = loop -%}
+        <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
+            <td>
+                {% if value.url is defined -%}
+                <a href="{{value.url}}">
+                    {%- endif -%}
+                    {{ value.title }}
+                    {%- if value.url is defined -%}
+                </a>
+                {%- endif -%}
+                <div style="float:right">
+                    {% for platform in value.platforms -%}
+                    <img src="/static/{{ platform }}.png" width="20" height="20">&nbsp;
+                    {%- endfor -%}
+                </div>
+            </td>
+            {% for userid, username in users.items() -%}
+            {% if userid in value.owners -%}
+            <td style="background-color:rgb(182,215,168)">
+                {%- else -%}
+            <td style="background-color:rgb(234,153,153)">
+                {%- endif -%}
+                {% if outer_loop.index is divisibleby 25 -%}
+                {{ username }}
+                {%- endif -%}
+            </td>
+            {%- endfor %}
+            <td>{{ value.max_players }}</td>
+            <td>{{ value.comment }}</td>
+            {% if show_keys -%}
+            <td>{{ game }}</td>
+            {%- endif -%}
+        </tr>
+        {%- endfor %}
+    </table>
+    <br><br>
+    <a href="/">Back to home page</a>
 </body>
 
 </html>
