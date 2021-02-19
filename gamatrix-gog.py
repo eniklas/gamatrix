@@ -215,10 +215,10 @@ def set_max_players(game_list, cache):
             max_players = cache["igdb"]["games"][k]["max_players"]
             reason = "from IGDB cache"
 
-        # FIXME: this aint' working
         elif (
             "info" in cache["igdb"]["games"][k]
-            and "game_modes" in cache["igdb"]["games"][k]["info"]
+            and cache["igdb"]["games"][k]["info"]
+            and "game_modes" in cache["igdb"]["games"][k]["info"][0]
             and (
                 cache["igdb"]["games"][k]["info"][0]["game_modes"]
                 == [IGDB_GAME_MODE["singleplayer"]]
