@@ -2,7 +2,7 @@
 
 ## Quick start
 
-Jump to [command-line mode](#cli) or [building with Docker](#docker).
+Jump to [command-line mode](#command-line-mode) or [building with Docker](#running-in-docker).
 
 ## Introduction
 
@@ -50,7 +50,7 @@ optional arguments:
 
 `-u/--userid`: a list of GOG user IDs to compare. The IDs must be in the [config file](#configuration). You can find the user ID by running `sqlite3 /path/to/galaxy-2.0.db "select * from Users;"`. If you use this option, you can't list DBs; they must be provided for the user IDs in the config file.
 
-### <a name=cli></a>Command-line mode
+### Command-line mode
 
 Command-line mode is mostly useful for debugging. It lists the matching games, but doesn't include any of the other data that server mode provides (platform, comments, etc.). To run, clone this repo and:
 
@@ -69,11 +69,11 @@ If you use the `-s` option or set `mode: server` in the [config file](#configura
 
 Server mode is the intended use case, and supports all options, unlike CLI mode, which may not.
 
-## <a name="configuration"></a>Configuration
+## Configuration
 
 A YAML file provides the runtime configuration; by default, this is `config.yaml` in the same directory as the script, but this can be overridden with the `-c` option. See the annotated [sample file](config-sample.yaml) for an explanation of the format.
 
-## <a name=docker></a>Running in Docker
+## Running in Docker
 
 A [Dockerfile](Dockerfile) is provided for running gamatrix-gog in a container. Build it with:
 
