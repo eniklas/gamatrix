@@ -37,7 +37,7 @@ jobs:
 
     - name: Check format with Black
       run: |
-        poetry run black --check .
+        python -m black --check .
 
     - name: Test with pytest
       if: false # not ready yet, once we have tests, remove this line.
