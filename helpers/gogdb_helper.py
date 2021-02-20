@@ -249,7 +249,10 @@ class gogDB:
         return working_game_list
 
     def filter_games(self, game_list):
-        """Removes games that don't fit the search criteria"""
+        """
+        Removes games that don't fit the search criteria. Note that we
+        will not filter a game we have no multiplayer info on
+        """
         working_game_list = copy.deepcopy(game_list)
 
         for k in game_list:
