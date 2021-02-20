@@ -58,6 +58,7 @@ Command-line mode is mostly useful for debugging. It lists the matching games, b
 $ python3 -m venv venv
 $ . venv/bin/activate
 $ pip3 install -r requirements.txt
+$ pip3 install -r dev-requirements.txt # only if you will be working on the code!
 $ ./gamatrix-gog.py
 ```
 
