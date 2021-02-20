@@ -2,7 +2,7 @@
 
 ## Quick start
 
-Jump to [command-line mode](#cli) or [building with Docker](#docker).
+Jump to [command-line mode](#command-line-mode) or [building with Docker](#running-in-docker).
 
 ## Introduction
 
@@ -50,19 +50,33 @@ optional arguments:
 
 `-u/--userid`: a list of GOG user IDs to compare. The IDs must be in the [config file](#configuration). You can find the user ID by running `sqlite3 /path/to/galaxy-2.0.db "select * from Users;"`. If you use this option, you can't list DBs; they must be provided for the user IDs in the config file.
 
-### <a name=cli></a>Command-line mode
+### Command-line mode
 
 Command-line mode is mostly useful for debugging. It lists the matching games, but doesn't include any of the other data that server mode provides (platform, comments, etc.). To run, clone this repo and:
 
+**1. Setup your virtual environment:**
+
 ```bash
-$ python3 -m venv venv
-$ . venv/bin/activate
-$ pip3 install -r requirements.txt
-$ pip3 install -r dev-requirements.txt # only if you will be working on the code!
-$ ./gamatrix-gog.py
+python3 -m venv venv
+. venv/bin/activate
 ```
 
-Python 3.7+ is recommended. Dictionaries are assumed to be ordered, which is a 3.7+ feature.
+_For our Windows friends:_
+
+```pwsh
+py -3 -m venv venv
+.venv/Scripts/Activate.ps1
+```
+
+**2. Install dependencies:**
+
+```bash
+python -m pip install -U pip
+python -m pip install -r requirements.txt
+./gamatrix-gog.py
+```
+
+**Note:** Python 3.7+ is recommended. Dictionaries are assumed to be ordered, which is a 3.7+ feature.
 
 ### Server mode
 
@@ -70,22 +84,30 @@ If you use the `-s` option or set `mode: server` in the [config file](#configura
 
 Server mode is the intended use case, and supports all options, unlike CLI mode, which may not.
 
-## <a name="configuration"></a>Configuration
+## Configuration
 
-A YAML file provides the runtime configuration; by default, this is `config.yaml` in the same directory as the script, but this can be overridden with the `-c` option. See the annotated [sample file](config-sample.yaml) for an explanation of the format.
+A YAML file provides the runtime configuration; by default, this is `config.yaml` in the same directory as the script, but this can be overridden with the `-c` option. See the annotated [sample file](config-sample.yaml) or the [Windows flavour of this file](config-sample-windows.yaml) for an explanation of the format.
 
-## <a name=docker></a>Running in Docker
+## Running in Docker
 
 A [Dockerfile](Dockerfile) is provided for running gamatrix-gog in a container. Build it with:
 
 ```bash
-$ docker build -t gamatrix-gog .
+docker build -t gamatrix-gog .
 ```
 
 Then run it:
 
+**Linux/MacOS:**
+
 ```bash
-$ docker run -d --name gamatrix-gog -p 80:80/tcp -v /path/to/gog_dbs:/usr/src/app/gog_dbs -v /path/to/config.yaml:/usr/src/app/config/config.yaml gamatrix-gog
+docker run -d --name gamatrix-gog -p 8080:80/tcp -v /path/to/gog_dbs:/usr/src/app/gog_dbs -v /path/to/config.yaml:/usr/src/app/config/config.yaml gamatrix-gog
+```
+
+**Windows:**
+
+```pwsh
+C:\Users\me> docker --name gamatrix-gog -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-gog-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix-gog\derek-config.yaml:/usr/src/app/config/config.yaml gamatrix-gog
 ```
 
 Now you should be able to access the web page. If not, use `docker logs` to see what went wrong. The DBs are read on every call, so you can update them and they'll be used immediately. If you change the config file you'll need to restart the container for it to take effect.

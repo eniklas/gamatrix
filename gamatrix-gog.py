@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-import copy
 from helpers.cache_helper import Cache
-import json
 import logging
 import os
-import re
-import sqlite3
 import sys
-import time
 from flask import Flask, request, render_template
 from helpers.constants import ALPHANUM_PATTERN, IGDB_GAME_MODE
 from helpers.gogdb_helper import gogDB
