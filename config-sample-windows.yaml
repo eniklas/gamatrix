@@ -1,12 +1,15 @@
-# This is the path to a folder containing the GOG db files.
-db_path: /path/to/gog/dbs
+# Path to a folder containing the GOG db files.
+db_path: C:\Users\my_user\Documents\gog_db
 
 # Valid values are info or debug
 log_level: info
+
 # If set to server, runs as a web service; otherwise runs as a CLI
 mode: server
+
 # The network interface to use when running in server mode
 interface: 0.0.0.0
+
 # The network port to use when running in server mode
 port: 80
 
@@ -14,8 +17,9 @@ port: 80
 # Instructions for how to obtain a client ID & secret can be found here: https://api-docs.igdb.com/#about
 igdb_client_secret: abcdefghi01234jklmno56789pqrst
 igdb_client_id: 0123uvwxyz4567abcde89012fg34hi
-# File to cache the IGDB setup from
-cache: /path/to/cache/file
+
+# Path to a file to cache the IGDB setup from
+cache: C:\Users\my_user\Documents\gog-cache.json
 
 # The GOG user ID matching the result of 'select * from Users;' in the DB
 users:
