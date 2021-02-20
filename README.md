@@ -1,5 +1,7 @@
 # gamatrix-gog
 
+[![CI](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml/badge.svg)](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml)
+
 ## Quick start
 
 Jump to [command-line mode](#command-line-mode) or [building with Docker](#running-in-docker).
