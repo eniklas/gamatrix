@@ -258,20 +258,9 @@ class gogDB:
             # Remove single-player games if we didn't ask for them
             if (
                 not self.config["include_single_player"]
-                and "max_players" in game_list[k]
-                and game_list[k]["max_players"] == 1
+                and not game_list[k]["multiplayer"]
             ):
                 self.log.debug(f"{k}: Removing as it is single player")
-                del working_game_list[k]
-                continue
-
-            # Remove games with zero (unknown) max players
-            if (
-                not self.config["include_zero_players"]
-                and "max_players" in game_list[k]
-                and game_list[k]["max_players"] == 0
-            ):
-                self.log.debug(f"{k}: Removing as it has zero max players")
                 del working_game_list[k]
                 continue
 

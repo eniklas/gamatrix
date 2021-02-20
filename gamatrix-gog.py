@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# TODO: copy max players to other games with the same sanitized title
 import argparse
 import copy
 from helpers.cache_helper import Cache
@@ -10,7 +11,11 @@ import sqlite3
 import sys
 import time
 from flask import Flask, request, render_template
-from helpers.constants import ALPHANUM_PATTERN, IGDB_GAME_MODE
+from helpers.constants import (
+    ALPHANUM_PATTERN,
+    IGDB_GAME_MODE,
+    IGDB_MULTIPLAYER_GAME_MODES,
+)
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
 from ruamel.yaml import YAML
@@ -61,7 +66,7 @@ def compare_libraries():
 
     users = gog.get_usernames_from_ids(gog.config["user_ids_to_compare"])
     common_games = gog.get_common_games()
-    set_max_players(common_games, cache.data)
+    set_multiplayer_status(common_games, cache.data)
 
     if not gog.config["all_games"]:
         common_games = gog.filter_games(common_games)
@@ -90,7 +95,6 @@ def init_opts():
 
     return {
         "include_single_player": False,
-        "include_zero_players": False,
         "exclusive": False,
         "show_keys": False,
         "user_ids_to_compare": [],
@@ -197,21 +201,27 @@ def build_config(args):
     return config
 
 
-def set_max_players(game_list, cache):
-    """Sets the max_players for each release key; precedence is:
-    - max_players in the config yaml
-    - max_players from IGDB
-    - 1 if the above aren't available and the only game mode from IGDB is single player
-    - 0 (unknown) otherwise
+def set_multiplayer_status(game_list, cache):
+    """
+    Sets the max_players for each release key; precedence is:
+      - max_players in the config yaml
+      - max_players from IGDB
+      - 1 if the above aren't available and the only game mode from IGDB is single player
+      - 0 (unknown) otherwise
+    Also sets multiplayer to True if any of the of the following are true:
+      - max_players > 1
+      - IGDB game modes includes a multiplayer mode
     """
     for k in game_list:
         max_players = 0
+        multiplayer = False
+        reason = "as we have no max player info and can't infer from game modes"
 
         if "max_players" in game_list[k]:
-            log.debug(
-                f'{k}: max players {game_list[k]["max_players"]} from config file'
-            )
-            continue
+            max_players = game_list[k]["max_players"]
+            reason = "from config file"
+            if max_players > 1:
+                multiplayer = True
 
         if k not in cache["igdb"]["games"]:
             reason = "no IGDB info in cache, did you call get_igdb_id()?"
@@ -224,23 +234,28 @@ def set_max_players(game_list, cache):
         elif cache["igdb"]["games"][k]["max_players"] > 0:
             max_players = cache["igdb"]["games"][k]["max_players"]
             reason = "from IGDB cache"
+            multiplayer = True
 
+        # We don't have max player info, so try to infer it from game modes
         elif (
             "info" in cache["igdb"]["games"][k]
             and cache["igdb"]["games"][k]["info"]
             and "game_modes" in cache["igdb"]["games"][k]["info"][0]
-            and (
-                cache["igdb"]["games"][k]["info"][0]["game_modes"]
-                == [IGDB_GAME_MODE["singleplayer"]]
-            )
         ):
-            max_players = 1
-            reason = "as IGDB has single player as the only game mode"
+            if cache["igdb"]["games"][k]["info"][0]["game_modes"] == [
+                IGDB_GAME_MODE["singleplayer"]
+            ]:
+                max_players = 1
+                reason = "as IGDB has single player as the only game mode"
+            else:
+                for mode in cache["igdb"]["games"][k]["info"][0]["game_modes"]:
+                    if mode in IGDB_MULTIPLAYER_GAME_MODES:
+                        multiplayer = True
+                        reason = f"as game modes includes {mode}"
+                        break
 
-        else:
-            reason = "as we have no max player info"
-
-        log.debug(f"{k}: max players {max_players} {reason}")
+        log.debug(f"{k}: multiplayer {multiplayer}, max players {max_players} {reason}")
+        game_list[k]["multiplayer"] = multiplayer
         game_list[k]["max_players"] = max_players
 
 
@@ -287,12 +302,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-v", "--version", action="store_true", help="print version and exit"
     )
-    parser.add_argument(
-        "-z",
-        "--include-zero-players",
-        action="store_true",
-        help="Show games with unknown max players",
-    )
 
     args = parser.parse_args()
     if args.debug:
@@ -325,12 +334,11 @@ if __name__ == "__main__":
     # web UI options need to be overridden
     opts = init_opts()
     opts["include_single_player"] = args.include_single_player
-    opts["include_zero_players"] = args.include_zero_players
     opts["user_ids_to_compare"] = user_ids_to_compare
 
     gog = gogDB(config, opts)
     common_games = gog.get_common_games()
-    set_max_players(common_games, cache.data)
+    set_multiplayer_status(common_games, cache.data)
 
     if not config["all_games"]:
         common_games = gog.filter_games(common_games)
