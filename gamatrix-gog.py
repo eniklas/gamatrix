@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 import argparse
-from helpers.cache_helper import Cache
 import logging
 import os
 import sys
-from flask import Flask, request, render_template
+
+from flask import Flask, render_template, request
+from ruamel.yaml import YAML
+
+from helpers.cache_helper import Cache
 from helpers.constants import ALPHANUM_PATTERN, IGDB_GAME_MODE
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
-from ruamel.yaml import YAML
 from version import VERSION
 
 app = Flask(__name__)

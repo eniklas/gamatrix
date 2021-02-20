@@ -2,12 +2,10 @@ import copy
 import json
 import logging
 import os
-import re
 import sqlite3
 
 from .constants import ALPHANUM_PATTERN
 from functools import cmp_to_key
-from ruamel.yaml import YAML
 
 
 class gogDB:
