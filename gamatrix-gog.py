@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 # TODO: copy max players to other games with the same sanitized title
 import argparse
-import copy
-from helpers.cache_helper import Cache
-import json
 import logging
 import os
-import re
-import sqlite3
 import sys
-import time
-from flask import Flask, request, render_template
+
+from flask import Flask, render_template, request
+from ruamel.yaml import YAML
+
+from helpers.cache_helper import Cache
 from helpers.constants import (
     ALPHANUM_PATTERN,
     IGDB_GAME_MODE,
@@ -18,7 +16,6 @@ from helpers.constants import (
 )
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
-from ruamel.yaml import YAML
 from version import VERSION
 
 app = Flask(__name__)
