@@ -1,6 +1,6 @@
 # gamatrix-gog
 
-[![CI](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml/badge.svg)](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml)
+[![CI](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml)
 
 ## Quick start
 
