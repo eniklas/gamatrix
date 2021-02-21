@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# TODO: copy max players to other games with the same sanitized title
 import argparse
 import logging
 import os
