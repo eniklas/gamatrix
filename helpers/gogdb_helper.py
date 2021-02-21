@@ -249,27 +249,19 @@ class gogDB:
         return working_game_list
 
     def filter_games(self, game_list):
-        """Removes games that don't fit the search criteria"""
+        """
+        Removes games that don't fit the search criteria. Note that we
+        will not filter a game we have no multiplayer info on
+        """
         working_game_list = copy.deepcopy(game_list)
 
         for k in game_list:
             # Remove single-player games if we didn't ask for them
             if (
                 not self.config["include_single_player"]
-                and "max_players" in game_list[k]
-                and game_list[k]["max_players"] == 1
+                and not game_list[k]["multiplayer"]
             ):
                 self.log.debug(f"{k}: Removing as it is single player")
-                del working_game_list[k]
-                continue
-
-            # Remove games with zero (unknown) max players
-            if (
-                not self.config["include_zero_players"]
-                and "max_players" in game_list[k]
-                and game_list[k]["max_players"] == 0
-            ):
-                self.log.debug(f"{k}: Removing as it has zero max players")
                 del working_game_list[k]
                 continue
 
