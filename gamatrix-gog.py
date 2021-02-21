@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# TODO: copy max players to other games with the same sanitized title
 import argparse
 import logging
 import os
@@ -217,8 +216,7 @@ def set_multiplayer_status(game_list, cache):
         if "max_players" in game_list[k]:
             max_players = game_list[k]["max_players"]
             reason = "from config file"
-            if max_players > 1:
-                multiplayer = True
+            multiplayer = max_players > 1
 
         if k not in cache["igdb"]["games"]:
             reason = "no IGDB info in cache, did you call get_igdb_id()?"
@@ -336,6 +334,7 @@ if __name__ == "__main__":
     gog = gogDB(config, opts)
     common_games = gog.get_common_games()
     set_multiplayer_status(common_games, cache.data)
+    common_games = gog.merge_duplicate_titles(common_games)
 
     if not config["all_games"]:
         common_games = gog.filter_games(common_games)

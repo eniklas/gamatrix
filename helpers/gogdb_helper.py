@@ -175,15 +175,7 @@ class gogDB:
         self.owners_to_match.sort()
         self.log.debug("owners_to_match: {}".format(self.owners_to_match))
 
-        deduped_game_list = self.merge_duplicate_titles(ordered_game_list)
-        self.log.debug(
-            f"ordered_game_list (before dedup) = {ordered_game_list}, size = {len(ordered_game_list)}\n"
-        )
-        self.log.debug(
-            f"deduped_game_list = {deduped_game_list}, size = {len(deduped_game_list)}"
-        )
-
-        return deduped_game_list
+        return ordered_game_list
 
     def merge_duplicate_titles(self, game_list):
         working_game_list = copy.deepcopy(game_list)
@@ -206,6 +198,14 @@ class gogDB:
                         game_list[k]["title"], sanitized_title, k, next_key
                     )
                 )
+                if game_list[next_key]["max_players"] > game_list[k]["max_players"]:
+                    self.log.debug(
+                        "{}: has higher max players {}, {} will inherit".format(
+                            next_key, game_list[next_key]["max_players"], k
+                        )
+                    )
+                    game_list[k]["max_players"] = game_list[next_key]["max_players"]
+
                 if game_list[next_key]["owners"] == owners:
                     self.log.debug(
                         "{}: owners are the same: {}, {}".format(
