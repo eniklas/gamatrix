@@ -62,15 +62,17 @@ def compare_libraries():
 
     users = gog.get_usernames_from_ids(gog.config["user_ids_to_compare"])
     common_games = gog.get_common_games()
-    set_multiplayer_status(common_games, cache.data)
-
-    if not gog.config["all_games"]:
-        common_games = gog.filter_games(common_games)
 
     for release_key in list(common_games.keys()):
         igdb.get_igdb_id(release_key)
         igdb.get_game_info(release_key)
         igdb.get_multiplayer_info(release_key)
+
+    set_multiplayer_status(common_games, cache.data)
+    common_games = gog.merge_duplicate_titles(common_games)
+
+    if not gog.config["all_games"]:
+        common_games = gog.filter_games(common_games)
 
     debug_str = ""
     return render_template(
@@ -333,11 +335,6 @@ if __name__ == "__main__":
 
     gog = gogDB(config, opts)
     common_games = gog.get_common_games()
-    set_multiplayer_status(common_games, cache.data)
-    common_games = gog.merge_duplicate_titles(common_games)
-
-    if not config["all_games"]:
-        common_games = gog.filter_games(common_games)
 
     # TODO: handle not getting an access token
     for release_key in list(common_games.keys()):
@@ -346,6 +343,11 @@ if __name__ == "__main__":
         igdb.get_multiplayer_info(release_key)
 
     cache.save()
+    set_multiplayer_status(common_games, cache.data)
+    common_games = gog.merge_duplicate_titles(common_games)
+
+    if not config["all_games"]:
+        common_games = gog.filter_games(common_games)
 
     for key in common_games:
         print(
