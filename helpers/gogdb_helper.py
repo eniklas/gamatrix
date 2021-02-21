@@ -127,16 +127,20 @@ class gogDB:
                 for release_key in release_keys.split(","):
                     # Release keys start with the platform
                     platform = release_key.split("_")[0]
-                    if (
-                        release_key not in game_list
-                        and platform not in self.config["exclude_platforms"]
-                    ):
+
+                    if platform in self.config["exclude_platforms"]:
+                        self.log.debug(
+                            f"{release_key}: skipping as {platform} is excluded"
+                        )
+                        continue
+
+                    if release_key not in game_list:
                         # This is the first we've seen this title, so add it
                         title = json.loads(title_json)["title"]
                         sanitized_title = ALPHANUM_PATTERN.sub("", title).lower()
                         if sanitized_title in self.config["hidden"]:
                             self.log.debug(
-                                f"Skipping {release_key} ({title}) as it's hidden"
+                                f"{release_key} ({title}): skipping as it's hidden"
                             )
                             continue
 
