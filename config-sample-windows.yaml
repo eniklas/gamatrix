@@ -14,7 +14,7 @@ interface: 0.0.0.0
 port: 80
 
 # IGDB client setup
-# Instructions for how to obtain a client ID & secret can be found here: https://api-docs.igdb.com/#about
+# Instructions for how to obtain a client ID & secret can be found at https://api-docs.igdb.com/#about
 igdb_client_secret: abcdefghi01234jklmno56789pqrst
 igdb_client_id: 0123uvwxyz4567abcde89012fg34hi
 
@@ -30,11 +30,13 @@ users:
     username: Doug
     db: doug-galaxy-2.0.db
 metadata:
-  # Each title must match exactly as listed with --all-games; normal YAML quoting rules apply
+  # Each title should match exactly as listed with --all-games; normal YAML quoting rules apply
   "7 Days to Die":
     # Each of these is optional
     max_players: no limit
     comment: I will die in less than 7 days
+    # The title will link to this
+    url: http://some-web-site.com
   "Broforce":
     max_players: 4
     comment: so many bros

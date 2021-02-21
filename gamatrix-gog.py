@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# TODO: copy max players to other games with the same sanitized title
 import argparse
 import logging
 import os
@@ -63,15 +62,17 @@ def compare_libraries():
 
     users = gog.get_usernames_from_ids(gog.config["user_ids_to_compare"])
     common_games = gog.get_common_games()
-    set_multiplayer_status(common_games, cache.data)
-
-    if not gog.config["all_games"]:
-        common_games = gog.filter_games(common_games)
 
     for release_key in list(common_games.keys()):
         igdb.get_igdb_id(release_key)
         igdb.get_game_info(release_key)
         igdb.get_multiplayer_info(release_key)
+
+    set_multiplayer_status(common_games, cache.data)
+    common_games = gog.merge_duplicate_titles(common_games)
+
+    if not gog.config["all_games"]:
+        common_games = gog.filter_games(common_games)
 
     debug_str = ""
     return render_template(
@@ -217,8 +218,7 @@ def set_multiplayer_status(game_list, cache):
         if "max_players" in game_list[k]:
             max_players = game_list[k]["max_players"]
             reason = "from config file"
-            if max_players > 1:
-                multiplayer = True
+            multiplayer = max_players > 1
 
         if k not in cache["igdb"]["games"]:
             reason = "no IGDB info in cache, did you call get_igdb_id()?"
@@ -335,10 +335,6 @@ if __name__ == "__main__":
 
     gog = gogDB(config, opts)
     common_games = gog.get_common_games()
-    set_multiplayer_status(common_games, cache.data)
-
-    if not config["all_games"]:
-        common_games = gog.filter_games(common_games)
 
     # TODO: handle not getting an access token
     for release_key in list(common_games.keys()):
@@ -347,6 +343,11 @@ if __name__ == "__main__":
         igdb.get_multiplayer_info(release_key)
 
     cache.save()
+    set_multiplayer_status(common_games, cache.data)
+    common_games = gog.merge_duplicate_titles(common_games)
+
+    if not config["all_games"]:
+        common_games = gog.filter_games(common_games)
 
     for key in common_games:
         print(
