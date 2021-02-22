@@ -6,12 +6,12 @@ Show and compare between games owned by multiple users.
 Usage:
     gamatrix-gog.py --help
     gamatrix-gog.py --version
-    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--include-single-player] [--port=PORT] [--server] [--userid=UID ...] [--include-zero-players] [<db> ... ]
+    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--include-single-player] [--port=PORT] [--server] [--userid=UID ...] [<db> ... ]
 
 Options:
   -h, --help                   show this help message and exit
   -v, --version                print version and exit
-  -c CFG --config-file=CFG     the config file to use
+  -c CFG, --config-file=CFG    the config file to use
   -d, --debug                  debug output
   -a, --all-games              list all games owned by the selected users (doesn't include single player unless -I is used)
   -i IFC, --interface=IFC      the network interface to use if running in server mode; default is 0.0.0.0.
@@ -19,7 +19,6 @@ Options:
   -p PORT, --port=PORT         the network port to use if running in server mode; default is 8080.
   -s, --server                 run in server mode
   -u USERID, --userid=USERID   the GOG user IDs to compare, there can be multiples of this switch
-  -z, --include-zero-players   show games with unknown max players
 
 Positional Arguments:
   <db>                         the GOG DB for a user, multiple can be listed
@@ -390,7 +389,9 @@ def set_multiplayer_status(game_list, cache):
 
 
 def parse_cmdline(argv: List[str]) -> Dict[str, object]:
-    return docopt.docopt(__doc__, help=True, version=VERSION, options_first=True)
+    return docopt.docopt(
+        __doc__, argv=argv, help=True, version=VERSION, options_first=True
+    )
 
 
 def OLD_parse_cmdline(argv: List[str]) -> Any:
@@ -447,7 +448,7 @@ if __name__ == "__main__":
 
     args = OLD_parse_cmdline(sys.argv[1:])
     print("OLD DONE")
-    opts = parse_cmdline(sys.argv)
+    opts = parse_cmdline(sys.argv[1:])
     print("NEW DONE")
 
     print("+OLD COMMANDLINE+++++++++++++++++++++++++")
