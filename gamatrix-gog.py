@@ -1,10 +1,38 @@
 #!/usr/bin/env python3
+"""
+gamatrix-gog
+Show and compare between games owned by multiple users.
+
+Usage:
+    gamatrix-gog.py --help
+    gamatrix-gog.py --version
+    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--include-single-player] [--port=PORT] [--server] [--userid=UID ...] [--include-zero-players] [<db> ... ]
+
+Options:
+  -h, --help                   show this help message and exit
+  -v, --version                print version and exit
+  -c CFG --config-file=CFG     the config file to use
+  -d, --debug                  debug output
+  -a, --all-games              list all games owned by the selected users (doesn't include single player unless -I is used)
+  -i IFC, --interface=IFC      the network interface to use if running in server mode; default is 0.0.0.0.
+  -I, --include-single-player  include single player games
+  -p PORT, --port=PORT         the network port to use if running in server mode; default is 8080.
+  -s, --server                 run in server mode
+  -u USERID, --userid=USERID   the GOG user IDs to compare, there can be multiples of this switch
+  -z, --include-zero-players   show games with unknown max players
+
+Positional Arguments:
+  <db>                         the GOG DB for a user, multiple can be listed
+"""
+
 import argparse
+import json
 import logging
 import os
 import sys
-from typing import Any, List
+from typing import Any, Dict, List
 
+import docopt
 from flask import Flask, render_template, request
 from ipaddress import IPv4Address, IPv4Network
 from ruamel.yaml import YAML
@@ -199,7 +227,102 @@ def init_opts():
     }
 
 
-def build_config(args):
+def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Returns a config dict created from the config file and
+    command-line arguments, with the latter taking precedence
+    """
+    if args.get("--config-file", None) is not None:
+        yaml = YAML(typ="safe")
+        with open(args["--config-file"], "r") as config_file:
+            config = yaml.load(config_file)
+    else:
+        # We didn't get a config file, so populate from args
+        config = {}
+
+    # TODO: allow using both IDs and DBs (use one arg and detect if it's an int)
+    # TODO: should be able to use unambiguous partial names
+    if not args.get("<db>", []) and "users" not in config:
+        raise ValueError("You must use -u, have users in the config file, or list DBs")
+
+    # Command-line args override values in the config file
+    # TODO: maybe we can do this directly in argparse, or otherwise better
+
+    # This can't be given as an argument as it wouldn't make much sense;
+    #  provide a sane default if it's missing from the config file
+    if "db_path" not in config:
+        config["db_path"] = "."
+
+    config["all_games"] = args.get("--all-games", False)
+
+    config["include_single_player"] = args.get("--include-single-player", False)
+
+    if args.get("--server", True):  # Note that the --server opt is False unless present
+        config["mode"] = "server"
+
+    if args.get("--interface"):
+        config["interface"] = args["--interface"]
+    if "interface" not in config:
+        config["interface"] = "0.0.0.0"
+
+    if args.get("--port"):
+        config["port"] = int(args["--port"])
+    if "port" not in config:
+        config["port"] = 8080
+
+    # DBs and user IDs can be in the config file and/or passed in as args
+    config["db_list"] = []
+    if "users" not in config:
+        config["users"] = {}
+
+    for userid in config["users"]:
+        config["db_list"].append(
+            "{}/{}".format(config["db_path"], config["users"][userid]["db"])
+        )
+
+    for db in args.get("<db>", []):
+        if os.path.abspath(db) not in config["db_list"]:
+            config["db_list"].append(os.path.abspath(db))
+
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    print(config["users"])
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+    for userid_str in args.get("--userid", []):
+        userid = int(userid_str)
+        if userid not in config["users"]:
+            raise ValueError(
+                "User ID {} isn't defined in the config file".format(userid)
+            )
+        elif "db" not in config["users"][userid]:
+            raise ValueError(
+                "User ID {} is missing the db key in the config file".format(userid)
+            )
+        elif (
+            "{}/{}".format(config["db_path"], config["users"][userid]["db"])
+            not in config["db_list"]
+        ):
+            config["db_list"].append(
+                "{}/{}".format(config["db_path"], config["users"][userid]["db"])
+            )
+
+    if "hidden" not in config:
+        config["hidden"] = []
+
+    # Lowercase and remove non-alphanumeric characters for better matching
+    for i in range(len(config["hidden"])):
+        config["hidden"][i] = ALPHANUM_PATTERN.sub("", config["hidden"][i]).lower()
+
+    sanitized_metadata = {}
+    for title in config["metadata"]:
+        sanitized_title = ALPHANUM_PATTERN.sub("", title).lower()
+        sanitized_metadata[sanitized_title] = config["metadata"][title]
+
+    config["metadata"] = sanitized_metadata
+
+    return config
+
+
+def OLD_build_config(args):
     """Returns a config dict created from the config file and
     command-line arguments, with the latter taking precedence
     """
@@ -389,7 +512,11 @@ def set_multiplayer_status(game_list, cache):
         game_list[k]["max_players"] = max_players
 
 
-def parse_cmdline(argv: List[str]) -> Any:
+def parse_cmdline(argv: List[str]) -> Dict[str, object]:
+    return docopt.docopt(__doc__, help=True, version=VERSION, options_first=True)
+
+
+def OLD_parse_cmdline(argv: List[str]) -> Any:
     parser = argparse.ArgumentParser(description="Show games owned by multiple users.")
     parser.add_argument(
         "db", type=str, nargs="*", help="the GOG DB for a user; multiple can be listed"
@@ -443,7 +570,31 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     log = logging.getLogger()
 
-    args = parse_cmdline(sys.argv[1:])
+    print("=========================================")
+    print(sys.argv)
+    print("=========================================")
+
+    args = OLD_parse_cmdline(sys.argv[1:])
+    print("OLD DONE")
+    opts = parse_cmdline(sys.argv)
+    print("NEW DONE")
+
+    print("+OLD COMMANDLINE+++++++++++++++++++++++++")
+    print(args)
+
+    print("/NEW COMMANDLINE/////////////////////////")
+    print(opts)
+
+    OLD_config = OLD_build_config(args)
+    config = build_config(opts)
+
+    with open("old_config.json", "w") as of_:
+        of_.write(json.dumps(OLD_config))
+
+    with open("new_config.json", "w") as nf_:
+        nf_.write(json.dumps(config))
+
+    exit()
 
     if args.debug:
         log.setLevel(logging.DEBUG)
