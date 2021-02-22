@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 import sys
+from typing import Any, List
 
 from flask import Flask, render_template, request
 from ipaddress import IPv4Network
@@ -265,10 +266,7 @@ def set_multiplayer_status(game_list, cache):
         game_list[k]["max_players"] = max_players
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    log = logging.getLogger()
-
+def parse_cmdline(argv: List[str]) -> Any:
     parser = argparse.ArgumentParser(description="Show games owned by multiple users.")
     parser.add_argument(
         "db", type=str, nargs="*", help="the GOG DB for a user; multiple can be listed"
@@ -309,9 +307,21 @@ if __name__ == "__main__":
         "-v", "--version", action="store_true", help="print version and exit"
     )
 
-    args = parser.parse_args()
+    return parser.parse_args(argv)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger()
+
+    args = parse_cmdline(sys.argv[1:])
+
     if args.debug:
         log.setLevel(logging.DEBUG)
+
+    # in case we want to see our command line shenanigans in a vebose session:
+    log.debug(f"Command line arguments: {sys.argv}")
+    log.debug(f"Arguments after parsing: {args}")
 
     try:
         config = build_config(args)
