@@ -40,7 +40,6 @@ jobs:
         python -m black --check .
 
     - name: Test with pytest
-      if: false # not ready yet, once we have tests, remove this line.
       run: |
-        python -m pytest --cov
+        python -m pytest
       

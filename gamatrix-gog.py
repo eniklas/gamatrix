@@ -3,8 +3,10 @@ import argparse
 import logging
 import os
 import sys
+from typing import Any, Dict, List
 
 from flask import Flask, render_template, request
+import pytest
 from ruamel.yaml import YAML
 
 from helpers.cache_helper import Cache
@@ -241,10 +243,7 @@ def set_max_players(game_list, cache):
         game_list[k]["max_players"] = max_players
 
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    log = logging.getLogger()
-
+def parse_cmdline(argv: List[str]) -> Any:
     parser = argparse.ArgumentParser(description="Show games owned by multiple users.")
     parser.add_argument(
         "db", type=str, nargs="*", help="the GOG DB for a user; multiple can be listed"
@@ -291,9 +290,23 @@ if __name__ == "__main__":
         help="Show games with unknown max players",
     )
 
-    args = parser.parse_args()
+    return parser.parse_args(argv)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    log = logging.getLogger()
+
+    args = parse_cmdline(sys.argv[1:])
+
     if args.debug:
         log.setLevel(logging.DEBUG)
+
+    # in case we want to see our command line shenanigans in a vebose session:
+    log.debug("Command line arguments:")
+    log.debug(sys.argv)
+    log.debug("Arguments after parsing:")
+    log.debug(args)
 
     try:
         config = build_config(args)
