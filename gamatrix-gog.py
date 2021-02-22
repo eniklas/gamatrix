@@ -5,6 +5,7 @@ import os
 import sys
 
 from flask import Flask, render_template, request
+from ipaddress import IPv4Network
 from ruamel.yaml import YAML
 
 from helpers.cache_helper import Cache
@@ -15,6 +16,7 @@ from helpers.constants import (
 )
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
+from helpers.network_helper import check_ip_is_authorized
 from version import VERSION
 
 app = Flask(__name__)
@@ -22,7 +24,8 @@ app = Flask(__name__)
 
 @app.route("/")
 def root():
-    log.info("Request from {}".format(request.remote_addr))
+    check_ip_is_authorized(request.remote_addr, config["allowed_cidrs"])
+
     return render_template(
         "index.html",
         users=config["users"],
@@ -32,8 +35,7 @@ def root():
 
 @app.route("/compare", methods=["GET", "POST"])
 def compare_libraries():
-    log.info("Request from {}".format(request.remote_addr))
-
+    check_ip_is_authorized(request.remote_addr, config["allowed_cidrs"])
     opts = init_opts()
 
     # Check boxes get passed in as "on" if checked, or not at all if unchecked
@@ -149,6 +151,13 @@ def build_config(args):
         config["port"] = args.port
     if "port" not in config:
         config["port"] = 8080
+
+    # Convert allowed CIDRs into IPv4Network objects
+    cidrs = []
+    if "allowed_cidrs" in config:
+        for cidr in config["allowed_cidrs"]:
+            cidrs.append(IPv4Network(cidr))
+    config["allowed_cidrs"] = cidrs
 
     # DBs and user IDs can be in the config file and/or passed in as args
     config["db_list"] = []
