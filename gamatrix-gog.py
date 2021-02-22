@@ -3,7 +3,7 @@ import argparse
 import logging
 import os
 import sys
-from typing import Any, List
+from typing import Any, Dict, List
 
 from flask import Flask, render_template, request
 from ipaddress import IPv4Network
