@@ -367,9 +367,9 @@ if __name__ == "__main__":
             end="",
         )
         if "max_players" in common_games[key]:
-            print(" Players: {}".format(common_games[key]["max_players"]), end="")
+            print(f' Players: {common_games[key]["max_players"]}', end="")
         if "comment" in common_games[key]:
-            print(" Comment: {}".format(common_games[key]["comment"]), end="")
-        print("")
+            print(f' Comment: {common_games[key]["comment"]}', end="")
+        print(f' Installed: {common_games[key]["installed"]}')
 
     print(gog.get_caption(len(common_games)))

@@ -43,8 +43,8 @@
         </tr>
         {% for game, value in games.items() -%}
         {%- set outer_loop = loop -%}
-        <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
-            <td>
+        <tr style="text-align: center;background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
+            <td style="text-align:left;">
                 {% if value.url is defined -%}
                 <a href="{{value.url}}">
                     {%- endif -%}
@@ -67,16 +67,19 @@
                 {% if outer_loop.index is divisibleby 25 -%}
                 {{ username }}
                 {%- endif -%}
+                {%- if userid in value.installed -%}
+                &check;
+                {%- endif -%}
             </td>
             {%- endfor %}
-            <td>
+            <td style="text-align:left;">
                 {%- if value.max_players > 0 -%}
                 {{ value.max_players }}
                 {%- endif -%}
             </td>
-            <td>{{ value.comment }}</td>
+            <td style="text-align:left;">{{ value.comment }}</td>
             {% if show_keys -%}
-            <td>{{ game }}</td>
+            <td style="text-align:left;">{{ game }}</td>
             {%- endif -%}
         </tr>
         {%- endfor %}

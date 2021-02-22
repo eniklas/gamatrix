@@ -109,6 +109,29 @@ class gogDB:
 
         return self.cursor.fetchall()
 
+    def get_installed_games(self, userid):
+        # https://www.reddit.com/r/gog/comments/ek3vtz/dev_gog_galaxy_20_get_list_of_gameid_of_installed/
+        query = """SELECT trim(GamePieces.releaseKey) FROM GamePieces
+            JOIN GamePieceTypes ON GamePieces.gamePieceTypeId = GamePieceTypes.id
+            WHERE releaseKey IN
+            (SELECT platforms.name || '_' || InstalledExternalProducts.productId
+            FROM InstalledExternalProducts
+            JOIN Platforms ON InstalledExternalProducts.platformId = Platforms.id
+            UNION
+            SELECT 'gog_' || productId FROM InstalledProducts)
+            AND GamePieceTypes.type = 'originalTitle'"""
+
+        self.log.debug(f"Running query: {query}")
+        self.cursor.execute(query)
+        installed_games = []
+        # Release keys are each in their own list. Should only be one element per
+        # list, but let's not assume that. Put all results into a single list
+        for result in self.cursor.fetchall():
+            for r in result:
+                installed_games.append(r)
+
+        return installed_games
+
     def get_common_games(self):
         game_list = {}
         self.owners_to_match = []
@@ -120,6 +143,7 @@ class gogDB:
             userid = self.get_user()[0]
             self.owners_to_match.append(userid)
             owned_games = self.get_owned_games(userid)
+            installed_games = self.get_installed_games(userid)
             self.log.debug("owned games = {}".format(owned_games))
             # A row looks like (release_keys {"title": "Title Name"})
             for release_keys, title_json in owned_games:
@@ -148,6 +172,7 @@ class gogDB:
                             "title": title,
                             "sanitized_title": sanitized_title,
                             "owners": [],
+                            "installed": [],
                         }
 
                         # Add metadata from the config file if we have any
@@ -163,6 +188,8 @@ class gogDB:
                     self.log.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]["owners"].append(userid)
                     game_list[release_key]["platforms"] = [platform]
+                    if release_key in installed_games:
+                        game_list[release_key]["installed"].append(userid)
 
             self.close_connection()
 
