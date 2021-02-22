@@ -1,7 +1,7 @@
 import logging
 
 from flask import abort
-from ipaddress import IPv4Address, IPv4Network
+from ipaddress import IPv4Address
 
 
 log = logging.getLogger(__name__)
