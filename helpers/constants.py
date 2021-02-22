@@ -8,6 +8,7 @@ ALPHANUM_PATTERN = re.compile("[^\s\w]+")
 IGDB_PLATFORM_ID = {
     "steam": 1,
 }
+# The mapping of game modes from https://api-docs.igdb.com/#game-mode
 IGDB_GAME_MODE = {
     "singleplayer": 1,
     "multiplayer": 2,
@@ -16,6 +17,12 @@ IGDB_GAME_MODE = {
     "mmo": 5,
     "battleroyale": 6,
 }
+# The modes from IGDB_GAME_MODE that we consider multiplayer
+IGDB_MULTIPLAYER_GAME_MODES = [
+    IGDB_GAME_MODE["multiplayer"],
+    IGDB_GAME_MODE["mmo"],
+    IGDB_GAME_MODE["battleroyale"],
+]
 IGDB_MAX_PLAYER_KEYS = [
     "offlinecoopmax",
     "offlinemax",
