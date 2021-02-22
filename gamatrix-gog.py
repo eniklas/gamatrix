@@ -320,10 +320,8 @@ if __name__ == "__main__":
         log.setLevel(logging.DEBUG)
 
     # in case we want to see our command line shenanigans in a vebose session:
-    log.debug("Command line arguments:")
-    log.debug(sys.argv)
-    log.debug("Arguments after parsing:")
-    log.debug(args)
+    log.debug(f"Command line arguments: {sys.argv}")
+    log.debug(f"Arguments after parsing: {args}")
 
     try:
         config = build_config(args)
