@@ -76,7 +76,7 @@
                 {% if users[userid]['pic'] is defined -%}
                 <img src="/static/{{ users[userid]['pic'] }}" width="20" height="20">&nbsp;
                 {%- else -%}
-                {{ username }}&nbsp;
+                {{ users[userid]['username'] }}&nbsp;
                 {%- endif -%}
                 {%- endfor -%}
                 {%- endif -%}
