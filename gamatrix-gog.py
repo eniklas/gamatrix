@@ -42,8 +42,8 @@ def compare_libraries():
     for k in request.args.keys():
         # Only user IDs are ints
         try:
-            int(k)
-            opts["user_ids_to_compare"].append(int(k))
+            i = int(k)
+            opts["user_ids_to_compare"][i] = config["users"][i]
         except ValueError:
             if k.startswith("exclude_platform_"):
                 opts["exclude_platforms"].append(k.split("_")[-1])
@@ -75,12 +75,14 @@ def compare_libraries():
     if not gog.config["all_games"]:
         common_games = gog.filter_games(common_games)
 
+    log.debug(f'user_ids_to_compare = {opts["user_ids_to_compare"]}')
+
     debug_str = ""
     return render_template(
         template,
         debug_str=debug_str,
         games=common_games,
-        users=config["users"],
+        users=opts["user_ids_to_compare"],
         caption=gog.get_caption(len(common_games)),
         show_keys=opts["show_keys"],
     )
@@ -96,7 +98,7 @@ def init_opts():
         "include_single_player": False,
         "exclusive": False,
         "show_keys": False,
-        "user_ids_to_compare": [],
+        "user_ids_to_compare": {},
         "exclude_platforms": [],
     }
 
@@ -347,8 +349,10 @@ if __name__ == "__main__":
     # web UI options need to be overridden
     opts = init_opts()
     opts["include_single_player"] = args.include_single_player
-    opts["user_ids_to_compare"] = user_ids_to_compare
+    for userid in user_ids_to_compare:
+        opts["user_ids_to_compare"][userid] = config["users"][userid]
 
+    log.debug(f'user_ids_to_compare = {opts["user_ids_to_compare"]}')
     gog = gogDB(config, opts)
     common_games = gog.get_common_games()
 

@@ -333,7 +333,7 @@ class gogDB:
 
         if self.config["all_games"]:
             caption_middle = "total games owned by"
-        elif len(self.config["user_ids_to_compare"]) == 1:
+        elif len(self.config["user_ids_to_compare"].keys()) == 1:
             caption_middle = "games owned by"
         else:
             caption_middle = "games in common between"
@@ -356,7 +356,7 @@ class gogDB:
         self.log.debug("platforms_excluded = {}".format(platforms_excluded))
 
         usernames = []
-        for userid in self.config["users"]:
+        for userid in self.config["user_ids_to_compare"]:
             usernames.append(self.config["users"][userid]["username"])
 
         return "{} {} {}{}{}".format(
