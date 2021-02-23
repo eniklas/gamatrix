@@ -75,7 +75,9 @@ class gogDB:
         ).fetchone()[0]
 
     # Taken from https://github.com/AB1908/GOG-Galaxy-Export-Script/blob/master/galaxy_library_export.py
-    def get_owned_games(self, userid):
+    def get_owned_games(self):
+        """Returns a list of release keys owned per the current DB"""
+
         owned_game_database = """CREATE TEMP VIEW MasterList AS
             SELECT GamePieces.releaseKey, GamePieces.gamePieceTypeId, GamePieces.value FROM GameLinks
             JOIN GamePieces ON GameLinks.releaseKey = GamePieces.releaseKey;"""
@@ -109,7 +111,9 @@ class gogDB:
 
         return self.cursor.fetchall()
 
-    def get_installed_games(self, userid):
+    def get_installed_games(self):
+        """Returns a list of release keys installed per the current DB"""
+
         # https://www.reddit.com/r/gog/comments/ek3vtz/dev_gog_galaxy_20_get_list_of_gameid_of_installed/
         query = """SELECT trim(GamePieces.releaseKey) FROM GamePieces
             JOIN GamePieceTypes ON GamePieces.gamePieceTypeId = GamePieceTypes.id
@@ -142,8 +146,8 @@ class gogDB:
             self.use_db(db_file)
             userid = self.get_user()[0]
             self.owners_to_match.append(userid)
-            owned_games = self.get_owned_games(userid)
-            installed_games = self.get_installed_games(userid)
+            owned_games = self.get_owned_games()
+            installed_games = self.get_installed_games()
             self.log.debug("owned games = {}".format(owned_games))
             # A row looks like (release_keys {"title": "Title Name"})
             for release_keys, title_json in owned_games:
@@ -281,8 +285,8 @@ class gogDB:
 
     def filter_games(self, game_list):
         """
-        Removes games that don't fit the search criteria. Note that we
-        will not filter a game we have no multiplayer info on
+        Removes games that don't fit the search criteria. Note that
+        we will not filter a game we have no multiplayer info on
         """
         working_game_list = copy.deepcopy(game_list)
 
@@ -326,7 +330,6 @@ class gogDB:
 
     def get_caption(self, num_games):
         """Returns the caption string"""
-        # usernames = self.get_usernames_from_ids(self.config["user_ids_to_compare"])
 
         if self.config["all_games"]:
             caption_middle = "total games owned by"
@@ -344,15 +347,6 @@ class gogDB:
                 else:
                     userids_excluded += f', {self.config["users"]["username"]}'
 
-            """
-            usernames_to_exclude = self.get_usernames_from_ids(
-                self.config["user_ids_to_exclude"]
-            )
-            userids_excluded = " and not owned by {}".format(
-                ", ".join(usernames_to_exclude.values())
-            )
-            """
-
         platforms_excluded = ""
         if self.config["exclude_platforms"]:
             platforms_excluded = " ({} excluded)".format(
@@ -361,11 +355,6 @@ class gogDB:
 
         self.log.debug("platforms_excluded = {}".format(platforms_excluded))
 
-        """
-        usernames = []
-        for userid in self.config["users"]:
-            usernames.append(self.config["users"][userid]["username"])
-        """
         usernames = []
         for userid in self.config["users"]:
             usernames.append(self.config["users"][userid]["username"])
@@ -377,24 +366,6 @@ class gogDB:
             userids_excluded,
             platforms_excluded,
         )
-
-    # def get_usernames_from_ids(self, userids):
-    #     """Returns a dict of usernames mapped by user ID"""
-    #     usernames = {}
-    #     sorted_usernames = {}
-
-    #     for userid in userids:
-    #         if "username" in self.config["users"][userid]:
-    #             usernames[userid] = self.config["users"][userid]["username"]
-    #         else:
-    #             usernames[userid] = str(userid)
-
-    #     # Order by value (username) to avoid having to do it in the templates
-    #     sorted_usernames = {
-    #         k: v for k, v in sorted(usernames.items(), key=lambda item: item[1].lower())
-    #     }
-
-    #     return sorted_usernames
 
     # Props to nradoicic!
     def _sort(self, a, b):
