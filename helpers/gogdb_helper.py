@@ -326,23 +326,32 @@ class gogDB:
 
     def get_caption(self, num_games):
         """Returns the caption string"""
-        usernames = self.get_usernames_from_ids(self.config["user_ids_to_compare"])
+        # usernames = self.get_usernames_from_ids(self.config["user_ids_to_compare"])
 
         if self.config["all_games"]:
             caption_middle = "total games owned by"
-        elif len(usernames) == 1:
+        elif len(self.config["user_ids_to_compare"]) == 1:
             caption_middle = "games owned by"
         else:
             caption_middle = "games in common between"
 
         userids_excluded = ""
         if self.config["user_ids_to_exclude"]:
+            userids_excluded = " and not owned by "
+            for userid in self.config["user_ids_to_exclude"]:
+                if "," not in userids_excluded:
+                    userids_excluded += self.config["users"][userid]["username"]
+                else:
+                    userids_excluded += f', {self.config["users"]["username"]}'
+
+            """
             usernames_to_exclude = self.get_usernames_from_ids(
                 self.config["user_ids_to_exclude"]
             )
             userids_excluded = " and not owned by {}".format(
                 ", ".join(usernames_to_exclude.values())
             )
+            """
 
         platforms_excluded = ""
         if self.config["exclude_platforms"]:
@@ -352,31 +361,40 @@ class gogDB:
 
         self.log.debug("platforms_excluded = {}".format(platforms_excluded))
 
+        """
+        usernames = []
+        for userid in self.config["users"]:
+            usernames.append(self.config["users"][userid]["username"])
+        """
+        usernames = []
+        for userid in self.config["users"]:
+            usernames.append(self.config["users"][userid]["username"])
+
         return "{} {} {}{}{}".format(
             num_games,
             caption_middle,
-            ", ".join(usernames.values()),
+            ", ".join(usernames),
             userids_excluded,
             platforms_excluded,
         )
 
-    def get_usernames_from_ids(self, userids):
-        """Returns a dict of usernames mapped by user ID"""
-        usernames = {}
-        sorted_usernames = {}
+    # def get_usernames_from_ids(self, userids):
+    #     """Returns a dict of usernames mapped by user ID"""
+    #     usernames = {}
+    #     sorted_usernames = {}
 
-        for userid in userids:
-            if "username" in self.config["users"][userid]:
-                usernames[userid] = self.config["users"][userid]["username"]
-            else:
-                usernames[userid] = str(userid)
+    #     for userid in userids:
+    #         if "username" in self.config["users"][userid]:
+    #             usernames[userid] = self.config["users"][userid]["username"]
+    #         else:
+    #             usernames[userid] = str(userid)
 
-        # Order by value (username) to avoid having to do it in the templates
-        sorted_usernames = {
-            k: v for k, v in sorted(usernames.items(), key=lambda item: item[1].lower())
-        }
+    #     # Order by value (username) to avoid having to do it in the templates
+    #     sorted_usernames = {
+    #         k: v for k, v in sorted(usernames.items(), key=lambda item: item[1].lower())
+    #     }
 
-        return sorted_usernames
+    #     return sorted_usernames
 
     # Props to nradoicic!
     def _sort(self, a, b):

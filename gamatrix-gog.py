@@ -62,7 +62,6 @@ def compare_libraries():
     else:
         template = "game_list.html"
 
-    users = gog.get_usernames_from_ids(gog.config["user_ids_to_compare"])
     common_games = gog.get_common_games()
 
     for release_key in list(common_games.keys()):
@@ -81,7 +80,7 @@ def compare_libraries():
         template,
         debug_str=debug_str,
         games=common_games,
-        users=users,
+        users=config["users"],
         caption=gog.get_caption(len(common_games)),
         show_keys=opts["show_keys"],
     )
@@ -190,6 +189,14 @@ def build_config(args):
                 config["db_list"].append(
                     "{}/{}".format(config["db_path"], config["users"][userid]["db"])
                 )
+
+    # Order users by username to avoid having to do it in the templates
+    config["users"] = {
+        k: v
+        for k, v in sorted(
+            config["users"].items(), key=lambda item: item[1]["username"].lower()
+        )
+    }
 
     if "hidden" not in config:
         config["hidden"] = []

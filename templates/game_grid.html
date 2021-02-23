@@ -32,8 +32,8 @@
         <caption style="color: lightgray;">{{ caption }}</caption>
         <tr style="background-color: rgb(124,207,228)">
             <th>Title</th>
-            {% for userid, username in users.items() -%}
-            <th>{{ username }}</th>
+            {% for userid, value in users.items() -%}
+            <th>{{ value.username }}</th>
             {%- endfor %}
             <th>Players</th>
             <th>Comment</th>
@@ -58,14 +58,14 @@
                     {%- endfor -%}
                 </div>
             </td>
-            {% for userid, username in users.items() -%}
+            {% for userid, uvalue in users.items() -%}
             {% if userid in value.owners -%}
             <td style="background-color:rgb(182,215,168)">
                 {%- else -%}
             <td style="background-color:rgb(234,153,153)">
                 {%- endif -%}
                 {% if outer_loop.index is divisibleby 25 -%}
-                {{ username }}
+                {{ value.username }}
                 {%- endif -%}
                 {%- if userid in value.installed -%}
                 &check;

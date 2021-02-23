@@ -72,13 +72,11 @@
                 &check;
                 {# Otherwise list the users that have it installed, using their pic if available #}
                 {%- else -%}
-                {% for userid, username in users.items() -%}
-                {% if userid in value.installed -%}
+                {% for userid in value.installed -%}
                 {% if users[userid]['pic'] is defined -%}
-                {{ users[userid]['pic'] }}
+                <img src="/static/{{ users[userid]['pic'] }}" width="20" height="20">&nbsp;
                 {%- else -%}
                 {{ username }}&nbsp;
-                {%- endif -%}
                 {%- endif -%}
                 {%- endfor -%}
                 {%- endif -%}
