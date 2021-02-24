@@ -71,6 +71,10 @@ def compare_libraries():
         igdb.get_game_info(release_key)
         igdb.get_multiplayer_info(release_key)
 
+    # Save the cache to disk if we added anything
+    if cache.data.dirty:
+        cache.save()
+
     set_multiplayer_status(common_games, cache.data)
     common_games = gog.merge_duplicate_titles(common_games)
 
@@ -331,10 +335,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     cache = Cache(config["cache"])
+    log.info(f"DEBUG: cache state after init: {cache.data.dirty}")
     # Get multiplayer info from IGDB and save it to the cache
     igdb = IGDBHelper(
         config["igdb_client_id"], config["igdb_client_secret"], cache.data
     )
+    log.info(f"DEBUG: cache state after igdb init: {cache.data.dirty}")
 
     if "mode" in config and config["mode"] == "server":
         # Start Flask to run in server mode until killed
@@ -361,7 +367,11 @@ if __name__ == "__main__":
         igdb.get_game_info(release_key)
         igdb.get_multiplayer_info(release_key)
 
-    cache.save()
+    log.info(f"DEBUG: cache state before save: {cache.data.dirty}")
+    if cache.data.dirty:
+        log.info(f"DEBUG: cache is dirty, saving")
+        cache.save()
+    log.info(f"DEBUG: cache state after save: {cache.data.dirty}")
     set_multiplayer_status(common_games, cache.data)
     common_games = gog.merge_duplicate_titles(common_games)
 

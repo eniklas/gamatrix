@@ -65,7 +65,10 @@
             <td style="background-color:rgb(234,153,153)">
                 {%- endif -%}
                 {% if outer_loop.index is divisibleby 25 -%}
-                {{ username }}
+                {{ uvalue.username }}
+                {%- endif -%}
+                {%- if userid in value.installed -%}
+                <b>&check;</b>
                 {%- endif -%}
             </td>
             {%- endfor %}
