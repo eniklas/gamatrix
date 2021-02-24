@@ -32,8 +32,8 @@
         <caption style="color: lightgray;">{{ caption }}</caption>
         <tr style="background-color: rgb(124,207,228)">
             <th>Title</th>
-            {% for userid, username in users.items() -%}
-            <th>{{ username }}</th>
+            {% for userid, value in users.items() -%}
+            <th>{{ value.username }}</th>
             {%- endfor %}
             <th>Players</th>
             <th>Comment</th>
@@ -43,8 +43,8 @@
         </tr>
         {% for game, value in games.items() -%}
         {%- set outer_loop = loop -%}
-        <tr style="background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
-            <td>
+        <tr style="text-align: center;background-color: rgb({{ loop.cycle('180,227,239', '201,235,243') }})">
+            <td style="text-align:left;">
                 {% if value.url is defined -%}
                 <a href="{{value.url}}">
                     {%- endif -%}
@@ -58,7 +58,7 @@
                     {%- endfor -%}
                 </div>
             </td>
-            {% for userid, username in users.items() -%}
+            {% for userid, uvalue in users.items() -%}
             {% if userid in value.owners -%}
             <td style="background-color:rgb(182,215,168)">
                 {%- else -%}
@@ -72,14 +72,14 @@
                 {%- endif -%}
             </td>
             {%- endfor %}
-            <td>
+            <td style="text-align:left;">
                 {%- if value.max_players > 0 -%}
                 {{ value.max_players }}
                 {%- endif -%}
             </td>
-            <td>{{ value.comment }}</td>
+            <td style="text-align:left;">{{ value.comment }}</td>
             {% if show_keys -%}
-            <td>{{ game }}</td>
+            <td style="text-align:left;">{{ game }}</td>
             {%- endif -%}
         </tr>
         {%- endfor %}
