@@ -15,8 +15,8 @@ The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool
 ## Usage
 
 ```pre
-usage: gamatrix-gog.py [-h] [-a] [-c CONFIG_FILE] [-d] [-i INTERFACE]
-                       [-p PORT] [-s] [-u [USERID [USERID ...]]]
+usage: gamatrix-gog.py [-h] [-a] [-c CONFIG_FILE] [-d] [-i INTERFACE] [-I] [-p PORT] [-s] [-u [USERID [USERID ...]]]
+                       [-v]
                        [db [db ...]]
 
 Show games owned by multiple users.
@@ -26,27 +26,30 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -a, --all-games       list all games owned by the selected users
+  -a, --all-games       list all games owned by the selected users (doesn't include single player unless -I is used)
   -c CONFIG_FILE, --config-file CONFIG_FILE
                         the config file to use
   -d, --debug           debug output
   -i INTERFACE, --interface INTERFACE
-                        the network interface to use if running in server
-                        mode; defaults to 0.0.0.0
-  -p PORT, --port PORT  the network port to use if running in server mode;
-                        defaults to 8080
+                        the network interface to use if running in server mode; defaults to 0.0.0.0
+  -I, --include-single-player
+                        Include single player games
+  -p PORT, --port PORT  the network port to use if running in server mode; defaults to 8080
   -s, --server          run in server mode
   -u [USERID [USERID ...]], --userid [USERID [USERID ...]]
                         the GOG user IDs to compare
+  -v, --version         print version and exit
 ```
 
 `db`: a GOG database to use. You can usually find a user's DB in `C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db`. Multiple DBs can be listed. Not compatible with `-u`.
 
-`-a/--all-games`: list all the games owned by the selected users (user selection is covered below). This is useful when you want to add a game to the [config file](#configuration), as you'll need the exact title as listed by this option.
+`-a/--all-games`: list all the multiplayer games owned by the selected users (user selection is covered below). Use with `-I` to include single-player games too.
 
 `-c/--config-file`: the YAML config file to use. You don't need a config file, but you'll likely want one. See [configuration](#configuration) for details.
 
-`-d/--debug`: enable debug messages. Generally only useful for development.
+`-d/--debug`: enable debug messages.
+
+`-I/--include-single-player`: include single-player games; by default, only multiplayer games are shown.
 
 `-s/--server`: run in server mode. This will use Flask to serve a small web page where you can select the options you want, and will output the results there.
 
@@ -54,7 +57,7 @@ optional arguments:
 
 ### Command-line mode
 
-Command-line mode is mostly useful for debugging. It lists the matching games, but doesn't include any of the other data that server mode provides (platform, comments, etc.). To run, clone this repo and:
+Command-line mode lists the output to a terminal, and doesn't use Flask. It's a good way to get copy/pastable titles to put into the config file for titles you want to hide or add metadata for. This mode is not developed as heavily as server mode, so may lag behind in features. To run, clone this repo and:
 
 **1. Setup your virtual environment:**
 
@@ -116,7 +119,15 @@ Now you should be able to access the web page. If not, use `docker logs` to see 
 
 ### Restricting access
 
-Flask is not a production-grade web server, and some people may not like their GOG DBs being exposed to the open Internet (I'm not aware of anything more personal in there than user IDs and game info, but I have not exhaustively checked by any means, so better safe than sorry). If you want to make the service only accessible to your friends, you can do this with iptables. I use Ubuntu 18.04, so YMMV:
+Flask is not a production-grade web server, and some people may not like their GOG DBs being exposed to the open Internet (I'm not aware of anything more personal in there than user IDs and game info, but I have not exhaustively checked by any means, so better safe than sorry). If you want to make the service only accessible to your friends, you have a couple options.
+
+#### Allowed CIDRs
+
+You can add CIDRs to `allowed_cidrs` in the config file. If this is used, any IP not in those CIDR blocks will get a 401 Unauthorized. If this is not defined or is empty, all IPs are allowed.
+
+#### iptables
+
+You can also block access with iptables. Network access is best handled at the network layer, not the application layer, so this is the more secure method, but more complicated. I use Ubuntu 18.04, so YMMV:
 
 Create a new chain called gamatrix:
 
@@ -134,6 +145,12 @@ Drop everyone else that tries to reach gamatrix-gog (be sure to use the right po
 
 ```pre
 # iptables -A gamatrix -m tcp -p tcp --dport 80 -j DROP
+```
+
+Return to the calling chain if none of the rules applied:
+
+```pre
+# iptables -A gamatrix -j RETURN
 ```
 
 Finally, insert your new chain into the `DOCKER-USER` chain:
@@ -158,6 +175,7 @@ ACCEPT     all  --  192.168.0.0/24       anywhere
 ACCEPT     all  --  1.2.3.4              anywhere
 ACCEPT     all  --  5.6.7.8              anywhere
 DROP       tcp  --  anywhere             anywhere             tcp dpt:http
+RETURN     all  --  anywhere             anywhere
 ```
 
 Save it so it persists after reboot:
