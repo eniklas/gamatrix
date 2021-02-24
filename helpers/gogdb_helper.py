@@ -75,7 +75,9 @@ class gogDB:
         ).fetchone()[0]
 
     # Taken from https://github.com/AB1908/GOG-Galaxy-Export-Script/blob/master/galaxy_library_export.py
-    def get_owned_games(self, userid):
+    def get_owned_games(self):
+        """Returns a list of release keys owned per the current DB"""
+
         owned_game_database = """CREATE TEMP VIEW MasterList AS
             SELECT GamePieces.releaseKey, GamePieces.gamePieceTypeId, GamePieces.value FROM GameLinks
             JOIN GamePieces ON GameLinks.releaseKey = GamePieces.releaseKey;"""
@@ -109,6 +111,31 @@ class gogDB:
 
         return self.cursor.fetchall()
 
+    def get_installed_games(self):
+        """Returns a list of release keys installed per the current DB"""
+
+        # https://www.reddit.com/r/gog/comments/ek3vtz/dev_gog_galaxy_20_get_list_of_gameid_of_installed/
+        query = """SELECT trim(GamePieces.releaseKey) FROM GamePieces
+            JOIN GamePieceTypes ON GamePieces.gamePieceTypeId = GamePieceTypes.id
+            WHERE releaseKey IN
+            (SELECT platforms.name || '_' || InstalledExternalProducts.productId
+            FROM InstalledExternalProducts
+            JOIN Platforms ON InstalledExternalProducts.platformId = Platforms.id
+            UNION
+            SELECT 'gog_' || productId FROM InstalledProducts)
+            AND GamePieceTypes.type = 'originalTitle'"""
+
+        self.log.debug(f"Running query: {query}")
+        self.cursor.execute(query)
+        installed_games = []
+        # Release keys are each in their own list. Should only be one element per
+        # list, but let's not assume that. Put all results into a single list
+        for result in self.cursor.fetchall():
+            for r in result:
+                installed_games.append(r)
+
+        return installed_games
+
     def get_common_games(self):
         game_list = {}
         self.owners_to_match = []
@@ -119,7 +146,8 @@ class gogDB:
             self.use_db(db_file)
             userid = self.get_user()[0]
             self.owners_to_match.append(userid)
-            owned_games = self.get_owned_games(userid)
+            owned_games = self.get_owned_games()
+            installed_games = self.get_installed_games()
             self.log.debug("owned games = {}".format(owned_games))
             # A row looks like (release_keys {"title": "Title Name"})
             for release_keys, title_json in owned_games:
@@ -148,6 +176,7 @@ class gogDB:
                             "title": title,
                             "sanitized_title": sanitized_title,
                             "owners": [],
+                            "installed": [],
                         }
 
                         # Add metadata from the config file if we have any
@@ -163,6 +192,8 @@ class gogDB:
                     self.log.debug("User {} owns {}".format(userid, release_key))
                     game_list[release_key]["owners"].append(userid)
                     game_list[release_key]["platforms"] = [platform]
+                    if release_key in installed_games:
+                        game_list[release_key]["installed"].append(userid)
 
             self.close_connection()
 
@@ -254,8 +285,8 @@ class gogDB:
 
     def filter_games(self, game_list):
         """
-        Removes games that don't fit the search criteria. Note that we
-        will not filter a game we have no multiplayer info on
+        Removes games that don't fit the search criteria. Note that
+        we will not filter a game we have no multiplayer info on
         """
         working_game_list = copy.deepcopy(game_list)
 
@@ -299,23 +330,22 @@ class gogDB:
 
     def get_caption(self, num_games):
         """Returns the caption string"""
-        usernames = self.get_usernames_from_ids(self.config["user_ids_to_compare"])
 
         if self.config["all_games"]:
             caption_middle = "total games owned by"
-        elif len(usernames) == 1:
+        elif len(self.config["user_ids_to_compare"].keys()) == 1:
             caption_middle = "games owned by"
         else:
             caption_middle = "games in common between"
 
         userids_excluded = ""
         if self.config["user_ids_to_exclude"]:
-            usernames_to_exclude = self.get_usernames_from_ids(
-                self.config["user_ids_to_exclude"]
-            )
-            userids_excluded = " and not owned by {}".format(
-                ", ".join(usernames_to_exclude.values())
-            )
+            userids_excluded = " and not owned by "
+            for userid in self.config["user_ids_to_exclude"]:
+                if "," not in userids_excluded:
+                    userids_excluded += self.config["users"][userid]["username"]
+                else:
+                    userids_excluded += f', {self.config["users"]["username"]}'
 
         platforms_excluded = ""
         if self.config["exclude_platforms"]:
@@ -325,31 +355,17 @@ class gogDB:
 
         self.log.debug("platforms_excluded = {}".format(platforms_excluded))
 
+        usernames = []
+        for userid in self.config["user_ids_to_compare"]:
+            usernames.append(self.config["users"][userid]["username"])
+
         return "{} {} {}{}{}".format(
             num_games,
             caption_middle,
-            ", ".join(usernames.values()),
+            ", ".join(usernames),
             userids_excluded,
             platforms_excluded,
         )
-
-    def get_usernames_from_ids(self, userids):
-        """Returns a dict of usernames mapped by user ID"""
-        usernames = {}
-        sorted_usernames = {}
-
-        for userid in userids:
-            if "username" in self.config["users"][userid]:
-                usernames[userid] = self.config["users"][userid]["username"]
-            else:
-                usernames[userid] = str(userid)
-
-        # Order by value (username) to avoid having to do it in the templates
-        sorted_usernames = {
-            k: v for k, v in sorted(usernames.items(), key=lambda item: item[1].lower())
-        }
-
-        return sorted_usernames
 
     # Props to nradoicic!
     def _sort(self, a, b):

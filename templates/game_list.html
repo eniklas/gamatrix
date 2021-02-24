@@ -33,6 +33,7 @@
         <tr style="background-color: rgb(124,207,228)">
             <th>Title</th>
             <th>Players</th>
+            <th>Installed</th>
             <th>Comment</th>
             {% if show_keys -%}
             <th>Release Key</th>
@@ -63,6 +64,21 @@
             <td>
                 {%- if value.max_players > 0 -%}
                 {{ value.max_players }}
+                {%- endif -%}
+            </td>
+            {# Put a check mark if all users have the game installed #}
+            <td style="text-align:center;">
+                {% if users|length == value.installed|length -%}
+                <b>&check;</b>
+                {# Otherwise list the users that have it installed, using their pic if available #}
+                {%- else -%}
+                {% for userid in value.installed -%}
+                {% if users[userid]['pic'] is defined -%}
+                <img src="/static/{{ users[userid]['pic'] }}" width="20" height="20">&nbsp;
+                {%- else -%}
+                {{ users[userid]['username'] }}&nbsp;
+                {%- endif -%}
+                {%- endfor -%}
                 {%- endif -%}
             </td>
             <td>{{ value.comment }}</td>
