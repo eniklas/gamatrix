@@ -1,20 +1,27 @@
 import json
+import logging
 import os
 
 
 class Cache:
     def __init__(self, cache_file):
         self.cache_file = cache_file
-        self.data = CacheDict()
+        self.data: CacheDict = CacheDict()
+        self.data.dirty = False
+        self.log = logging.getLogger(__name__)
+        self.log.info(f"Debug: self.data.dirty = {self.data.dirty}")
 
         if os.path.exists(self.cache_file):
             with open(self.cache_file, "r") as f:
                 self.data = json.load(f)
 
     def save(self):
-        with open(self.cache_file, "w") as f:
-            json.dump(self.data, f)
-        self.data.dirty = False
+        if self.data.dirty:
+            self.log.info("DEBUG: cache is dirty, saving")
+            with open(self.cache_file, "w") as f:
+                json.dump(self.data, f)
+
+            self.data.dirty = False
 
 
 # Use this for the cache so we can mark it dirty on any update
