@@ -13,6 +13,12 @@ interface: 0.0.0.0
 # The network port to use when running in server mode
 port: 80
 
+# If defined, IPs not in these CIDRs will get a 401 Unauthorized
+allowed_cidrs:
+  # Even single IPs must be in CIDR format
+  - 127.0.0.1/32
+  - 192.168.0.0/24
+
 # IGDB client setup
 # Instructions for how to obtain a client ID & secret can be found at https://api-docs.igdb.com/#about
 igdb_client_secret: abcdefghi01234jklmno56789pqrst
