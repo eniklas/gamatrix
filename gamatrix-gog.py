@@ -70,6 +70,7 @@ def compare_libraries():
         igdb.get_game_info(release_key)
         igdb.get_multiplayer_info(release_key)
 
+    cache.save()
     set_multiplayer_status(common_games, cache.data)
     common_games = gog.merge_duplicate_titles(common_games)
 

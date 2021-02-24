@@ -73,6 +73,7 @@ class IGDBHelper:
         """Makes an API request with retries, honoring the rate
         limit and backing off when we have failed calls
         """
+        self.cache["dirty"] = True
         headers = {
             "Client-ID": self.client_id,
             "Authorization": f"Bearer {self.access_token}",
