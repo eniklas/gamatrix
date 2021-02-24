@@ -121,7 +121,7 @@ Flask is not a production-grade web server, and some people may not like their G
 
 #### Allowed CIDRs
 
-You can add CIDRs to `allowed_cidrs` in the config file. If this is used, any IP not in those CIDR blocks will get a 401 Unauthorized. If this is not defined or is empty, all IPs are allowed.
+You can add CIDRs to `allowed_cidrs` in the config file, as shown in the [sample config](config-sample.yaml). If this is used, any IP not in those CIDR blocks will get a 401 Unauthorized. If this is not defined or is empty, all IPs are allowed.
 
 #### iptables
 
