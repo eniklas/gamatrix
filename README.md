@@ -15,9 +15,7 @@ The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool
 ## Usage
 
 ```pre
-usage: gamatrix-gog.py [-h] [-a] [-c CONFIG_FILE] [-d] [-i INTERFACE] [-I] [-p PORT] [-s] [-u [USERID [USERID ...]]]
-                       [-v]
-                       [db [db ...]]
+usage: gamatrix-gog.py [-h] [-a] [-c CONFIG_FILE] [-d] [-i INTERFACE] [-I] [-p PORT] [-s] [-u [USERID [USERID ...]]] [db [db ...]]
 
 Show games owned by multiple users.
 
