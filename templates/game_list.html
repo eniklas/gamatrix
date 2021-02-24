@@ -69,7 +69,7 @@
             {# Put a check mark if all users have the game installed #}
             <td style="text-align:center;">
                 {% if users|length == value.installed|length -%}
-                &check;
+                <b>&check;</b>
                 {# Otherwise list the users that have it installed, using their pic if available #}
                 {%- else -%}
                 {% for userid in value.installed -%}
