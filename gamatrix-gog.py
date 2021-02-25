@@ -31,6 +31,7 @@ def root():
         "index.html",
         users=config["users"],
         platforms=["epic", "gog", "origin", "steam", "uplay", "xboxone"],
+        version=VERSION,
     )
 
 
