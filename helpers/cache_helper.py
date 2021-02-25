@@ -7,7 +7,6 @@ class Cache:
     def __init__(self, cache_file):
         self.cache_file = cache_file
         self.data = {}
-        self.data["dirty"] = False
         self.log = logging.getLogger(__name__)
 
         if os.path.exists(self.cache_file):
@@ -15,9 +14,10 @@ class Cache:
             with open(self.cache_file, "r") as f:
                 self.data = json.load(f)
 
-            self.data["dirty"] = False
         else:
             self.log.debug(f"Cache file {self.cache_file} not found, making new cache")
+
+        self.data["dirty"] = False
 
     def save(self):
         if self.data["dirty"]:
