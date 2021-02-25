@@ -14,16 +14,15 @@ class Cache:
             self.log.debug(f"Reading cache file {self.cache_file}")
             with open(self.cache_file, "r") as f:
                 self.data = json.load(f)
+
+            self.data["dirty"] = False
         else:
             self.log.debug(f"Cache file {self.cache_file} not found, making new cache")
 
     def save(self):
         if self.data["dirty"]:
-            self.log.debug(f"Cache is dirty, saving")
-            # The dirty status is itself part of the cache,
-            # so we need to mark it clean before saving it
-            self.data["dirty"] = False
+            self.log.debug("Cache is dirty, saving")
             with open(self.cache_file, "w") as f:
                 json.dump(self.data, f)
         else:
-            self.log.debug(f"Cache is clean, not saving")
+            self.log.debug("Cache is clean, not saving")

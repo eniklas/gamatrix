@@ -135,7 +135,7 @@ class IGDBHelper:
             self.log.error("IGDB ID not found, can't get game info")
             return False
 
-        # Get the game info from IGDB
+        self.log.info(f"{release_key}: getting game info from IGDB")
         url = "https://api.igdb.com/v4/games"
         body = "fields game_modes,name,url; where id = {};".format(
             self.cache["igdb"]["games"][release_key]["igdb_id"]
@@ -157,6 +157,8 @@ class IGDBHelper:
             )
             return
 
+        self.log.info(f"{release_key}: getting ID from IGDB")
+
         # release_key is e.g. steam_379720
         platform, platform_key = release_key.split("_")
 
@@ -175,9 +177,10 @@ class IGDBHelper:
             # The response is a list of all external IDs; they'll all have the same
             # value for "game" so just get the first one
             self.cache["igdb"]["games"][release_key]["igdb_id"] = response[0]["game"]
+            self.log.debug(f'{release_key}: got IGDB ID {response[0]["game"]}')
         else:
             # If we don't get an ID, set it to 0 so we know we've looked this game up before
-            self.log.info(f"{release_key} not found in IGDB, setting ID to 0")
+            self.log.debug(f"{release_key} not found in IGDB, setting ID to 0")
             self.cache["igdb"]["games"][release_key]["igdb_id"] = 0
 
     def get_multiplayer_info(self, release_key):
@@ -201,6 +204,7 @@ class IGDBHelper:
             self.log.error("IGDB ID not found, can't get max players")
             return False
 
+        self.log.info(f"{release_key}: getting multiplayer info from IGDB")
         # Get the multiplayer info
         url = "https://api.igdb.com/v4/multiplayer_modes"
         body = f'fields *; where game = {self.cache["igdb"]["games"][release_key]["igdb_id"]};'
@@ -228,84 +232,3 @@ class IGDBHelper:
                     self.log.debug(f"Found new max_players {max_players}, key {mp_key}")
 
         return max_players
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    log = logging.getLogger()
-    client_id = ""
-    secret = ""
-
-    cache = Cache(".cache.json")
-    igdb = IGDBHelper(client_id, secret, cache)
-
-    # print(json.dumps(igdb.cache))
-    # Show all info on Spelunky
-    url = "https://api.igdb.com/v4/games"
-    body = 'fields *; where name = "Spelunky";'
-
-    # Get game IDs on other services
-    url = "https://api.igdb.com/v4/external_games"
-    body = "fields *; where game = 3029;"
-
-    # Get multiplayer info
-    url = "https://api.igdb.com/v4/multiplayer_modes"
-    body = "fields *; where game = 3029;"
-
-    # Get external IDs for any game matching "the division"
-    url = "https://api.igdb.com/v4/external_games"
-    body = 'fields category,game,name,platform,uid; where name ~ *"the division"*;'
-
-    url = "https://api.igdb.com/v4/games"
-    body = 'fields *; where name ~ *"hot pursuit"*;'
-
-    url = "https://api.igdb.com/v4/multiplayer_modes"
-    body = "fields *; where game = 83341;"
-    url = "https://api.igdb.com/v4/games"
-    body = "fields *; where id = 83341;"
-
-    url = "https://api.igdb.com/v4/games"
-    body = "fields *; where id = 11749;"
-
-    # Look up airborne kingdom, an epic exclusive game
-    url = "https://api.igdb.com/v4/games"
-    body = 'fields *; where name ~ *"airborne kingdom"*;'
-    # That gives "external_games": [1710294, 1746471, 1913099]
-    url = "https://api.igdb.com/v4/external_games"
-    body = "fields *; where id = 1710294 | id = 1746471 | id = 1913099;"
-    # Better way would be to take the id of the first call and do "where game = <game_id>"
-
-    url = "https://api.igdb.com/v4/game_modes"
-    body = "fields *;"
-
-    # Show games matching aragami (insensitive case)
-    # url = "https://api.igdb.com/v4/external_games"
-    # body = 'fields *; where name ~ *"aragami"*;'
-    # body = 'fields *; where uid = "1037569" | uid = "1305282" | uid = "1615335" | uid = "1931183";'
-
-    url = "https://api.igdb.com/v4/games"
-    body = 'fields *; where name = "198X";'
-
-    # "id": 100562, "external_games": [ 1724812, 1725307, 1775673, 1914329 ],
-    url = "https://api.igdb.com/v4/external_games"
-    body = "fields *; where game = 100562;"
-
-    # with open("tmp", "w") as f:
-    #    f.write(json.dumps(igdb.api_request(url, body)))
-
-    # igdb.api_request(url, body)
-
-    for release_key in [
-        "steam_251570",
-        "steam_945360",
-        "xboxone_244952910",
-        "epic_aafc587fbf654758802c8e41e4fb3255",
-        "steam_346110",
-        "xboxone_983730484",
-        "gog_2033991040",
-        "steam_271670",
-    ]:
-        time.sleep(0.5)
-        # igdb.get_multiplayer_info(release_key)
-
-    # cache.save()

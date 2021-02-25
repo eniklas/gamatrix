@@ -381,6 +381,11 @@ if __name__ == "__main__":
         common_games = gog.filter_games(common_games)
 
     for key in common_games:
+        usernames_with_game_installed = [
+            config["users"][userid]["username"]
+            for userid in common_games[key]["installed"]
+        ]
+
         print(
             "{} ({})".format(
                 common_games[key]["title"],
@@ -392,15 +397,9 @@ if __name__ == "__main__":
             print(f' Players: {common_games[key]["max_players"]}', end="")
         if "comment" in common_games[key]:
             print(f' Comment: {common_games[key]["comment"]}', end="")
-        print(
-            " Installed: {}".format(
-                ", ".join(
-                    [
-                        config["users"][userid]["username"]
-                        for userid in common_games[key]["installed"]
-                    ]
-                )
-            )
-        )
+        if not usernames_with_game_installed:
+            print(" Installed: (none)")
+        else:
+            print(f' Installed: {", ".join(usernames_with_game_installed)}')
 
     print(gog.get_caption(len(common_games)))
