@@ -15,7 +15,9 @@ class Cache:
                 self.data = json.load(f)
 
         else:
-            self.log.debug(f"Cache file {self.cache_file} not found, making new cache")
+            self.log.warning(
+                f"Cache file {self.cache_file} not found, making new cache"
+            )
 
         self.data["dirty"] = False
 

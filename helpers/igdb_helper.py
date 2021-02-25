@@ -8,7 +8,6 @@ from .constants import (
     IGDB_MAX_PLAYER_KEYS,
     IGDB_PLATFORM_ID,
 )
-from helpers.cache_helper import Cache
 
 
 class IGDBHelper:
