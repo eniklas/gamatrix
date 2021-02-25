@@ -104,13 +104,17 @@ Then run it:
 **Linux/MacOS:**
 
 ```bash
-docker run -d --name gamatrix-gog -p 8080:80/tcp -v /path/to/gog_dbs:/usr/src/app/gog_dbs -v /path/to/config.yaml:/usr/src/app/config/config.yaml gamatrix-gog
+docker run -d --name gamatrix-gog -p 8080:80/tcp \
+-v /path/to/gog_dbs:/usr/src/app/gog_dbs \
+--mount type=bind,source=/path/to/.cache.json,target=/usr/src/app/.cache.json \
+--mount type=bind,source=/path/to/config.yaml,target=/usr/src/app/config/config.yaml,readonly \
+gamatrix-gog
 ```
 
 **Windows:**
 
 ```pwsh
-C:\Users\me> docker --name gamatrix-gog -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-gog-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix-gog\derek-config.yaml:/usr/src/app/config/config.yaml gamatrix-gog
+C:\Users\me> docker --name gamatrix-gog -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-gog-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix-gog\.cache.json:/usr/src/app/.cache.json -v C:\Users\me\dev\gamatrix-gog\derek-config.yaml:/usr/src/app/config/config.yaml gamatrix-gog
 ```
 
 Now you should be able to access the web page. If not, use `docker logs` to see what went wrong. The DBs are read on every call, so you can update them and they'll be used immediately. If you change the config file you'll need to restart the container for it to take effect.
