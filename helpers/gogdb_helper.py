@@ -4,7 +4,7 @@ import logging
 import os
 import sqlite3
 
-from .constants import ALPHANUM_PATTERN
+from .constants import ALPHANUM_PATTERN, PLATFORMS
 from functools import cmp_to_key
 
 
@@ -373,12 +373,16 @@ class gogDB:
         platforms so that steam is first; we prefer the steam key when
         removing dups, as we can currently only get IGDB data for steam
         """
-        platforms = ("steam", "gog", "epic", "origin", "uplay", "xboxone")
+        platforms = PLATFORMS
         title_a = a[1]["sanitized_title"]
         title_b = b[1]["sanitized_title"]
         if title_a == title_b:
             platform_a = a[1]["platforms"][0]
             platform_b = b[1]["platforms"][0]
+            for platform in [platform_a, platform_b]:
+                if platform not in platforms:
+                    self.log.warning(f"Unknown platform {platform}, not sorting")
+                    return 0
             index_a = platforms.index(platform_a)
             index_b = platforms.index(platform_b)
             if index_a < index_b:

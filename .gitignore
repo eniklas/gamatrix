@@ -135,3 +135,6 @@ dmypy.json
 # User's config file
 config.yaml
 .cache.json
+
+# Static files for flask, these are tracked in gamatrix-gog-configs
+static/

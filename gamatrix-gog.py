@@ -14,6 +14,7 @@ from helpers.constants import (
     ALPHANUM_PATTERN,
     IGDB_GAME_MODE,
     IGDB_MULTIPLAYER_GAME_MODES,
+    PLATFORMS,
 )
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
@@ -30,7 +31,7 @@ def root():
     return render_template(
         "index.html",
         users=config["users"],
-        platforms=["epic", "gog", "origin", "steam", "uplay", "xboxone"],
+        platforms=PLATFORMS,
         version=VERSION,
     )
 
