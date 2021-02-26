@@ -14,6 +14,7 @@ from helpers.constants import (
     ALPHANUM_PATTERN,
     IGDB_GAME_MODE,
     IGDB_MULTIPLAYER_GAME_MODES,
+    PLATFORMS,
 )
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
@@ -30,7 +31,7 @@ def root():
     return render_template(
         "index.html",
         users=config["users"],
-        platforms=["epic", "gog", "origin", "steam", "uplay", "xboxone"],
+        platforms=PLATFORMS,
         version=VERSION,
     )
 
@@ -88,6 +89,7 @@ def compare_libraries():
         users=opts["user_ids_to_compare"],
         caption=gog.get_caption(len(common_games)),
         show_keys=opts["show_keys"],
+        platforms=PLATFORMS,
     )
 
 
