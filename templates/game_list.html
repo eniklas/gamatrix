@@ -57,7 +57,11 @@
                 {%- endif -%}
                 <div style="float:right">
                     {% for platform in value.platforms -%}
+                    {%- if platform not in platforms -%}
+                    <img src="/static/question_block.jpg" width="20" height="20">&nbsp;
+                    {%- else -%}
                     <img src="/static/{{ platform }}.png" width="20" height="20">&nbsp;
+                    {%- endif -%}
                     {%- endfor -%}
                 </div>
             </td>

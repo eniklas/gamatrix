@@ -89,6 +89,7 @@ def compare_libraries():
         users=opts["user_ids_to_compare"],
         caption=gog.get_caption(len(common_games)),
         show_keys=opts["show_keys"],
+        platforms=PLATFORMS,
     )
 
 

@@ -57,7 +57,7 @@
             </tr>
             <tr>
                 <td colspan="3">
-                    <div style="width:250px; margin: 0 auto;">
+                    <div style="width:300px; margin: 0 auto;">
                         <p style="text-align: center;">
                         <table width="100%">
                             <td colspan="2">Exclude platforms:</td>
@@ -66,7 +66,8 @@
                                 {%- for platform in batch %}
                                 <td>
                                     <input type="checkbox" id="{{ platform }}" name="exclude_platform_{{ platform }}">
-                                    <label for="{{ platform }}">{{ platform|capitalize }}</label>
+                                    <label for="{{ platform }}"><img src="/static/{{ platform }}.png" width="20"
+                                            height="20">&nbsp;{{ platform|capitalize }}</label>
                                 </td>
                                 {%- endfor %}
                             </tr>
