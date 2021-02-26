@@ -24,9 +24,9 @@ class IGDBHelper:
         self.api_call_delay = IGDB_API_CALL_DELAY
         self.access_token = {}
         self._init_cache()
-        self.log.debug(f"cache = {self.cache}")
-        if not self.access_token and not self.get_access_token():
-            raise ValueError("Failed to get IGDB access token")
+        if not self.access_token:
+            self.log.info("No access token in cache, getting new one")
+            self.get_access_token()
 
     def _init_cache(self):
         if "igdb" not in self.cache:
@@ -44,9 +44,18 @@ class IGDBHelper:
             "client_secret": self.client_secret,
             "grant_type": "client_credentials",
         }
-        r = requests.post(url, params=payload)
 
-        if r.status_code != 200:
+        request_succeeded = True
+
+        try:
+            r = requests.post(url, params=payload)
+        except Exception as e:
+            self.log.error(f"Request to IGDB failed trying to get access token: {e}")
+            request_succeeded = False
+
+        if not request_succeeded:
+            pass
+        elif r.status_code != 200:
             self.log.error(
                 "Failed to get access token: {} (status code {})".format(
                     r.text, r.status_code
@@ -59,12 +68,13 @@ class IGDBHelper:
                 )
             )
         else:
-            self.log.debug(f"Access token request succeeded, response: {r.text}")
+            self.log.info("Access token request succeeded")
             self.access_token = r.json()["access_token"]
             self.cache["igdb"]["access_token"] = self.access_token
             self.api_failures = 0
             return True
 
+        self.access_token = {}
         self.api_failures += 1
         return False
 
@@ -72,6 +82,10 @@ class IGDBHelper:
         """Makes an API request with retries, honoring the rate
         limit and backing off when we have failed calls
         """
+        if not self.access_token:
+            self.log.error("We have no access token, skipping IGDB request")
+            return {}
+
         self.cache["dirty"] = True
         headers = {
             "Client-ID": self.client_id,
@@ -96,7 +110,13 @@ class IGDBHelper:
 
             self.last_api_call_time = time.time()
             self.log.debug(f"Sending API request to {url}, body = '{body}'")
-            r = requests.post(url, headers=headers, data=body)
+            try:
+                r = requests.post(url, headers=headers, data=body)
+            except Exception as e:
+                self.log.error(f"Request to IGDB failed: {e}")
+                self.api_failures += 1
+                return {}
+
             self.log.debug(f"Response = {r.text} (status code {r.status_code})")
 
             if r.status_code == 200:
