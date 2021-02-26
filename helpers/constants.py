@@ -1,7 +1,3 @@
-import re
-
-ALPHANUM_PATTERN = re.compile(r"[^\s\w]+")
-
 # Full mapping is at https://api-docs.igdb.com/#external-game-enums,
 # but only steam actually works; the other platforms' IDs don't match
 # what's in IGDB

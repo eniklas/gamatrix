@@ -4,7 +4,8 @@ import logging
 import os
 import sqlite3
 
-from .constants import ALPHANUM_PATTERN, PLATFORMS
+from .constants import PLATFORMS
+from helpers.misc_helper import sanitize_title
 from functools import cmp_to_key
 
 
@@ -165,7 +166,7 @@ class gogDB:
                     if release_key not in game_list:
                         # This is the first we've seen this title, so add it
                         title = json.loads(title_json)["title"]
-                        sanitized_title = ALPHANUM_PATTERN.sub("", title).lower()
+                        sanitized_title = sanitize_title(title)
                         if sanitized_title in self.config["hidden"]:
                             self.log.debug(
                                 f"{release_key} ({title}): skipping as it's hidden"
