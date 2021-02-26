@@ -11,13 +11,13 @@ from ruamel.yaml import YAML
 
 from helpers.cache_helper import Cache
 from helpers.constants import (
-    ALPHANUM_PATTERN,
     IGDB_GAME_MODE,
     IGDB_MULTIPLAYER_GAME_MODES,
     PLATFORMS,
 )
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
+from helpers.misc_helper import sanitize_title
 from helpers.network_helper import check_ip_is_authorized
 from version import VERSION
 
@@ -210,11 +210,11 @@ def build_config(args):
 
     # Lowercase and remove non-alphanumeric characters for better matching
     for i in range(len(config["hidden"])):
-        config["hidden"][i] = ALPHANUM_PATTERN.sub("", config["hidden"][i]).lower()
+        config["hidden"][i] = sanitize_title(config["hidden"][i])
 
     sanitized_metadata = {}
     for title in config["metadata"]:
-        sanitized_title = ALPHANUM_PATTERN.sub("", title).lower()
+        sanitized_title = sanitize_title(title)
         sanitized_metadata[sanitized_title] = config["metadata"][title]
 
     config["metadata"] = sanitized_metadata
