@@ -67,6 +67,9 @@ def compare_libraries():
 
     common_games = gog.get_common_games()
 
+    if not igdb.access_token:
+        igdb.get_access_token()
+
     for release_key in list(common_games.keys()):
         igdb.get_igdb_id(release_key)
         igdb.get_game_info(release_key)
@@ -370,7 +373,6 @@ if __name__ == "__main__":
     gog = gogDB(config, opts)
     common_games = gog.get_common_games()
 
-    # TODO: handle not getting an access token
     for release_key in list(common_games.keys()):
         igdb.get_igdb_id(release_key)
         igdb.get_game_info(release_key)
