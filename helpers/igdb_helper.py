@@ -140,14 +140,16 @@ class IGDBHelper:
                 self.api_failures += 1
                 return {}
 
-    def get_game_info(self, release_key):
+    def get_game_info(self, release_key, update=False):
         """Gets some game info for release_key.
         Returns True on success, False on failure
         """
         if release_key not in self.cache["igdb"]["games"]:
             self.log.error(f"{release_key} not in cache; use get_igdb_id() first")
             return False
-        elif "info" in self.cache["igdb"]["games"][release_key]:
+        elif "info" in self.cache["igdb"]["games"][release_key] and not (
+            update and not self.cache["igdb"]["games"][release_key]["info"]
+        ):
             self.log.debug(f"Found game info for {release_key} in cache")
             return True
         elif "igdb_id" not in self.cache["igdb"]["games"][release_key]:
@@ -164,11 +166,13 @@ class IGDBHelper:
         self.cache["igdb"]["games"][release_key]["info"] = response
         return True
 
-    def get_igdb_id(self, release_key):
+    def get_igdb_id(self, release_key, update=False):
         """Gets the IDGB ID for release_key"""
         if release_key not in self.cache["igdb"]["games"]:
             self.cache["igdb"]["games"][release_key] = {}
-        elif "igdb_id" in self.cache["igdb"]["games"][release_key]:
+        elif "igdb_id" in self.cache["igdb"]["games"][release_key] and not (
+            update and self.cache["igdb"]["games"][release_key]["igdb_id"] == 0
+        ):
             self.log.debug(
                 "Found IGDB ID {} for {} in cache".format(
                     self.cache["igdb"]["games"][release_key]["igdb_id"], release_key
@@ -202,7 +206,7 @@ class IGDBHelper:
             self.log.debug(f"{release_key} not found in IGDB, setting ID to 0")
             self.cache["igdb"]["games"][release_key]["igdb_id"] = 0
 
-    def get_multiplayer_info(self, release_key):
+    def get_multiplayer_info(self, release_key, update=False):
         """Gets the multiplayer info for release_key.
         Returns True on success, False on failure
         """
@@ -210,7 +214,9 @@ class IGDBHelper:
             self.log.error(f"{release_key} not in cache; use get_igdb_id() first")
             return False
 
-        elif "max_players" in self.cache["igdb"]["games"][release_key]:
+        elif "max_players" in self.cache["igdb"]["games"][release_key] and not (
+            update and self.cache["igdb"]["games"][release_key]["max_players"] == 0
+        ):
             self.log.debug(
                 "Found max players {} for release key {} in cache".format(
                     self.cache["igdb"]["games"][release_key]["max_players"],

@@ -211,6 +211,10 @@ def build_config(args):
     if "hidden" not in config:
         config["hidden"] = []
 
+    config["update_cache"] = False
+    if args.update_cache:
+        config["update_cache"] = True
+
     # Lowercase and remove non-alphanumeric characters for better matching
     for i in range(len(config["hidden"])):
         config["hidden"][i] = sanitize_title(config["hidden"][i])
@@ -320,6 +324,12 @@ def parse_cmdline(argv: List[str]) -> Any:
         "-u", "--userid", type=int, nargs="*", help="the GOG user IDs to compare"
     )
     parser.add_argument(
+        "-U",
+        "--update-cache",
+        action="store_true",
+        help="update cache entries that have incomplete info",
+    )
+    parser.add_argument(
         "-v", "--version", action="store_true", help="print version and exit"
     )
 
@@ -374,9 +384,9 @@ if __name__ == "__main__":
     common_games = gog.get_common_games()
 
     for release_key in list(common_games.keys()):
-        igdb.get_igdb_id(release_key)
-        igdb.get_game_info(release_key)
-        igdb.get_multiplayer_info(release_key)
+        igdb.get_igdb_id(release_key, config["update_cache"])
+        igdb.get_game_info(release_key, config["update_cache"])
+        igdb.get_multiplayer_info(release_key, config["update_cache"])
 
     cache.save()
     set_multiplayer_status(common_games, cache.data)
