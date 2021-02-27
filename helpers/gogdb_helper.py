@@ -339,14 +339,13 @@ class gogDB:
         else:
             caption_middle = "games in common between"
 
-        userids_excluded = ""
+        usernames_excluded = ""
         if self.config["user_ids_to_exclude"]:
-            userids_excluded = " and not owned by "
-            for userid in self.config["user_ids_to_exclude"]:
-                if "," not in userids_excluded:
-                    userids_excluded += self.config["users"][userid]["username"]
-                else:
-                    userids_excluded += f', {self.config["users"]["username"]}'
+            usernames = [
+                self.config["users"][userid]["username"]
+                for userid in self.config["user_ids_to_exclude"]
+            ]
+            usernames_excluded = f' and not owned by {", ".join(usernames)}'
 
         platforms_excluded = ""
         if self.config["exclude_platforms"]:
@@ -364,7 +363,7 @@ class gogDB:
             num_games,
             caption_middle,
             ", ".join(usernames),
-            userids_excluded,
+            usernames_excluded,
             platforms_excluded,
         )
 
