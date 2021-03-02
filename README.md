@@ -2,6 +2,23 @@
 
 [![CI](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml)
 
+* [Quick start](#quick-start)
+* [Introduction](#introduction)
+    * [Features](#features)
+    * [Screen shots](#screen-shots)
+        * [Front page](#front-page)
+        * [Game list](#game-list)
+        * [Game grid](#game-grid)
+* [Usage](#usage)
+    * [Command-line mode](#command-line-mode)
+    * [Server mode](#server-mode)
+* [Configuration](#configuration)
+* [Running in Docker](#running-in-docker)
+    * [Restricting access](#restricting-access)
+    * [Allowed CIDRs](#allowed-cidrs)
+    * [iptables](#iptables)
+* [Contributing](#contributing)
+
 ## Quick start
 
 Jump to [command-line mode](#command-line-mode) or [building with Docker](#running-in-docker).
@@ -11,6 +28,40 @@ Jump to [command-line mode](#command-line-mode) or [building with Docker](#runni
 gamatrix-gog is a tool to compare the games owned by several users, and list all the games they have in common. Since GOG Galaxy supports almost all major digital distribution platforms through integrations, it's a great service for aggregating most of your games in one place. gamatrix-gog uses the sqlite database that GOG Galaxy stores locally to pull its data from; this generally means you'll need to get a copy of the DB from each of your friends to compare them. The upside is that you don't need to do any authentication or worry about your friends making their profiles public; the downside is that the data is only as current as the DBs you have.
 
 The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool for comparing games. This project may eventually be integrated into it.
+
+### Features
+
+- compares the game libraries of an arbitrary number of users, with several filtering options
+- multiplayer support and max players autopopulated from IGDB when available
+- configuration via YAML file and/or command-line options
+- small (< 150MB) Docker container
+- IP whitelisting support
+
+### Screen shots
+
+#### Front page
+
+Select your search criteria from the front page:
+
+![Selection page](images/gamatrix-gog-front-page.png)
+
+#### Game list
+
+The `Game list` option provides a list of games owned by the selected users:
+
+![Game list](images/gamatrix-gog-game-list.png)
+
+- titles supporting fewer players than selected are greyed out
+- under `Installed`, a check mark indicates all players have the game installed; otherwise the names (or profile pics, if available) of the users that have the game installed are shown
+
+#### Game grid
+
+The Game grid option shows all games owned by the selected users
+
+![Game grid](images/gamatrix-gog-game-grid.png)
+
+- green cells indicate the user owns the game, red indicates they don't
+- a check mark means the user has the game installed
 
 ## Usage
 

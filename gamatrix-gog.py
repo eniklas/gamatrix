@@ -281,7 +281,11 @@ def set_multiplayer_status(game_list, cache):
                         reason = f"as game modes includes {mode}"
                         break
 
-        log.debug(f"{k}: multiplayer {multiplayer}, max players {max_players} {reason}")
+        log.debug(
+            "{} ({}): multiplayer {}, max players {} {}".format(
+                k, game_list[k]["title"], multiplayer, max_players, reason
+            )
+        )
         game_list[k]["multiplayer"] = multiplayer
         game_list[k]["max_players"] = max_players
 
