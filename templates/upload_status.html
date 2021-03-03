@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-size: x-large;
+        }
+    </style>
+    <title>
+        gamatrix-gog upload status
+    </title>
+</head>
+
+<body>
+    {% if success -%}
+    Upload was successful!
+    {%- else -%}
+    Upload failed: {{ reason }}
+    {%- endif -%}
+    <br><br>
+    <a href="/">Back to home page</a>
+</body>
+
+</html>
