@@ -52,7 +52,7 @@ def upload_file():
             message += "no file part in post request"
         else:
             # Until we use a prod server, files that are too large will just hang :-(
-            # https://flask.palletsprojects.com/en/1.1.x/patterns/fileuploads
+            # See the flask site above for deets
             file = request.files["file"]
 
             # If user does not select file, the browser submits an empty part without filename
