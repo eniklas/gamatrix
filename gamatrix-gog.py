@@ -34,6 +34,7 @@ def root():
     return render_template(
         "index.html",
         users=config["users"],
+        uploads_enabled=config["uploads_enabled"],
         platforms=PLATFORMS,
         version=VERSION,
     )
@@ -263,12 +264,14 @@ def build_config(args):
         config["db_list"].append(
             "{}/{}".format(config["db_path"], config["users"][userid]["db"])
         )
-        # Convert CIDRs into IPv4Network objects
+        # Convert CIDRs into IPv4Network objects; if there are none, disable uploads
+        config["uploads_enabled"] = False
         if "cidrs" in config["users"][userid]:
             for i in range(len(config["users"][userid]["cidrs"])):
                 config["users"][userid]["cidrs"][i] = IPv4Network(
                     config["users"][userid]["cidrs"][i]
                 )
+                config["uploads_enabled"] = True
 
     for db in args.db:
         if os.path.abspath(db) not in config["db_list"]:
