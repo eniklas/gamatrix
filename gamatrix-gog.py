@@ -6,14 +6,17 @@ import sys
 from typing import Any, List
 
 from flask import Flask, render_template, request
-from ipaddress import IPv4Network
+from ipaddress import IPv4Address, IPv4Network
 from ruamel.yaml import YAML
+from werkzeug.utils import secure_filename
 
 from helpers.cache_helper import Cache
 from helpers.constants import (
     IGDB_GAME_MODE,
     IGDB_MULTIPLAYER_GAME_MODES,
     PLATFORMS,
+    UPLOAD_ALLOWED_EXTENSIONS,
+    UPLOAD_MAX_SIZE,
 )
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
@@ -36,9 +39,69 @@ def root():
     )
 
 
+# https://flask.palletsprojects.com/en/1.1.x/patterns/fileuploads/
+@app.route("/upload", methods=["GET", "POST"])
+def upload_file():
+    check_ip_is_authorized(request.remote_addr, config["allowed_cidrs"])
+
+    if request.method == "POST":
+        message = "Upload failed: "
+
+        # Check if the post request has the file part
+        if "file" not in request.files:
+            message += "no file part in post request"
+        else:
+            # Until we use a prod server, files that are too large will just hang :-(
+            # See the flask site above for deets
+            file = request.files["file"]
+
+            # If user does not select file, the browser submits an empty part without filename
+            if file.filename == "":
+                message += "no file selected"
+            elif not allowed_file(file.filename):
+                message += "unsupported file extension"
+            else:
+                # Name the file according to who uploaded it
+                target_filename = get_db_name_from_ip(request.remote_addr)
+                if target_filename is None:
+                    message += "failed to determine target filename from your IP; is it in the config file?"
+                else:
+                    log.info(f"Uploading {target_filename} from {request.remote_addr}")
+                    filename = secure_filename(target_filename)
+
+                    # Back up the previous file
+                    full_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                    backup_filename = f"{filename}.bak"
+                    full_backup_path = os.path.join(
+                        app.config["UPLOAD_FOLDER"], backup_filename
+                    )
+
+                    if os.path.exists(full_path):
+                        os.replace(full_path, full_backup_path)
+
+                    file.save(full_path)
+                    message = f"Great success! File uploaded as {filename}"
+
+        return render_template("upload_status.html", message=message)
+    else:
+        return """
+        <!doctype html>
+        <title>Upload new File</title>
+        <h1>Upload new File</h1>
+        <form method=post enctype=multipart/form-data>
+        <input type=file name=file>
+        <input type=submit value=Upload>
+        </form>
+        """
+
+
 @app.route("/compare", methods=["GET", "POST"])
 def compare_libraries():
     check_ip_is_authorized(request.remote_addr, config["allowed_cidrs"])
+
+    if request.args["option"] == "upload":
+        return upload_file()
+
     opts = init_opts()
 
     # Check boxes get passed in as "on" if checked, or not at all if unchecked
@@ -62,8 +125,10 @@ def compare_libraries():
     if request.args["option"] == "grid":
         gog.config["all_games"] = True
         template = "game_grid.html"
-    else:
+    elif request.args["option"] == "list":
         template = "game_list.html"
+    else:
+        return root()
 
     common_games = gog.get_common_games()
 
@@ -93,6 +158,27 @@ def compare_libraries():
         caption=gog.get_caption(len(common_games)),
         show_keys=opts["show_keys"],
         platforms=PLATFORMS,
+    )
+
+
+def get_db_name_from_ip(ip):
+    """Returns the DB file name based on the IP of the user"""
+    ip = IPv4Address(ip)
+
+    for user in config["users"]:
+        if "cidrs" in config["users"][user]:
+            for cidr in config["users"][user]["cidrs"]:
+                if ip in cidr:
+                    return config["users"][user]["db"]
+
+    return None
+
+
+def allowed_file(filename):
+    """Returns True if filename has an allowed extension"""
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in UPLOAD_ALLOWED_EXTENSIONS
     )
 
 
@@ -177,6 +263,12 @@ def build_config(args):
         config["db_list"].append(
             "{}/{}".format(config["db_path"], config["users"][userid]["db"])
         )
+        # Convert CIDRs into IPv4Network objects
+        if "cidrs" in config["users"][userid]:
+            for i in range(len(config["users"][userid]["cidrs"])):
+                config["users"][userid]["cidrs"][i] = IPv4Network(
+                    config["users"][userid]["cidrs"][i]
+                )
 
     for db in args.db:
         if os.path.abspath(db) not in config["db_list"]:
@@ -368,6 +460,8 @@ if __name__ == "__main__":
 
     if "mode" in config and config["mode"] == "server":
         # Start Flask to run in server mode until killed
+        app.config["UPLOAD_FOLDER"] = config["db_path"]
+        app.config["MAX_CONTENT_LENGTH"] = UPLOAD_MAX_SIZE
         app.run(host=config["interface"], port=config["port"])
         sys.exit(0)
 
