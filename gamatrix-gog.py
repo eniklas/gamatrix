@@ -68,7 +68,18 @@ def upload_file():
                 else:
                     log.info(f"Uploading {target_filename} from {request.remote_addr}")
                     filename = secure_filename(target_filename)
-                    file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
+                    # Back up the previous file
+                    full_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+                    backup_filename = f"{filename}.bak"
+                    full_backup_path = os.path.join(
+                        app.config["UPLOAD_FOLDER"], backup_filename
+                    )
+
+                    if os.path.exists(full_path):
+                        os.replace(full_path, full_backup_path)
+
+                    file.save(full_path)
                     message = f"Great success! File uploaded as {filename}"
 
         return render_template("upload_status.html", message=message)
