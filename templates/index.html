@@ -51,10 +51,12 @@
                     <input type="radio" id="Game grid" name="option" value="grid">
                     <label for="grid">Game grid</label><br>
                 </td>
+                {%- if uploads_enabled -%}
                 <td valign="top">
                     <input type="radio" id="Upload DB" name="option" value="upload">
                     <label for="upload">Upload DB</label><br>
                 </td>
+                {%- endif -%}
             </tr>
             <tr>
                 <td></td>
