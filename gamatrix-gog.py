@@ -45,38 +45,33 @@ def upload_file():
     check_ip_is_authorized(request.remote_addr, config["allowed_cidrs"])
 
     if request.method == "POST":
-        success = False
-        reason = ""
+        message = "Upload failed: "
 
         # Check if the post request has the file part
         if "file" not in request.files:
-            reason = "no file part in post request"
+            message += "no file part in post request"
         else:
-            # FIXME: this exception doesn't happen; a file too large will just make it hang
-            try:
-                file = request.files["file"]
-            except Flask.RequestEntityTooLarge:
-                reason = f"file is larger than the max size of {UPLOAD_MAX_SIZE} bytes"
-                return render_template(
-                    "upload_status.html", success=success, reason=reason
-                )
+            # Until we use a prod server, files that are too large will just hang :-(
+            # https://flask.palletsprojects.com/en/1.1.x/patterns/fileuploads
+            file = request.files["file"]
+
             # If user does not select file, the browser submits an empty part without filename
             if file.filename == "":
-                reason = "no file selected"
+                message += "no file selected"
             elif not allowed_file(file.filename):
-                reason = "unsupported file extension"
+                message += "unsupported file extension"
             else:
                 # Name the file according to who uploaded it
                 target_filename = get_db_name_from_ip(request.remote_addr)
                 if target_filename is None:
-                    reason = "failed to determine target filename from your IP; is it in the config file?"
+                    message += "failed to determine target filename from your IP; is it in the config file?"
                 else:
                     log.info(f"Uploading {target_filename} from {request.remote_addr}")
                     filename = secure_filename(target_filename)
                     file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-                    success = True
+                    message = f"Great success! File uploaded as {filename}"
 
-        return render_template("upload_status.html", success=success, reason=reason)
+        return render_template("upload_status.html", message=message)
     else:
         return """
         <!doctype html>
