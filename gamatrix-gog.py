@@ -6,7 +6,7 @@ import sys
 from typing import Any, List
 
 from flask import Flask, render_template, request
-from ipaddress import IPv4Network
+from ipaddress import IPv4Address, IPv4Network
 from ruamel.yaml import YAML
 from werkzeug.utils import secure_filename
 
@@ -163,7 +163,7 @@ def compare_libraries():
 
 def get_db_name_from_ip(ip):
     """Returns the DB file name based on the IP of the user"""
-    ip = IPv4Network(ip)
+    ip = IPv4Address(ip)
 
     for user in config["users"]:
         if "cidrs" in config["users"][user]:
