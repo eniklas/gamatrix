@@ -20,12 +20,12 @@
 
 <body style="background-color: rgb(50, 50, 50); color: lightgray;">
     <h2>gamatrix-gog</h2>
-    <table style="width:500px;">
+    <table style="width:650px;">
         <form action="/compare">
             <tr>
                 <td>
                     <input type="radio" id="Game list" name="option" value="list" checked>
-                    <label for="compare">Game list</label><br>
+                    <label for="list">Game list</label><br>
                     <div class="sub1">
                         <blockquote>
                             {% for user in users -%}
@@ -50,6 +50,10 @@
                 <td valign="top">
                     <input type="radio" id="Game grid" name="option" value="grid">
                     <label for="grid">Game grid</label><br>
+                </td>
+                <td valign="top">
+                    <input type="radio" id="Upload DB" name="option" value="upload">
+                    <label for="upload">Upload DB</label><br>
                 </td>
             </tr>
             <tr>
@@ -86,9 +90,6 @@
             </tr>
         </form>
     </table>
-    <form action="/upload">
-        <input type="submit" value="Upload DB" style="font-size:x-large; height:35px; width:120">
-    </form>
 </body>
 <p style=font-size:small;>
     v{{ version }}

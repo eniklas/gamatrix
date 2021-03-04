@@ -87,6 +87,10 @@ def upload_file():
 @app.route("/compare", methods=["GET", "POST"])
 def compare_libraries():
     check_ip_is_authorized(request.remote_addr, config["allowed_cidrs"])
+
+    if request.args["option"] == "upload":
+        return upload_file()
+
     opts = init_opts()
 
     # Check boxes get passed in as "on" if checked, or not at all if unchecked
@@ -110,8 +114,10 @@ def compare_libraries():
     if request.args["option"] == "grid":
         gog.config["all_games"] = True
         template = "game_grid.html"
-    else:
+    elif request.args["option"] == "list":
         template = "game_list.html"
+    else:
+        return root()
 
     common_games = gog.get_common_games()
 
