@@ -447,8 +447,7 @@ if __name__ == "__main__":
 
     if "mode" in config and config["mode"] == "server":
         # Start Flask to run in server mode until killed
-        # app.config["UPLOAD_FOLDER"] = config["db_path"]
-        app.config["UPLOAD_FOLDER"] = "/tmp/dbs"
+        app.config["UPLOAD_FOLDER"] = config["db_path"]
         app.config["MAX_CONTENT_LENGTH"] = UPLOAD_MAX_SIZE
         app.run(host=config["interface"], port=config["port"])
         sys.exit(0)

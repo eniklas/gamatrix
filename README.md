@@ -13,6 +13,7 @@
     * [Command-line mode](#command-line-mode)
     * [Server mode](#server-mode)
 * [Configuration](#configuration)
+    * [IGDB](#igdb)
 * [Running in Docker](#running-in-docker)
     * [Restricting access](#restricting-access)
     * [Allowed CIDRs](#allowed-cidrs)
@@ -25,7 +26,7 @@ Jump to [command-line mode](#command-line-mode) or [building with Docker](#runni
 
 ## Introduction
 
-gamatrix-gog is a tool to compare the games owned by several users, and list all the games they have in common. Since GOG Galaxy supports almost all major digital distribution platforms through integrations, it's a great service for aggregating most of your games in one place. gamatrix-gog uses the sqlite database that GOG Galaxy stores locally to pull its data from; this generally means you'll need to get a copy of the DB from each of your friends to compare them. The upside is that you don't need to do any authentication or worry about your friends making their profiles public; the downside is that the data is only as current as the DBs you have.
+gamatrix-gog is a tool to compare the games owned by several users, and list all the games they have in common. Since GOG Galaxy supports almost all major digital distribution platforms through integrations, it's a great service for aggregating most of your games in one place. gamatrix-gog uses the sqlite database that GOG Galaxy stores locally to pull its data from; users can upload their DBs via the main page.
 
 The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool for comparing games. This project may eventually be integrated into it.
 
@@ -36,6 +37,7 @@ The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool
 - configuration via YAML file and/or command-line options
 - small (< 150MB) Docker container
 - IP whitelisting support
+- ability to upload DBs
 
 ### Screen shots
 
@@ -44,6 +46,10 @@ The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool
 Select your search criteria from the front page:
 
 ![Selection page](images/gamatrix-gog-front-page.png)
+
+#### Upload DB
+
+Upload a new GOG DB. Only files with a `.db` extension are allowed; the requesting IP is used to identify the uploader and name the target file correctly.
 
 #### Game list
 
@@ -87,6 +93,7 @@ optional arguments:
   -s, --server          run in server mode
   -u [USERID [USERID ...]], --userid [USERID [USERID ...]]
                         the GOG user IDs to compare
+  -U, --update-cache    update cache entries that have incomplete info
   -v, --version         print version and exit
 ```
 
@@ -103,6 +110,8 @@ optional arguments:
 `-s/--server`: run in server mode. This will use Flask to serve a small web page where you can select the options you want, and will output the results there.
 
 `-u/--userid`: a list of GOG user IDs to compare. The IDs must be in the [config file](#configuration). You can find the user ID by running `sqlite3 /path/to/galaxy-2.0.db "select * from Users;"`. If you use this option, you can't list DBs; they must be provided for the user IDs in the config file.
+
+`-U/--update-cache`: pull info from IGDB for titles that previously got incomplete data, e.g. no info on multiplayer support, or no max player data. For instance, if you contribute max player info for a title in IGDB, once it's approved you can use this to pull it into your cache.
 
 ### Command-line mode
 
@@ -141,6 +150,12 @@ Server mode is the intended use case, and supports all options, unlike CLI mode,
 ## Configuration
 
 A YAML file provides the runtime configuration; by default, this is `config.yaml` in the same directory as the script, but this can be overridden with the `-c` option. See the annotated [sample file](config-sample.yaml) or the [Windows flavour of this file](config-sample-windows.yaml) for an explanation of the format.
+
+### IGDB
+
+[IGDB](https://www.igdb.com) will be used to pull multiplayer info if you have the needed credentials. See [this page](https://api-docs.igdb.com/#account-creation) for instructions on getting a client ID and secret, and put these in your config file as `igdb_client_id` and `igdb_client_secret`. Once this is set up, IGDB will be checked for all titles the first time they're processed, and if available, will categorize the title as multiplayer or single player, and set the maximum players. Note that this takes about a second per title, so the first time you use it, it can take a long time. The data is saved to disk in a cache file, which is read each time gamatrix-gog is launched, so once the cache is populated it's quite fast.
+
+gamatrix-gog respects the IGDB rate limit and auto-renews your access token, so once you set your ID and secret in your config you should be good to go.
 
 ## Running in Docker
 

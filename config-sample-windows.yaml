@@ -32,9 +32,18 @@ users:
   12345:
     username: Bob
     db: bob-galaxy-2.0.db
+    # Profile pic in static/ dir
+    pic: bob.png
+    # The CIDRs the user's request can come from (public IP for external users)
+    cidrs:
+      - 127.0.0.1/32
+      - 192.168.1.0/24
   56789:
     username: Doug
     db: doug-galaxy-2.0.db
+    pic: doug.png
+    cidrs:
+      - 1.2.3.4/32
 metadata:
   # Each title should match exactly as listed with --all-games; normal YAML quoting rules apply
   "7 Days to Die":
