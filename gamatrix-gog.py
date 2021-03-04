@@ -166,8 +166,10 @@ def get_db_name_from_ip(ip):
     ip = IPv4Network(ip)
 
     for user in config["users"]:
-        if ip in config["users"][user]["cidrs"]:
-            return config["users"][user]["db"]
+        if "cidrs" in config["users"][user]:
+            for cidr in config["users"][user]["cidrs"]:
+                if ip in cidr:
+                    return config["users"][user]["db"]
 
     return None
 
