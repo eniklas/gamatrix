@@ -6,7 +6,7 @@ Show and compare between games owned by multiple users.
 Usage:
     gamatrix-gog.py --help
     gamatrix-gog.py --version
-    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--include-single-player] [--port=PORT] [--server] [--userid=UID ...] [<db> ... ]
+    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...] [<db> ... ]
 
 Options:
   -h, --help                   show this help message and exit
@@ -18,6 +18,7 @@ Options:
   -I, --include-single-player  include single player games
   -p PORT, --port=PORT         the network port to use if running in server mode; default is 8080.
   -s, --server                 run in server mode
+  -U, --update-cache           Force a cache-update even when the cache is not dirty.
   -u USERID, --userid=USERID   the GOG user IDs to compare, there can be multiples of this switch
 
 Positional Arguments:
@@ -27,7 +28,7 @@ Positional Arguments:
 import logging
 import os
 import sys
-from ipaddress import IPv4Network
+from ipaddress import IPv4Address, IPv4Network
 from typing import Any, Dict, List
 
 import docopt
@@ -35,8 +36,8 @@ from flask import Flask, render_template, request
 from ruamel.yaml import YAML
 from werkzeug.utils import secure_filename
 
-from helpers.cache_helper import Cache
 from helpers import constants
+from helpers.cache_helper import Cache
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
 from helpers.misc_helper import sanitize_title
@@ -54,7 +55,7 @@ def root():
         "index.html",
         users=config["users"],
         uploads_enabled=config["uploads_enabled"],
-        platforms=PLATFORMS,
+        platforms=constants.PLATFORMS,
         version=VERSION,
     )
 
@@ -178,7 +179,7 @@ def compare_libraries():
         users=opts["user_ids_to_compare"],
         caption=gog.get_caption(len(common_games)),
         show_keys=opts["show_keys"],
-        platforms=PLATFORMS,
+        platforms=constants.PLATFORMS,
     )
 
 
@@ -360,15 +361,17 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
     if "hidden" not in config:
         config["hidden"] = []
 
+    config["update_cache"] = False
+    if args.get("--update-cache", False):
+        config["update_cache"] = True
+
     # Lowercase and remove non-alphanumeric characters for better matching
     for i in range(len(config["hidden"])):
-        config["hidden"][i] = constants.ALPHANUM_PATTERN.sub(
-            "", config["hidden"][i]
-        ).lower()
+        config["hidden"][i] = sanitize_title(config["hidden"][i])
 
     sanitized_metadata = {}
     for title in config["metadata"]:
-        sanitized_title = constants.ALPHANUM_PATTERN.sub("", title).lower()
+        sanitized_title = sanitize_title(title)
         sanitized_metadata[sanitized_title] = config["metadata"][title]
 
     config["metadata"] = sanitized_metadata
