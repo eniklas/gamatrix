@@ -49,7 +49,12 @@ Select your search criteria from the front page:
 
 #### Upload DB
 
-Upload a new GOG DB. Only files with a `.db` extension are allowed; the requesting IP is used to identify the uploader and name the target file correctly.
+Upload a new GOG DB. Only files with a `.db` extension are allowed; the requesting IP is used to identify the uploader and name the target file correctly. To upload from a script, you can download [curl for Windows](https://curl.se/windows/) and run the following batch script, replacing `your-gamatrix-gog-url` with your server's DNS name or IP address:
+
+```bat
+curl -F file=@"C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db" http://<your-gamatrix-gog-url>/compare?option=upload
+pause
+```
 
 #### Game list
 
