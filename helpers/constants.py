@@ -3,10 +3,11 @@ UPLOAD_ALLOWED_EXTENSIONS = ["db"]
 UPLOAD_MAX_SIZE = 100 * 1024 * 1024
 
 # Full mapping is at https://api-docs.igdb.com/#external-game-enums,
-# but only steam actually works; the other platforms' IDs don't match
-# what's in IGDB
+# but only Steam and GOG actually work; the other platforms' IDs
+# don't match what's in IGDB
 IGDB_PLATFORM_ID = {
     "steam": 1,
+    "gog": 5,
 }
 # The mapping of game modes from https://api-docs.igdb.com/#game-mode
 IGDB_GAME_MODE = {

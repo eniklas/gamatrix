@@ -69,7 +69,7 @@ class gogDB:
 
         return user
 
-    def id(self, name):
+    def get_gamepiecetype_id(self, name):
         """ Returns the numeric ID for the specified type """
         return self.cursor.execute(
             'SELECT id FROM GamePieceTypes WHERE type="{}"'.format(name)
@@ -88,7 +88,9 @@ class gogDB:
         og_references = [""" FROM MasterList, MasterList AS PLATFORMS"""]
         og_conditions = [
             """ WHERE ((MasterList.gamePieceTypeId={}) OR (MasterList.gamePieceTypeId={})) AND ((PLATFORMS.releaseKey=MasterList.releaseKey) AND (PLATFORMS.gamePieceTypeId={}))""".format(
-                self.id("originalTitle"), self.id("title"), self.id("allGameReleases")
+                self.get_gamepiecetype_id("originalTitle"),
+                self.get_gamepiecetype_id("title"),
+                self.get_gamepiecetype_id("allGameReleases"),
             )
         ]
         og_order = """ ORDER BY title;"""
@@ -111,6 +113,40 @@ class gogDB:
             self.cursor.execute(query)
 
         return self.cursor.fetchall()
+
+    def get_igdb_release_key(self, gamepiecetype_id, release_key):
+        """
+        Returns the release key to look up in IGDB. Steam keys are the
+        most reliable to look up; GOG keys are about 50% reliable;
+        other platforms will never work. So, our order of preference is:
+          - Steam
+          - GOG
+          - release_key
+        """
+        query = f'SELECT * FROM GamePieces WHERE releaseKey="{release_key}" and gamePieceTypeId = {gamepiecetype_id}'
+        self.log.debug("Running query: {}".format(query))
+        self.cursor.execute(query)
+
+        result = json.loads(self.cursor.fetchall()[0][-1])
+        self.log.debug(f"{release_key}: all release keys: {result}")
+        if "releases" not in result:
+            self.log.debug(
+                f'{release_key}: "releases" not found in result for release keys'
+            )
+            return release_key
+
+        for k in result["releases"]:
+            # Sometimes there's a steam_1234 and steam_steam_1234, but always in that order
+            if k.startswith("steam_") and not k.startswith("steam_steam_"):
+                return k
+
+        # If we found no Steam key, look for a GOG key
+        for k in result["releases"]:
+            if k.startswith("gog_"):
+                return k
+
+        # If we found neither Steam nor GOG keys, just return the key we were given
+        return release_key
 
     def get_installed_games(self):
         """Returns a list of release keys installed per the current DB"""
@@ -147,6 +183,7 @@ class gogDB:
             self.use_db(db_file)
             userid = self.get_user()[0]
             self.owners_to_match.append(userid)
+            self.gamepiecetype_id = self.get_gamepiecetype_id("allGameReleases")
             owned_games = self.get_owned_games()
             installed_games = self.get_installed_games()
             self.log.debug("owned games = {}".format(owned_games))
@@ -179,6 +216,20 @@ class gogDB:
                             "owners": [],
                             "installed": [],
                         }
+
+                        # Get the best key to use for IGDB
+                        if platform == "steam":
+                            game_list[release_key]["igdb_key"] = release_key
+                        else:
+                            game_list[release_key][
+                                "igdb_key"
+                            ] = self.get_igdb_release_key(
+                                self.gamepiecetype_id, release_key
+                            )
+
+                        self.log.debug(
+                            f'{release_key}: using {game_list[release_key]["igdb_key"]} for IGDB'
+                        )
 
                         # Add metadata from the config file if we have any
                         if sanitized_title in self.config["metadata"]:
