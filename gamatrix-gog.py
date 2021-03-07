@@ -136,10 +136,11 @@ def compare_libraries():
     if not igdb.access_token:
         igdb.get_access_token()
 
-    for release_key in list(common_games.keys()):
-        igdb.get_igdb_id(release_key)
-        igdb.get_game_info(release_key)
-        igdb.get_multiplayer_info(release_key)
+    for k in list(common_games.keys()):
+        log.debug(f'{k}: using igdb_key {common_games[k]["igdb_key"]}')
+        igdb.get_igdb_id(common_games[k]["igdb_key"])
+        igdb.get_game_info(common_games[k]["igdb_key"])
+        igdb.get_multiplayer_info(common_games[k]["igdb_key"])
 
     cache.save()
     set_multiplayer_status(common_games, cache.data)
@@ -484,10 +485,11 @@ if __name__ == "__main__":
     gog = gogDB(config, opts)
     common_games = gog.get_common_games()
 
-    for release_key in list(common_games.keys()):
-        igdb.get_igdb_id(release_key, config["update_cache"])
-        igdb.get_game_info(release_key, config["update_cache"])
-        igdb.get_multiplayer_info(release_key, config["update_cache"])
+    for k in list(common_games.keys()):
+        log.debug(f'{k}: using igdb_key {common_games[k]["igdb_key"]}')
+        igdb.get_igdb_id(common_games[k]["igdb_key"], config["update_cache"])
+        igdb.get_game_info(common_games[k]["igdb_key"], config["update_cache"])
+        igdb.get_multiplayer_info(common_games[k]["igdb_key"], config["update_cache"])
 
     cache.save()
     set_multiplayer_status(common_games, cache.data)

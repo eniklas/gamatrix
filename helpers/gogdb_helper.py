@@ -112,6 +112,41 @@ class gogDB:
 
         return self.cursor.fetchall()
 
+    def get_igdb_release_key(self, release_key):
+        """
+        Returns the release key to look up in IGDB. Steam keys are the
+        most reliable to look up; GOG keys are about 50% reliable;
+        other platforms will never work. So, our order of preference is:
+          - Steam
+          - GOG
+          - release_key
+        """
+
+        query = f'SELECT * FROM GamePieces WHERE releaseKey="{release_key}" and gamePieceTypeId = {self.id("allGameReleases")}'
+        self.log.debug("Running query: {}".format(query))
+        self.cursor.execute(query)
+
+        result = json.loads(self.cursor.fetchall()[0][-1])
+        self.log.debug(f"{release_key}: all release keys: {result}")
+        if "releases" not in result:
+            self.log.debug(
+                f'{release_key}: "releases" not found in result for release keys'
+            )
+            return release_key
+
+        for k in result["releases"]:
+            # Sometimes there's a steam_1234 and steam_steam_1234, but always in that order
+            if k.startswith("steam_") and not k.startswith("steam_steam_"):
+                return k
+
+        # If we found no Steam key, look for a GOG key
+        for k in result["releases"]:
+            if k.startswith("gog_"):
+                return k
+
+        # If we found neither Steam nor GOG keys, just return the key we were given
+        return release_key
+
     def get_installed_games(self):
         """Returns a list of release keys installed per the current DB"""
 
@@ -179,6 +214,18 @@ class gogDB:
                             "owners": [],
                             "installed": [],
                         }
+
+                        # Get the best key to use for IGDB
+                        if platform == "steam":
+                            game_list[release_key]["igdb_key"] = release_key
+                        else:
+                            game_list[release_key][
+                                "igdb_key"
+                            ] = self.get_igdb_release_key(release_key)
+
+                        self.log.debug(
+                            f'{release_key}: using {game_list[release_key]["igdb_key"]} for IGDB'
+                        )
 
                         # Add metadata from the config file if we have any
                         if sanitized_title in self.config["metadata"]:
