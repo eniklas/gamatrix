@@ -358,7 +358,7 @@ def set_multiplayer_status(game_list, cache):
             log.warning(f"{k}: {reason}")
 
         elif cache["igdb"]["games"][igdb_key]["max_players"] > 0:
-            max_players = cache["igdb"]["games"][k]["max_players"]
+            max_players = cache["igdb"]["games"][igdb_key]["max_players"]
             reason = "from IGDB cache"
             multiplayer = cache["igdb"]["games"][igdb_key]["max_players"] > 1
 
