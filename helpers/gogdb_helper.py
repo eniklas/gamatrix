@@ -69,7 +69,7 @@ class gogDB:
 
         return user
 
-    def id(self, name):
+    def get_gamepiecetype_id(self, name):
         """ Returns the numeric ID for the specified type """
         return self.cursor.execute(
             'SELECT id FROM GamePieceTypes WHERE type="{}"'.format(name)
@@ -88,7 +88,9 @@ class gogDB:
         og_references = [""" FROM MasterList, MasterList AS PLATFORMS"""]
         og_conditions = [
             """ WHERE ((MasterList.gamePieceTypeId={}) OR (MasterList.gamePieceTypeId={})) AND ((PLATFORMS.releaseKey=MasterList.releaseKey) AND (PLATFORMS.gamePieceTypeId={}))""".format(
-                self.id("originalTitle"), self.id("title"), self.id("allGameReleases")
+                self.get_gamepiecetype_id("originalTitle"),
+                self.get_gamepiecetype_id("title"),
+                self.get_gamepiecetype_id("allGameReleases"),
             )
         ]
         og_order = """ ORDER BY title;"""
@@ -112,7 +114,7 @@ class gogDB:
 
         return self.cursor.fetchall()
 
-    def get_igdb_release_key(self, release_key):
+    def get_igdb_release_key(self, gamepiecetype_id, release_key):
         """
         Returns the release key to look up in IGDB. Steam keys are the
         most reliable to look up; GOG keys are about 50% reliable;
@@ -121,8 +123,7 @@ class gogDB:
           - GOG
           - release_key
         """
-
-        query = f'SELECT * FROM GamePieces WHERE releaseKey="{release_key}" and gamePieceTypeId = {self.id("allGameReleases")}'
+        query = f'SELECT * FROM GamePieces WHERE releaseKey="{release_key}" and gamePieceTypeId = {gamepiecetype_id}'
         self.log.debug("Running query: {}".format(query))
         self.cursor.execute(query)
 
@@ -182,6 +183,7 @@ class gogDB:
             self.use_db(db_file)
             userid = self.get_user()[0]
             self.owners_to_match.append(userid)
+            self.gamepiecetype_id = self.get_gamepiecetype_id("allGameReleases")
             owned_games = self.get_owned_games()
             installed_games = self.get_installed_games()
             self.log.debug("owned games = {}".format(owned_games))
@@ -221,7 +223,9 @@ class gogDB:
                         else:
                             game_list[release_key][
                                 "igdb_key"
-                            ] = self.get_igdb_release_key(release_key)
+                            ] = self.get_igdb_release_key(
+                                self.gamepiecetype_id, release_key
+                            )
 
                         self.log.debug(
                             f'{release_key}: using {game_list[release_key]["igdb_key"]} for IGDB'
