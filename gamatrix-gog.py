@@ -390,7 +390,6 @@ if __name__ == "__main__":
     log = logging.getLogger()
 
     opts = parse_cmdline(sys.argv[1:])
-    config = build_config(opts)
 
     if opts.get("--debug", False):
         log.setLevel(logging.DEBUG)
