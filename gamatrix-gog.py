@@ -337,6 +337,7 @@ def set_multiplayer_status(game_list, cache):
       - IGDB game modes includes a multiplayer mode
     """
     for k in game_list:
+        igdb_key = game_list[k]["igdb_key"]
         max_players = 0
         multiplayer = False
         reason = "as we have no max player info and can't infer from game modes"
@@ -346,40 +347,42 @@ def set_multiplayer_status(game_list, cache):
             reason = "from config file"
             multiplayer = max_players > 1
 
-        if k not in cache["igdb"]["games"]:
-            reason = "no IGDB info in cache, did you call get_igdb_id()?"
+        elif igdb_key not in cache["igdb"]["games"]:
+            reason = (
+                f"no IGDB info in cache for {igdb_key}, did you call get_igdb_id()?"
+            )
             log.warning(f"{k}: {reason}")
 
-        elif "max_players" not in cache["igdb"]["games"][k]:
-            reason = "IGDB max_players not found, did you call get_multiplayer_info()?"
+        elif "max_players" not in cache["igdb"]["games"][igdb_key]:
+            reason = f"IGDB {igdb_key} max_players not found, did you call get_multiplayer_info()?"
             log.warning(f"{k}: {reason}")
 
-        elif cache["igdb"]["games"][k]["max_players"] > 0:
+        elif cache["igdb"]["games"][igdb_key]["max_players"] > 0:
             max_players = cache["igdb"]["games"][k]["max_players"]
             reason = "from IGDB cache"
-            multiplayer = True
+            multiplayer = cache["igdb"]["games"][igdb_key]["max_players"] > 1
 
         # We don't have max player info, so try to infer it from game modes
         elif (
-            "info" in cache["igdb"]["games"][k]
-            and cache["igdb"]["games"][k]["info"]
-            and "game_modes" in cache["igdb"]["games"][k]["info"][0]
+            "info" in cache["igdb"]["games"][igdb_key]
+            and cache["igdb"]["games"][igdb_key]["info"]
+            and "game_modes" in cache["igdb"]["games"][igdb_key]["info"][0]
         ):
-            if cache["igdb"]["games"][k]["info"][0]["game_modes"] == [
+            if cache["igdb"]["games"][igdb_key]["info"][0]["game_modes"] == [
                 IGDB_GAME_MODE["singleplayer"]
             ]:
                 max_players = 1
                 reason = "as IGDB has single player as the only game mode"
             else:
-                for mode in cache["igdb"]["games"][k]["info"][0]["game_modes"]:
+                for mode in cache["igdb"]["games"][igdb_key]["info"][0]["game_modes"]:
                     if mode in IGDB_MULTIPLAYER_GAME_MODES:
                         multiplayer = True
                         reason = f"as game modes includes {mode}"
                         break
 
         log.debug(
-            "{} ({}): multiplayer {}, max players {} {}".format(
-                k, game_list[k]["title"], multiplayer, max_players, reason
+            "{} ({}, IGDB key {}): multiplayer {}, max players {} {}".format(
+                k, game_list[k]["title"], igdb_key, multiplayer, max_players, reason
             )
         )
         game_list[k]["multiplayer"] = multiplayer
