@@ -26,7 +26,7 @@ Jump to [command-line mode](#command-line-mode) or [building with Docker](#runni
 
 ## Introduction
 
-gamatrix-gog is a tool to compare the games owned by several users, and list all the games they have in common. Since GOG Galaxy supports almost all major digital distribution platforms through integrations, it's a great service for aggregating most of your games in one place. gamatrix-gog uses the sqlite database that GOG Galaxy stores locally to pull its data from; users can upload their DBs via the main page.
+gamatrix-gog is a tool to compare the games owned by several users, and list all the games they have in common. Since [GOG Galaxy](https://www.gog.com/galaxy) supports almost all major digital distribution platforms through integrations, it's a great service for aggregating most of your games in one place. gamatrix-gog uses the sqlite database that GOG Galaxy stores locally to pull its data from; users can upload their DBs via the main page.
 
 The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool for comparing games. This project may eventually be integrated into it.
 
