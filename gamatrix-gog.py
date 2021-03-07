@@ -219,63 +219,6 @@ def init_opts():
     }
 
 
-def set_multiplayer_status(game_list, cache):
-    """
-    Sets the max_players for each release key; precedence is:
-      - max_players in the config yaml
-      - max_players from IGDB
-      - 1 if the above aren't available and the only game mode from IGDB is single player
-      - 0 (unknown) otherwise
-    Also sets multiplayer to True if any of the of the following are true:
-      - max_players > 1
-      - IGDB game modes includes a multiplayer mode
-    """
-    for k in game_list:
-        max_players = 0
-        multiplayer = False
-        reason = "as we have no max player info and can't infer from game modes"
-
-        if "max_players" in game_list[k]:
-            max_players = game_list[k]["max_players"]
-            reason = "from config file"
-            multiplayer = max_players > 1
-
-        if k not in cache["igdb"]["games"]:
-            reason = "no IGDB info in cache, did you call get_igdb_id()?"
-            log.warning(f"{k}: {reason}")
-
-        elif "max_players" not in cache["igdb"]["games"][k]:
-            reason = "IGDB max_players not found, did you call get_multiplayer_info()?"
-            log.warning(f"{k}: {reason}")
-
-        elif cache["igdb"]["games"][k]["max_players"] > 0:
-            max_players = cache["igdb"]["games"][k]["max_players"]
-            reason = "from IGDB cache"
-            multiplayer = True
-
-        # We don't have max player info, so try to infer it from game modes
-        elif (
-            "info" in cache["igdb"]["games"][k]
-            and cache["igdb"]["games"][k]["info"]
-            and "game_modes" in cache["igdb"]["games"][k]["info"][0]
-        ):
-            if cache["igdb"]["games"][k]["info"][0]["game_modes"] == [
-                constants.IGDB_GAME_MODE["singleplayer"]
-            ]:
-                max_players = 1
-                reason = "as IGDB has single player as the only game mode"
-            else:
-                for mode in cache["igdb"]["games"][k]["info"][0]["game_modes"]:
-                    if mode in constants.IGDB_MULTIPLAYER_GAME_MODES:
-                        multiplayer = True
-                        reason = f"as game modes includes {mode}"
-                        break
-
-        log.debug(f"{k}: multiplayer {multiplayer}, max players {max_players} {reason}")
-        game_list[k]["multiplayer"] = multiplayer
-        game_list[k]["max_players"] = max_players
-
-
 def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
     """Returns a config dict created from the config file and
     command-line arguments, with the latter taking precedence
@@ -377,6 +320,63 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
     config["metadata"] = sanitized_metadata
 
     return config
+
+
+def set_multiplayer_status(game_list, cache):
+    """
+    Sets the max_players for each release key; precedence is:
+      - max_players in the config yaml
+      - max_players from IGDB
+      - 1 if the above aren't available and the only game mode from IGDB is single player
+      - 0 (unknown) otherwise
+    Also sets multiplayer to True if any of the of the following are true:
+      - max_players > 1
+      - IGDB game modes includes a multiplayer mode
+    """
+    for k in game_list:
+        max_players = 0
+        multiplayer = False
+        reason = "as we have no max player info and can't infer from game modes"
+
+        if "max_players" in game_list[k]:
+            max_players = game_list[k]["max_players"]
+            reason = "from config file"
+            multiplayer = max_players > 1
+
+        if k not in cache["igdb"]["games"]:
+            reason = "no IGDB info in cache, did you call get_igdb_id()?"
+            log.warning(f"{k}: {reason}")
+
+        elif "max_players" not in cache["igdb"]["games"][k]:
+            reason = "IGDB max_players not found, did you call get_multiplayer_info()?"
+            log.warning(f"{k}: {reason}")
+
+        elif cache["igdb"]["games"][k]["max_players"] > 0:
+            max_players = cache["igdb"]["games"][k]["max_players"]
+            reason = "from IGDB cache"
+            multiplayer = True
+
+        # We don't have max player info, so try to infer it from game modes
+        elif (
+            "info" in cache["igdb"]["games"][k]
+            and cache["igdb"]["games"][k]["info"]
+            and "game_modes" in cache["igdb"]["games"][k]["info"][0]
+        ):
+            if cache["igdb"]["games"][k]["info"][0]["game_modes"] == [
+                constants.IGDB_GAME_MODE["singleplayer"]
+            ]:
+                max_players = 1
+                reason = "as IGDB has single player as the only game mode"
+            else:
+                for mode in cache["igdb"]["games"][k]["info"][0]["game_modes"]:
+                    if mode in constants.IGDB_MULTIPLAYER_GAME_MODES:
+                        multiplayer = True
+                        reason = f"as game modes includes {mode}"
+                        break
+
+        log.debug(f"{k}: multiplayer {multiplayer}, max players {max_players} {reason}")
+        game_list[k]["multiplayer"] = multiplayer
+        game_list[k]["max_players"] = max_players
 
 
 def parse_cmdline(argv: List[str]) -> Dict[str, object]:
