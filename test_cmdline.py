@@ -76,7 +76,7 @@ gog = __import__("gamatrix-gog")
             ["server"],
         ],
         [
-            "Update the cache file by force.",
+            "Allow the cache to update missing items.",
             [
                 "./gamatrix-gog.py",
                 "--config-file",
