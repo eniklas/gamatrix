@@ -9,20 +9,20 @@ Usage:
     gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...] [<db> ... ]
 
 Options:
-  -h, --help                   show this help message and exit
-  -v, --version                print version and exit
-  -c CFG, --config-file=CFG    the config file to use
-  -d, --debug                  debug output
-  -a, --all-games              list all games owned by the selected users (doesn't include single player unless -I is used)
-  -i IFC, --interface=IFC      the network interface to use if running in server mode; default is 0.0.0.0.
-  -I, --include-single-player  include single player games
-  -p PORT, --port=PORT         the network port to use if running in server mode; default is 8080.
-  -s, --server                 run in server mode
-  -U, --update-cache           Force a cache-update even when the cache is not dirty.
-  -u USERID, --userid=USERID   the GOG user IDs to compare, there can be multiples of this switch
+  -h, --help                   Show this help message and exit.
+  -v, --version                Print version and exit.
+  -c CFG, --config-file=CFG    The config file to use.
+  -d, --debug                  Print out verbose debug output.
+  -a, --all-games              List all games owned by the selected users (doesn't include single player unless -I is used).
+  -i IFC, --interface=IFC      The network interface to use if running in server mode; default is 0.0.0.0.
+  -I, --include-single-player  Include single player games.
+  -p PORT, --port=PORT         The network port to use if running in server mode; default is 8080.
+  -s, --server                 Run in server mode.
+  -U, --update-cache           Update cache entries that have incomplete info.
+  -u USERID, --userid=USERID   The GOG user IDs to compare, there can be multiples of this switch.
 
 Positional Arguments:
-  <db>                         the GOG DB for a user, multiple can be listed
+  <db>                         The GOG DB for a user, multiple can be listed.
 """
 
 import logging
@@ -249,7 +249,9 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
 
     config["include_single_player"] = args.get("--include-single-player", False)
 
-    if args.get("--server", True):  # Note that the --server opt is False unless present
+    if args.get(
+        "--server", False
+    ):  # Note that the --server opt is False unless present
         config["mode"] = "server"
 
     if args.get("--interface"):
@@ -279,6 +281,15 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
             "{}/{}".format(config["db_path"], config["users"][userid]["db"])
         )
 
+    # Convert CIDRs into IPv4Network objects; if there are none, disable uploads
+    config["uploads_enabled"] = False
+    if "cidrs" in config["users"][userid]:
+        for i in range(len(config["users"][userid]["cidrs"])):
+            config["users"][userid]["cidrs"][i] = IPv4Network(
+                config["users"][userid]["cidrs"][i]
+            )
+            config["uploads_enabled"] = True
+
     for db in args.get("<db>", []):
         if os.path.abspath(db) not in config["db_list"]:
             config["db_list"].append(os.path.abspath(db))
@@ -301,12 +312,18 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
                 "{}/{}".format(config["db_path"], config["users"][userid]["db"])
             )
 
+    # Order users by username to avoid having to do it in the templates
+    config["users"] = {
+        k: v
+        for k, v in sorted(
+            config["users"].items(), key=lambda item: item[1]["username"].lower()
+        )
+    }
+
     if "hidden" not in config:
         config["hidden"] = []
 
-    config["update_cache"] = False
-    if args.get("--update-cache", False):
-        config["update_cache"] = True
+    config["update_cache"] = args.get("--update-cache", False)
 
     # Lowercase and remove non-alphanumeric characters for better matching
     for i in range(len(config["hidden"])):
@@ -334,6 +351,7 @@ def set_multiplayer_status(game_list, cache):
       - IGDB game modes includes a multiplayer mode
     """
     for k in game_list:
+        igdb_key = game_list[k]["igdb_key"]
         max_players = 0
         multiplayer = False
         reason = "as we have no max player info and can't infer from game modes"
@@ -343,38 +361,42 @@ def set_multiplayer_status(game_list, cache):
             reason = "from config file"
             multiplayer = max_players > 1
 
-        if k not in cache["igdb"]["games"]:
-            reason = "no IGDB info in cache, did you call get_igdb_id()?"
+        elif igdb_key not in cache["igdb"]["games"]:
+            reason = (
+                f"no IGDB info in cache for {igdb_key}, did you call get_igdb_id()?"
+            )
+
+        elif "max_players" not in cache["igdb"]["games"][igdb_key]:
+            reason = f"IGDB {igdb_key} max_players not found, did you call get_multiplayer_info()?"
             log.warning(f"{k}: {reason}")
 
-        elif "max_players" not in cache["igdb"]["games"][k]:
-            reason = "IGDB max_players not found, did you call get_multiplayer_info()?"
-            log.warning(f"{k}: {reason}")
-
-        elif cache["igdb"]["games"][k]["max_players"] > 0:
-            max_players = cache["igdb"]["games"][k]["max_players"]
+        elif cache["igdb"]["games"][igdb_key]["max_players"] > 0:
+            max_players = cache["igdb"]["games"][igdb_key]["max_players"]
             reason = "from IGDB cache"
-            multiplayer = True
+            multiplayer = cache["igdb"]["games"][igdb_key]["max_players"] > 1
 
         # We don't have max player info, so try to infer it from game modes
         elif (
-            "info" in cache["igdb"]["games"][k]
-            and cache["igdb"]["games"][k]["info"]
-            and "game_modes" in cache["igdb"]["games"][k]["info"][0]
+            "info" in cache["igdb"]["games"][igdb_key]
+            and cache["igdb"]["games"][igdb_key]["info"]
+            and "game_modes" in cache["igdb"]["games"][igdb_key]["info"][0]
         ):
-            if cache["igdb"]["games"][k]["info"][0]["game_modes"] == [
+            if cache["igdb"]["games"][igdb_key]["info"][0]["game_modes"] == [
                 constants.IGDB_GAME_MODE["singleplayer"]
             ]:
                 max_players = 1
                 reason = "as IGDB has single player as the only game mode"
             else:
-                for mode in cache["igdb"]["games"][k]["info"][0]["game_modes"]:
+                for mode in cache["igdb"]["games"][igdb_key]["info"][0]["game_modes"]:
                     if mode in constants.IGDB_MULTIPLAYER_GAME_MODES:
                         multiplayer = True
                         reason = f"as game modes includes {mode}"
                         break
 
-        log.debug(f"{k}: multiplayer {multiplayer}, max players {max_players} {reason}")
+        log.debug(
+            f"{k} ( {game_list[k]['title']}, IGDB key {igdb_key}): ",
+            f"multiplayer {multiplayer}, max players {max_players} {reason}",
+        )
         game_list[k]["multiplayer"] = multiplayer
         game_list[k]["max_players"] = max_players
 
@@ -427,6 +449,7 @@ if __name__ == "__main__":
     web_opts = init_opts()
     web_opts["include_single_player"] = opts.get("--include-single-player", False)
     web_opts["user_ids_to_compare"] = user_ids_to_compare
+    log.debug(f'user_ids_to_compare = {opts["user_ids_to_compare"]}')
 
     gog = gogDB(config, web_opts)
     common_games = gog.get_common_games()
