@@ -281,14 +281,14 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
             "{}/{}".format(config["db_path"], config["users"][userid]["db"])
         )
 
-    # Convert CIDRs into IPv4Network objects; if there are none, disable uploads
-    config["uploads_enabled"] = False
-    if "cidrs" in config["users"][userid]:
-        for i in range(len(config["users"][userid]["cidrs"])):
-            config["users"][userid]["cidrs"][i] = IPv4Network(
-                config["users"][userid]["cidrs"][i]
-            )
-            config["uploads_enabled"] = True
+        # Convert CIDRs into IPv4Network objects; if there are none, disable uploads
+        config["uploads_enabled"] = False
+        if "cidrs" in config["users"][userid]:
+            for i in range(len(config["users"][userid]["cidrs"])):
+                config["users"][userid]["cidrs"][i] = IPv4Network(
+                    config["users"][userid]["cidrs"][i]
+                )
+                config["uploads_enabled"] = True
 
     for db in args.get("<db>", []):
         if os.path.abspath(db) not in config["db_list"]:
@@ -297,19 +297,17 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
     for userid_str in args.get("--userid", []):
         userid = int(userid_str)
         if userid not in config["users"]:
-            raise ValueError(
-                "User ID {} isn't defined in the config file".format(userid)
-            )
+            raise ValueError(f"User ID {userid} isn't defined in the config file")
         elif "db" not in config["users"][userid]:
             raise ValueError(
-                "User ID {} is missing the db key in the config file".format(userid)
+                f"User ID {userid} is missing the db key in the config file"
             )
         elif (
-            "{}/{}".format(config["db_path"], config["users"][userid]["db"])
+            f'{config["db_path"]}/{config["users"][userid]["db"]}'
             not in config["db_list"]
         ):
             config["db_list"].append(
-                "{}/{}".format(config["db_path"], config["users"][userid]["db"])
+                f'{config["db_path"]}/{config["users"][userid]["db"]}'
             )
 
     # Order users by username to avoid having to do it in the templates
