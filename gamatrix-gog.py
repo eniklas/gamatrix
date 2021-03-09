@@ -392,14 +392,14 @@ def set_multiplayer_status(game_list, cache):
                         break
 
         log.debug(
-            f"{k} ( {game_list[k]['title']}, IGDB key {igdb_key}): ",
+            f"{k} ({game_list[k]['title']}, IGDB key {igdb_key}): ",
             f"multiplayer {multiplayer}, max players {max_players} {reason}",
         )
         game_list[k]["multiplayer"] = multiplayer
         game_list[k]["max_players"] = max_players
 
 
-def parse_cmdline(argv: List[str]) -> Dict[str, object]:
+def parse_cmdline(argv: List[str]) -> Dict[str, Any]:
     return docopt.docopt(
         __doc__, argv=argv, help=True, version=VERSION, options_first=True
     )
@@ -447,6 +447,10 @@ if __name__ == "__main__":
     web_opts = init_opts()
     web_opts["include_single_player"] = opts.get("--include-single-player", False)
     web_opts["user_ids_to_compare"] = user_ids_to_compare
+
+    for userid in user_ids_to_compare:
+        web_opts["user_ids_to_compare"][userid] = config["users"][userid]
+
     log.debug(f'user_ids_to_compare = {opts["user_ids_to_compare"]}')
 
     gog = gogDB(config, web_opts)
