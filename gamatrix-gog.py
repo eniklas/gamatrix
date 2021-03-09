@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import logging
+import magic
 import os
 import sys
 from typing import Any, List
@@ -66,6 +67,8 @@ def upload_file():
                 target_filename = get_db_name_from_ip(request.remote_addr)
                 if target_filename is None:
                     message += "failed to determine target filename from your IP; is it in the config file?"
+                elif not magic.from_buffer(file.read(2048)).startswith("SQLite "):
+                    message += "file is not an SQLite database"
                 else:
                     log.info(f"Uploading {target_filename} from {request.remote_addr}")
                     filename = secure_filename(target_filename)
