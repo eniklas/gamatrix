@@ -1,24 +1,44 @@
 #!/usr/bin/env python3
-import argparse
+"""
+gamatrix-gog
+Show and compare between games owned by multiple users.
+
+Usage:
+    gamatrix-gog.py --help
+    gamatrix-gog.py --version
+    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...] [<db> ... ]
+
+Options:
+  -h, --help                   Show this help message and exit.
+  -v, --version                Print version and exit.
+  -c CFG, --config-file=CFG    The config file to use.
+  -d, --debug                  Print out verbose debug output.
+  -a, --all-games              List all games owned by the selected users (doesn't include single player unless -I is used).
+  -i IFC, --interface=IFC      The network interface to use if running in server mode; default is 0.0.0.0.
+  -I, --include-single-player  Include single player games.
+  -p PORT, --port=PORT         The network port to use if running in server mode; default is 8080.
+  -s, --server                 Run in server mode.
+  -U, --update-cache           Update cache entries that have incomplete info.
+  -u USERID, --userid=USERID   The GOG user IDs to compare, there can be multiples of this switch.
+
+Positional Arguments:
+  <db>                         The GOG DB for a user, multiple can be listed.
+"""
+
 import logging
 import magic
 import os
 import sys
-from typing import Any, List
-
-from flask import Flask, render_template, request
 from ipaddress import IPv4Address, IPv4Network
+from typing import Any, Dict, List
+
+import docopt
+from flask import Flask, render_template, request
 from ruamel.yaml import YAML
 from werkzeug.utils import secure_filename
 
+from helpers import constants
 from helpers.cache_helper import Cache
-from helpers.constants import (
-    IGDB_GAME_MODE,
-    IGDB_MULTIPLAYER_GAME_MODES,
-    PLATFORMS,
-    UPLOAD_ALLOWED_EXTENSIONS,
-    UPLOAD_MAX_SIZE,
-)
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
 from helpers.misc_helper import sanitize_title
@@ -36,7 +56,7 @@ def root():
         "index.html",
         users=config["users"],
         uploads_enabled=config["uploads_enabled"],
-        platforms=PLATFORMS,
+        platforms=constants.PLATFORMS,
         version=VERSION,
     )
 
@@ -162,7 +182,7 @@ def compare_libraries():
         users=opts["user_ids_to_compare"],
         caption=gog.get_caption(len(common_games)),
         show_keys=opts["show_keys"],
-        platforms=PLATFORMS,
+        platforms=constants.PLATFORMS,
     )
 
 
@@ -183,7 +203,7 @@ def allowed_file(filename):
     """Returns True if filename has an allowed extension"""
     return (
         "." in filename
-        and filename.rsplit(".", 1)[1].lower() in UPLOAD_ALLOWED_EXTENSIONS
+        and filename.rsplit(".", 1)[1].lower() in constants.UPLOAD_ALLOWED_EXTENSIONS
     )
 
 
@@ -202,17 +222,14 @@ def init_opts():
     }
 
 
-def build_config(args):
+def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
     """Returns a config dict created from the config file and
     command-line arguments, with the latter taking precedence
     """
-    if args.version:
-        print("{} version {}".format(os.path.basename(__file__), VERSION))
-        sys.exit(0)
-
-    if args.config_file:
+    config_file = args.get("--config-file", None)
+    if config_file is not None:
         yaml = YAML(typ="safe")
-        with open(args.config_file) as config_file:
+        with open(config_file, "r") as config_file:
             config = yaml.load(config_file)
     else:
         # We didn't get a config file, so populate from args
@@ -220,7 +237,7 @@ def build_config(args):
 
     # TODO: allow using both IDs and DBs (use one arg and detect if it's an int)
     # TODO: should be able to use unambiguous partial names
-    if not args.db and "users" not in config:
+    if not args.get("<db>", []) and "users" not in config:
         raise ValueError("You must use -u, have users in the config file, or list DBs")
 
     # Command-line args override values in the config file
@@ -231,24 +248,22 @@ def build_config(args):
     if "db_path" not in config:
         config["db_path"] = "."
 
-    config["all_games"] = False
-    if args.all_games:
-        config["all_games"] = True
+    config["all_games"] = args.get("--all-games", False)
 
-    config["include_single_player"] = False
-    if args.include_single_player:
-        config["include_single_player"] = True
+    config["include_single_player"] = args.get("--include-single-player", False)
 
-    if args.server:
+    if args.get(
+        "--server", False
+    ):  # Note that the --server opt is False unless present
         config["mode"] = "server"
 
-    if args.interface:
-        config["interface"] = args.interface
+    if args.get("--interface"):
+        config["interface"] = args["--interface"]
     if "interface" not in config:
         config["interface"] = "0.0.0.0"
 
-    if args.port:
-        config["port"] = args.port
+    if args.get("--port"):
+        config["port"] = int(args["--port"])
     if "port" not in config:
         config["port"] = 8080
 
@@ -268,6 +283,7 @@ def build_config(args):
         config["db_list"].append(
             "{}/{}".format(config["db_path"], config["users"][userid]["db"])
         )
+
         # Convert CIDRs into IPv4Network objects; if there are none, disable uploads
         config["uploads_enabled"] = False
         if "cidrs" in config["users"][userid]:
@@ -277,27 +293,25 @@ def build_config(args):
                 )
                 config["uploads_enabled"] = True
 
-    for db in args.db:
+    for db in args.get("<db>", []):
         if os.path.abspath(db) not in config["db_list"]:
             config["db_list"].append(os.path.abspath(db))
 
-    if args.userid:
-        for userid in args.userid:
-            if userid not in config["users"]:
-                raise ValueError(
-                    "User ID {} isn't defined in the config file".format(userid)
-                )
-            elif "db" not in config["users"][userid]:
-                raise ValueError(
-                    "User ID {} is missing the db key in the config file".format(userid)
-                )
-            elif (
-                "{}/{}".format(config["db_path"], config["users"][userid]["db"])
-                not in config["db_list"]
-            ):
-                config["db_list"].append(
-                    "{}/{}".format(config["db_path"], config["users"][userid]["db"])
-                )
+    for userid_str in args.get("--userid", []):
+        userid = int(userid_str)
+        if userid not in config["users"]:
+            raise ValueError(f"User ID {userid} isn't defined in the config file")
+        elif "db" not in config["users"][userid]:
+            raise ValueError(
+                f"User ID {userid} is missing the db key in the config file"
+            )
+        elif (
+            f'{config["db_path"]}/{config["users"][userid]["db"]}'
+            not in config["db_list"]
+        ):
+            config["db_list"].append(
+                f'{config["db_path"]}/{config["users"][userid]["db"]}'
+            )
 
     # Order users by username to avoid having to do it in the templates
     config["users"] = {
@@ -310,9 +324,7 @@ def build_config(args):
     if "hidden" not in config:
         config["hidden"] = []
 
-    config["update_cache"] = False
-    if args.update_cache:
-        config["update_cache"] = True
+    config["update_cache"] = args.get("--update-cache", False)
 
     # Lowercase and remove non-alphanumeric characters for better matching
     for i in range(len(config["hidden"])):
@@ -354,7 +366,6 @@ def set_multiplayer_status(game_list, cache):
             reason = (
                 f"no IGDB info in cache for {igdb_key}, did you call get_igdb_id()?"
             )
-            log.warning(f"{k}: {reason}")
 
         elif "max_players" not in cache["igdb"]["games"][igdb_key]:
             reason = f"IGDB {igdb_key} max_players not found, did you call get_multiplayer_info()?"
@@ -372,91 +383,46 @@ def set_multiplayer_status(game_list, cache):
             and "game_modes" in cache["igdb"]["games"][igdb_key]["info"][0]
         ):
             if cache["igdb"]["games"][igdb_key]["info"][0]["game_modes"] == [
-                IGDB_GAME_MODE["singleplayer"]
+                constants.IGDB_GAME_MODE["singleplayer"]
             ]:
                 max_players = 1
                 reason = "as IGDB has single player as the only game mode"
             else:
                 for mode in cache["igdb"]["games"][igdb_key]["info"][0]["game_modes"]:
-                    if mode in IGDB_MULTIPLAYER_GAME_MODES:
+                    if mode in constants.IGDB_MULTIPLAYER_GAME_MODES:
                         multiplayer = True
                         reason = f"as game modes includes {mode}"
                         break
 
         log.debug(
-            "{} ({}, IGDB key {}): multiplayer {}, max players {} {}".format(
-                k, game_list[k]["title"], igdb_key, multiplayer, max_players, reason
-            )
+            f"{k} ({game_list[k]['title']}, IGDB key {igdb_key}): ",
+            f"multiplayer {multiplayer}, max players {max_players} {reason}",
         )
         game_list[k]["multiplayer"] = multiplayer
         game_list[k]["max_players"] = max_players
 
 
-def parse_cmdline(argv: List[str]) -> Any:
-    parser = argparse.ArgumentParser(description="Show games owned by multiple users.")
-    parser.add_argument(
-        "db", type=str, nargs="*", help="the GOG DB for a user; multiple can be listed"
+def parse_cmdline(argv: List[str]) -> Dict[str, Any]:
+    return docopt.docopt(
+        __doc__, argv=argv, help=True, version=VERSION, options_first=True
     )
-    parser.add_argument(
-        "-a",
-        "--all-games",
-        action="store_true",
-        help="list all games owned by the selected users (doesn't include single player unless -I is used)",
-    )
-    parser.add_argument("-c", "--config-file", type=str, help="the config file to use")
-    parser.add_argument("-d", "--debug", action="store_true", help="debug output")
-    parser.add_argument(
-        "-i",
-        "--interface",
-        type=str,
-        help="the network interface to use if running in server mode; defaults to 0.0.0.0",
-    )
-    parser.add_argument(
-        "-I",
-        "--include-single-player",
-        action="store_true",
-        help="Include single player games",
-    )
-    parser.add_argument(
-        "-p",
-        "--port",
-        type=int,
-        help="the network port to use if running in server mode; defaults to 8080",
-    )
-    parser.add_argument(
-        "-s", "--server", action="store_true", help="run in server mode"
-    )
-    parser.add_argument(
-        "-u", "--userid", type=int, nargs="*", help="the GOG user IDs to compare"
-    )
-    parser.add_argument(
-        "-U",
-        "--update-cache",
-        action="store_true",
-        help="update cache entries that have incomplete info",
-    )
-    parser.add_argument(
-        "-v", "--version", action="store_true", help="print version and exit"
-    )
-
-    return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     log = logging.getLogger()
 
-    args = parse_cmdline(sys.argv[1:])
+    opts = parse_cmdline(sys.argv[1:])
 
-    if args.debug:
+    if opts.get("--debug", False):
         log.setLevel(logging.DEBUG)
 
     # in case we want to see our command line shenanigans in a vebose session:
     log.debug(f"Command line arguments: {sys.argv}")
-    log.debug(f"Arguments after parsing: {args}")
+    log.debug(f"Arguments after parsing: {opts}")
 
     try:
-        config = build_config(args)
+        config = build_config(opts)
         log.debug(f"config = {config}")
     except ValueError as e:
         print(e)
@@ -471,24 +437,26 @@ if __name__ == "__main__":
     if "mode" in config and config["mode"] == "server":
         # Start Flask to run in server mode until killed
         app.config["UPLOAD_FOLDER"] = config["db_path"]
-        app.config["MAX_CONTENT_LENGTH"] = UPLOAD_MAX_SIZE
+        app.config["MAX_CONTENT_LENGTH"] = constants.UPLOAD_MAX_SIZE
         app.run(host=config["interface"], port=config["port"])
         sys.exit(0)
 
-    if args.userid is None:
+    user_ids_to_compare = opts.get("--userid", [])
+    if user_ids_to_compare == []:
         user_ids_to_compare = [u for u in config["users"].keys()]
-    else:
-        user_ids_to_compare = args.userid
 
     # init_opts() is meant for server mode; any CLI options that are also
     # web UI options need to be overridden
-    opts = init_opts()
-    opts["include_single_player"] = args.include_single_player
+    web_opts = init_opts()
+    web_opts["include_single_player"] = opts.get("--include-single-player", False)
+    web_opts["user_ids_to_compare"] = user_ids_to_compare
+
     for userid in user_ids_to_compare:
-        opts["user_ids_to_compare"][userid] = config["users"][userid]
+        web_opts["user_ids_to_compare"][userid] = config["users"][userid]
 
     log.debug(f'user_ids_to_compare = {opts["user_ids_to_compare"]}')
-    gog = gogDB(config, opts)
+
+    gog = gogDB(config, web_opts)
     common_games = gog.get_common_games()
 
     for k in list(common_games.keys()):

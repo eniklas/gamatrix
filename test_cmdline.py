@@ -6,6 +6,7 @@ mode: client | server # default is client, use -s
 interface: (valid interface address) # default is 0.0.0.0, use -i
 port: (valid port) # default is 8080, use -p
 include_single_player: True | False # use -I
+all_games: True | False # use -a
 """
 
 from typing import Any, List
@@ -74,16 +75,27 @@ gog = __import__("gamatrix-gog")
             ["mode"],
             ["server"],
         ],
+        [
+            "Allow the cache to update missing items.",
+            [
+                "./gamatrix-gog.py",
+                "--config-file",
+                "./config-sample.yaml",
+                "--update-cache",
+            ],
+            ["mode", "update_cache"],
+            ["server", True],
+        ],
     ],
 )
-def test_cmdline_handling(
+def test_new_cmdline_handling(
     description: str,
     commandline: List[str],
     config_fields: List[str],
     expected_values: List[Any],
 ):
     """Parse the command line and build the config file, checking for problems."""
-    args = gog.parse_cmdline(commandline)
+    args = gog.parse_cmdline(commandline[1:])
     config = gog.build_config(args)
     for i in range(len(config_fields)):
         assert (

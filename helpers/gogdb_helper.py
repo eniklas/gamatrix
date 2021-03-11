@@ -385,7 +385,7 @@ class gogDB:
 
         if self.config["all_games"]:
             caption_middle = "total games owned by"
-        elif len(self.config["user_ids_to_compare"].keys()) == 1:
+        elif len(self.config["user_ids_to_compare"]) == 1:
             caption_middle = "games owned by"
         else:
             caption_middle = "games in common between"
