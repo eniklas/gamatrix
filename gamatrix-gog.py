@@ -395,8 +395,8 @@ def set_multiplayer_status(game_list, cache):
                         break
 
         log.debug(
-            f"{k} ({game_list[k]['title']}, IGDB key {igdb_key}): ",
-            f"multiplayer {multiplayer}, max players {max_players} {reason}",
+            f"{k} ({game_list[k]['title']}, IGDB key {igdb_key}): "
+            f"multiplayer {multiplayer}, max players {max_players} {reason}"
         )
         game_list[k]["multiplayer"] = multiplayer
         game_list[k]["max_players"] = max_players
@@ -449,12 +449,11 @@ if __name__ == "__main__":
     # web UI options need to be overridden
     web_opts = init_opts()
     web_opts["include_single_player"] = opts.get("--include-single-player", False)
-    web_opts["user_ids_to_compare"] = user_ids_to_compare
 
     for userid in user_ids_to_compare:
         web_opts["user_ids_to_compare"][userid] = config["users"][userid]
 
-    log.debug(f'user_ids_to_compare = {opts["user_ids_to_compare"]}')
+    log.debug(f'user_ids_to_compare = {web_opts["user_ids_to_compare"]}')
 
     gog = gogDB(config, web_opts)
     common_games = gog.get_common_games()
