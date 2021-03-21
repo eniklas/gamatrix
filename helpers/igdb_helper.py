@@ -1,5 +1,4 @@
 import logging
-import re
 import requests
 import time
 
@@ -159,7 +158,7 @@ class IGDBHelper:
 
         self.log.info(f"{release_key}: getting game info from IGDB")
         url = "https://api.igdb.com/v4/games"
-        body = "fields game_modes,name,parent_game,url; where id = {};".format(
+        body = "fields game_modes,name,parent_game,slug,url; where id = {};".format(
             self.cache["igdb"]["games"][release_key]["igdb_id"]
         )
 
@@ -203,7 +202,7 @@ class IGDBHelper:
 
         return True
 
-    def get_igdb_id_by_title(self, release_key, sanitized_title, update=False):
+    def get_igdb_id_by_slug(self, release_key, slug, update=False):
         """Gets the IDGB ID for release_key by title. Returns
         True if an ID was found, False if not
         """
@@ -212,9 +211,6 @@ class IGDBHelper:
         elif self._igdb_id_in_cache(release_key, update):
             return True
 
-        # The slug value is similar to our sanitized title, with dashes
-        # instead of spaces, so this is a good way to try to match
-        slug = re.sub(r"\s+", "-", sanitized_title)
         body = f'fields id,name; where slug = "{slug}";'
         url = "https://api.igdb.com/v4/games"
 

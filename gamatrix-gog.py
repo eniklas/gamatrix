@@ -41,7 +41,7 @@ from helpers import constants
 from helpers.cache_helper import Cache
 from helpers.gogdb_helper import gogDB
 from helpers.igdb_helper import IGDBHelper
-from helpers.misc_helper import sanitize_title
+from helpers.misc_helper import get_slug_from_title
 from helpers.network_helper import check_ip_is_authorized
 from version import VERSION
 
@@ -162,9 +162,9 @@ def compare_libraries():
     for k in list(common_games.keys()):
         log.debug(f'{k}: using igdb_key {common_games[k]["igdb_key"]}')
         # Get the IGDB ID by release key if possible, otherwise try by title
-        igdb.get_igdb_id(common_games[k]["igdb_key"]) or igdb.get_igdb_id_by_title(
+        igdb.get_igdb_id(common_games[k]["igdb_key"]) or igdb.get_igdb_id_by_slug(
             common_games[k]["igdb_key"],
-            common_games[k]["sanitized_title"],
+            common_games[k]["slug"],
             config["update_cache"],
         )
         igdb.get_game_info(common_games[k]["igdb_key"])
@@ -333,14 +333,14 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
 
     # Lowercase and remove non-alphanumeric characters for better matching
     for i in range(len(config["hidden"])):
-        config["hidden"][i] = sanitize_title(config["hidden"][i])
+        config["hidden"][i] = get_slug_from_title(config["hidden"][i])
 
-    sanitized_metadata = {}
+    slug_metadata = {}
     for title in config["metadata"]:
-        sanitized_title = sanitize_title(title)
-        sanitized_metadata[sanitized_title] = config["metadata"][title]
+        slug = get_slug_from_title(title)
+        slug_metadata[slug] = config["metadata"][title]
 
-    config["metadata"] = sanitized_metadata
+    config["metadata"] = slug_metadata
 
     return config
 
@@ -472,9 +472,9 @@ if __name__ == "__main__":
         # Get the IGDB ID by release key if possible, otherwise try by title
         igdb.get_igdb_id(
             common_games[k]["igdb_key"], config["update_cache"]
-        ) or igdb.get_igdb_id_by_title(
+        ) or igdb.get_igdb_id_by_slug(
             common_games[k]["igdb_key"],
-            common_games[k]["sanitized_title"],
+            common_games[k]["slug"],
             config["update_cache"],
         )
         igdb.get_game_info(common_games[k]["igdb_key"], config["update_cache"])
