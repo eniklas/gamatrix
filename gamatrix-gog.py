@@ -414,7 +414,11 @@ def parse_cmdline(argv: List[str]) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        level=logging.INFO,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
     log = logging.getLogger()
 
     opts = parse_cmdline(sys.argv[1:])

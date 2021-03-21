@@ -41,7 +41,7 @@ class gogDB:
                         )
                     )
 
-        self.log = logging.getLogger("gogDB")
+        self.log = logging.getLogger(__name__)
         self.log.debug("db_list = {}".format(self.config["db_list"]))
 
     def use_db(self, db):
