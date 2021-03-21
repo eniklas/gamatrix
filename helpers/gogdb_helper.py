@@ -426,9 +426,9 @@ class gogDB:
 
     # Props to nradoicic!
     def _sort(self, a, b):
-        """Does a primary sort by slug, and secondary sort by
-        platforms so that steam is first; we prefer the steam key when
-        removing dups, as we can currently only get IGDB data for steam
+        """Does a primary sort by slug, and secondary sort by platforms
+        so that steam and gog are first; we prefer those when removing
+        dups, as we can currently only get IGDB data for them
         """
         platforms = PLATFORMS
         title_a = a[1]["slug"]
