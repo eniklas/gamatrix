@@ -198,7 +198,6 @@ class IGDBHelper:
             self.cache["igdb"]["games"][release_key]["igdb_id"] = response[0]["game"]
             self.log.debug(f'{release_key}: got IGDB ID {response[0]["game"]}')
         else:
-            # If we don't get an ID, set it to 0 so we know we've looked this game up before
             self.log.debug(f"{release_key} not found in IGDB")
             return False
 
