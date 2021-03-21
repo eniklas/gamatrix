@@ -1,4 +1,5 @@
 import logging
+import re
 import requests
 import time
 
@@ -158,7 +159,7 @@ class IGDBHelper:
 
         self.log.info(f"{release_key}: getting game info from IGDB")
         url = "https://api.igdb.com/v4/games"
-        body = "fields game_modes,name,url; where id = {};".format(
+        body = "fields game_modes,name,parent_game,url; where id = {};".format(
             self.cache["igdb"]["games"][release_key]["igdb_id"]
         )
 
@@ -170,14 +171,7 @@ class IGDBHelper:
         """Gets the IDGB ID for release_key"""
         if release_key not in self.cache["igdb"]["games"]:
             self.cache["igdb"]["games"][release_key] = {}
-        elif "igdb_id" in self.cache["igdb"]["games"][release_key] and not (
-            update and self.cache["igdb"]["games"][release_key]["igdb_id"] == 0
-        ):
-            self.log.debug(
-                "Found IGDB ID {} for {} in cache".format(
-                    self.cache["igdb"]["games"][release_key]["igdb_id"], release_key
-                )
-            )
+        elif self._igdb_id_in_cache(release_key, update):
             return
 
         self.log.info(f"{release_key}: getting ID from IGDB")
@@ -204,6 +198,34 @@ class IGDBHelper:
         else:
             # If we don't get an ID, set it to 0 so we know we've looked this game up before
             self.log.debug(f"{release_key} not found in IGDB, setting ID to 0")
+            self.cache["igdb"]["games"][release_key]["igdb_id"] = 0
+
+    def get_igdb_id_by_title(self, release_key, sanitized_title, update=False):
+        """Gets the IDGB ID for release_key by title"""
+        if release_key not in self.cache["igdb"]["games"]:
+            self.cache["igdb"]["games"][release_key] = {}
+        elif self._igdb_id_in_cache(release_key, update):
+            return
+
+        # The slug value is similar to our sanitized title, with dashes
+        # instead of spaces, so this is a good way to try to match
+        slug = re.sub("\s+", "-", sanitized_title)
+        body = f'fields id,name; where slug = "{slug}";'
+        url = "https://api.igdb.com/v4/games"
+
+        response = self.api_request(url, body)
+
+        if response:
+            # That gives [{"id": 8104}]; id is the igdb id
+            self.cache["igdb"]["games"][release_key]["igdb_id"] = response[0]["id"]
+            self.log.debug(
+                f'{release_key}: got IGDB ID {response[0]["id"]} with slug lookup {slug}'
+            )
+        else:
+            # If we don't get an ID, set it to 0 so we know we've looked this game up before
+            self.log.debug(
+                f"{release_key}: not found in IGDB with slug lookup {slug}, setting ID to 0"
+            )
             self.cache["igdb"]["games"][release_key]["igdb_id"] = 0
 
     def get_multiplayer_info(self, release_key, update=False):
@@ -257,3 +279,16 @@ class IGDBHelper:
                     self.log.debug(f"Found new max_players {max_players}, key {mp_key}")
 
         return max_players
+
+    def _igdb_id_in_cache(self, release_key, update=False):
+        """Returns True if the IGDB ID is in the cache and is nonzero"""
+        if "igdb_id" in self.cache["igdb"]["games"][release_key] and not (
+            update and self.cache["igdb"]["games"][release_key]["igdb_id"] == 0
+        ):
+            self.log.debug(
+                f'{release_key}: found IGDB ID {self.cache["igdb"]["games"][release_key]["igdb_id"]} in cache'
+            )
+            return True
+
+        self.log.debug(f"{release_key}: no IGDB ID in cache")
+        return False

@@ -162,6 +162,13 @@ def compare_libraries():
     for k in list(common_games.keys()):
         log.debug(f'{k}: using igdb_key {common_games[k]["igdb_key"]}')
         igdb.get_igdb_id(common_games[k]["igdb_key"])
+        # If we failed to get the IGDB ID by release key, try by title
+        if cache.data["igdb"]["games"][k]["igdb_id"] == 0:
+            igdb.get_igdb_id_by_title(
+                common_games[k]["igdb_key"],
+                common_games[k]["sanitized_title"],
+                config["update_cache"],
+            )
         igdb.get_game_info(common_games[k]["igdb_key"])
         igdb.get_multiplayer_info(common_games[k]["igdb_key"])
 
@@ -461,6 +468,13 @@ if __name__ == "__main__":
     for k in list(common_games.keys()):
         log.debug(f'{k}: using igdb_key {common_games[k]["igdb_key"]}')
         igdb.get_igdb_id(common_games[k]["igdb_key"], config["update_cache"])
+        # If we failed to get the IGDB ID by release key, try by title
+        if cache.data["igdb"]["games"][k]["igdb_id"] == 0:
+            igdb.get_igdb_id_by_title(
+                common_games[k]["igdb_key"],
+                common_games[k]["sanitized_title"],
+                config["update_cache"],
+            )
         igdb.get_game_info(common_games[k]["igdb_key"], config["update_cache"])
         igdb.get_multiplayer_info(common_games[k]["igdb_key"], config["update_cache"])
 
