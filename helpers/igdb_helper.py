@@ -221,7 +221,7 @@ class IGDBHelper:
         response = self.api_request(url, body)
 
         if response:
-            # That gives [{"id": 8104}]; id is the igdb id
+            # That gives [{"id": 8104, "name": "blah"}]; id is the igdb id
             self.cache["igdb"]["games"][release_key]["igdb_id"] = response[0]["id"]
             self.log.debug(
                 f'{release_key}: got IGDB ID {response[0]["id"]} with slug lookup {slug}'
