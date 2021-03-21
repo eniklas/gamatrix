@@ -209,7 +209,7 @@ class IGDBHelper:
 
         # The slug value is similar to our sanitized title, with dashes
         # instead of spaces, so this is a good way to try to match
-        slug = re.sub("\s+", "-", sanitized_title)
+        slug = re.sub(r"\s+", "-", sanitized_title)
         body = f'fields id,name; where slug = "{slug}";'
         url = "https://api.igdb.com/v4/games"
 
