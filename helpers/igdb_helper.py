@@ -168,11 +168,13 @@ class IGDBHelper:
         return True
 
     def get_igdb_id(self, release_key, update=False):
-        """Gets the IDGB ID for release_key"""
+        """Gets the IDGB ID for release_key. Returns
+        True if an ID was found, False if not
+        """
         if release_key not in self.cache["igdb"]["games"]:
             self.cache["igdb"]["games"][release_key] = {}
         elif self._igdb_id_in_cache(release_key, update):
-            return
+            return True
 
         self.log.info(f"{release_key}: getting ID from IGDB")
 
@@ -197,15 +199,19 @@ class IGDBHelper:
             self.log.debug(f'{release_key}: got IGDB ID {response[0]["game"]}')
         else:
             # If we don't get an ID, set it to 0 so we know we've looked this game up before
-            self.log.debug(f"{release_key} not found in IGDB, setting ID to 0")
-            self.cache["igdb"]["games"][release_key]["igdb_id"] = 0
+            self.log.debug(f"{release_key} not found in IGDB")
+            return False
+
+        return True
 
     def get_igdb_id_by_title(self, release_key, sanitized_title, update=False):
-        """Gets the IDGB ID for release_key by title"""
+        """Gets the IDGB ID for release_key by title. Returns
+        True if an ID was found, False if not
+        """
         if release_key not in self.cache["igdb"]["games"]:
             self.cache["igdb"]["games"][release_key] = {}
         elif self._igdb_id_in_cache(release_key, update):
-            return
+            return True
 
         # The slug value is similar to our sanitized title, with dashes
         # instead of spaces, so this is a good way to try to match
@@ -227,6 +233,9 @@ class IGDBHelper:
                 f"{release_key}: not found in IGDB with slug lookup {slug}, setting ID to 0"
             )
             self.cache["igdb"]["games"][release_key]["igdb_id"] = 0
+            return False
+
+        return True
 
     def get_multiplayer_info(self, release_key, update=False):
         """Gets the multiplayer info for release_key.
@@ -282,13 +291,23 @@ class IGDBHelper:
 
     def _igdb_id_in_cache(self, release_key, update=False):
         """Returns True if the IGDB ID is in the cache and is nonzero"""
-        if "igdb_id" in self.cache["igdb"]["games"][release_key] and not (
-            update and self.cache["igdb"]["games"][release_key]["igdb_id"] == 0
-        ):
+        if "igdb_id" not in self.cache["igdb"]["games"][release_key]:
+            self.log.debug(f"{release_key}: no IGDB ID in cache")
+            return False
+
+        if self.cache["igdb"]["games"][release_key]["igdb_id"] == 0:
+            if update:
+                self.log.debug(
+                    f"{release_key}: IGDB ID is 0 and update is {update}, cache miss"
+                )
+                return False
+            else:
+                self.log.debug(
+                    f"{release_key}: IGDB ID is 0 and update is {update}, cache hit"
+                )
+        else:
             self.log.debug(
                 f'{release_key}: found IGDB ID {self.cache["igdb"]["games"][release_key]["igdb_id"]} in cache'
             )
-            return True
 
-        self.log.debug(f"{release_key}: no IGDB ID in cache")
-        return False
+        return True
