@@ -290,7 +290,7 @@ class IGDBHelper:
         return max_players
 
     def _igdb_id_in_cache(self, release_key, update=False):
-        """Returns True if the IGDB ID is in the cache and is nonzero"""
+        """Returns True if the IGDB ID is in the cache"""
         if "igdb_id" not in self.cache["igdb"]["games"][release_key]:
             self.log.debug(f"{release_key}: no IGDB ID in cache")
             return False
