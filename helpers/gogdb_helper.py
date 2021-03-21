@@ -5,7 +5,7 @@ import os
 import sqlite3
 
 from .constants import PLATFORMS
-from helpers.misc_helper import sanitize_title
+from helpers.misc_helper import get_slug_from_title
 from functools import cmp_to_key
 
 
@@ -209,8 +209,8 @@ class gogDB:
                                 f"{release_key}: skipping as it has a null title"
                             )
                             continue
-                        sanitized_title = sanitize_title(title)
-                        if sanitized_title in self.config["hidden"]:
+                        slug = get_slug_from_title(title)
+                        if slug in self.config["hidden"]:
                             self.log.debug(
                                 f"{release_key} ({title}): skipping as it's hidden"
                             )
@@ -218,7 +218,7 @@ class gogDB:
 
                         game_list[release_key] = {
                             "title": title,
-                            "sanitized_title": sanitized_title,
+                            "slug": slug,
                             "owners": [],
                             "installed": [],
                         }
@@ -238,13 +238,13 @@ class gogDB:
                         )
 
                         # Add metadata from the config file if we have any
-                        if sanitized_title in self.config["metadata"]:
-                            for k in self.config["metadata"][sanitized_title]:
+                        if slug in self.config["metadata"]:
+                            for k in self.config["metadata"][slug]:
                                 self.log.debug(
                                     "Adding metadata {} to title {}".format(k, title)
                                 )
                                 game_list[release_key][k] = self.config["metadata"][
-                                    sanitized_title
+                                    slug
                                 ][k]
 
                     self.log.debug("User {} owns {}".format(userid, release_key))
@@ -255,7 +255,7 @@ class gogDB:
 
             self.close_connection()
 
-        # Sort by sanitized title to avoid headaches in the templates;
+        # Sort by slug to avoid headaches in the templates;
         # dicts maintain insertion order as of Python 3.7
         ordered_game_list = {
             k: v for k, v in sorted(game_list.items(), key=cmp_to_key(self._sort))
@@ -279,16 +279,16 @@ class gogDB:
             if k not in working_game_list or keys.index(k) >= len(keys) - 2:
                 continue
 
-            sanitized_title = game_list[k]["sanitized_title"]
+            slug = game_list[k]["slug"]
             owners = game_list[k]["owners"]
             platforms = game_list[k]["platforms"]
 
-            # Go through any subsequent keys with the same (sanitized) title
+            # Go through any subsequent keys with the same slug
             next_key = keys[keys.index(k) + 1]
-            while game_list[next_key]["sanitized_title"] == sanitized_title:
+            while game_list[next_key]["slug"] == slug:
                 self.log.debug(
-                    "Found duplicate title {} (sanitized: {}), keys {}, {}".format(
-                        game_list[k]["title"], sanitized_title, k, next_key
+                    "Found duplicate title {} (slug: {}), keys {}, {}".format(
+                        game_list[k]["title"], slug, k, next_key
                     )
                 )
                 if game_list[next_key]["max_players"] > game_list[k]["max_players"]:
@@ -426,13 +426,13 @@ class gogDB:
 
     # Props to nradoicic!
     def _sort(self, a, b):
-        """Does a primary sort by sanitized title, and secondary sort by
+        """Does a primary sort by slug, and secondary sort by
         platforms so that steam is first; we prefer the steam key when
         removing dups, as we can currently only get IGDB data for steam
         """
         platforms = PLATFORMS
-        title_a = a[1]["sanitized_title"]
-        title_b = b[1]["sanitized_title"]
+        title_a = a[1]["slug"]
+        title_b = b[1]["slug"]
         if title_a == title_b:
             platform_a = a[1]["platforms"][0]
             platform_b = b[1]["platforms"][0]
