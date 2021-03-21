@@ -35,4 +35,4 @@ IGDB_API_CALL_DELAY = 0.25
 
 # Order matters; when deduping, the release key
 # retained will be the first one in the list
-PLATFORMS = ("steam", "bethesda", "gog", "epic", "origin", "uplay", "xboxone")
+PLATFORMS = ("steam", "gog", "bethesda", "epic", "origin", "uplay", "xboxone")

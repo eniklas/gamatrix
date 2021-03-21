@@ -161,7 +161,12 @@ def compare_libraries():
 
     for k in list(common_games.keys()):
         log.debug(f'{k}: using igdb_key {common_games[k]["igdb_key"]}')
-        igdb.get_igdb_id(common_games[k]["igdb_key"])
+        # Get the IGDB ID by release key if possible, otherwise try by title
+        igdb.get_igdb_id(common_games[k]["igdb_key"]) or igdb.get_igdb_id_by_title(
+            common_games[k]["igdb_key"],
+            common_games[k]["sanitized_title"],
+            config["update_cache"],
+        )
         igdb.get_game_info(common_games[k]["igdb_key"])
         igdb.get_multiplayer_info(common_games[k]["igdb_key"])
 
@@ -409,7 +414,11 @@ def parse_cmdline(argv: List[str]) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        level=logging.INFO,
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
     log = logging.getLogger()
 
     opts = parse_cmdline(sys.argv[1:])
@@ -460,7 +469,14 @@ if __name__ == "__main__":
 
     for k in list(common_games.keys()):
         log.debug(f'{k}: using igdb_key {common_games[k]["igdb_key"]}')
-        igdb.get_igdb_id(common_games[k]["igdb_key"], config["update_cache"])
+        # Get the IGDB ID by release key if possible, otherwise try by title
+        igdb.get_igdb_id(
+            common_games[k]["igdb_key"], config["update_cache"]
+        ) or igdb.get_igdb_id_by_title(
+            common_games[k]["igdb_key"],
+            common_games[k]["sanitized_title"],
+            config["update_cache"],
+        )
         igdb.get_game_info(common_games[k]["igdb_key"], config["update_cache"])
         igdb.get_multiplayer_info(common_games[k]["igdb_key"], config["update_cache"])
 
