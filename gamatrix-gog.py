@@ -246,7 +246,6 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("You must use -u, have users in the config file, or list DBs")
 
     # Command-line args override values in the config file
-    # TODO: maybe we can do this directly in argparse, or otherwise better
 
     # This can't be given as an argument as it wouldn't make much sense;
     #  provide a sane default if it's missing from the config file
@@ -451,7 +450,9 @@ if __name__ == "__main__":
         sys.exit(0)
 
     user_ids_to_compare = opts.get("--userid", [])
-    if user_ids_to_compare == []:
+    if user_ids_to_compare:
+        user_ids_to_compare = [int(u) for u in user_ids_to_compare]
+    else:
         user_ids_to_compare = [u for u in config["users"].keys()]
 
     # init_opts() is meant for server mode; any CLI options that are also
