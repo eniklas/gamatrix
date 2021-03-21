@@ -205,7 +205,9 @@ class gogDB:
                         title = json.loads(title_json)["title"]
                         # epic_daac7fe46e3647cb80530411d7ec1dc5 (The Fall) has no data
                         if title is None:
-                            self.log.debug(f"{release_key}: skipping as it has a null title")
+                            self.log.debug(
+                                f"{release_key}: skipping as it has a null title"
+                            )
                             continue
                         sanitized_title = sanitize_title(title)
                         if sanitized_title in self.config["hidden"]:
