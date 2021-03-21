@@ -158,7 +158,7 @@ class IGDBHelper:
 
         self.log.info(f"{release_key}: getting game info from IGDB")
         url = "https://api.igdb.com/v4/games"
-        body = "fields game_modes,name,parent_game,url; where id = {};".format(
+        body = "fields game_modes,name,parent_game,slug,url; where id = {};".format(
             self.cache["igdb"]["games"][release_key]["igdb_id"]
         )
 
