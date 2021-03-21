@@ -13,9 +13,7 @@ def get_slug_from_title(title):
     slug = "-"
 
     if not isinstance(title, str):
-        log.warning(
-            f'{title} is type {type(title)}, not string; using slug "{slug}"'
-        )
+        log.warning(f'{title} is type {type(title)}, not string; using slug "{slug}"')
     else:
         # Remove special characters and replace whitespace with dashes
         slug = alphanum_pattern.sub("", title).lower()
