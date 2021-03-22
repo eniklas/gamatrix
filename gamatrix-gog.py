@@ -425,16 +425,11 @@ if __name__ == "__main__":
     if opts.get("--debug", False):
         log.setLevel(logging.DEBUG)
 
-    # in case we want to see our command line shenanigans in a vebose session:
     log.debug(f"Command line arguments: {sys.argv}")
     log.debug(f"Arguments after parsing: {opts}")
 
-    try:
-        config = build_config(opts)
-        log.debug(f"config = {config}")
-    except ValueError as e:
-        print(e)
-        sys.exit(1)
+    config = build_config(opts)
+    log.debug(f"config = {config}")
 
     cache = Cache(config["cache"])
     # Get multiplayer info from IGDB and save it to the cache

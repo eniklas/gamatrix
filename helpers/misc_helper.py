@@ -15,8 +15,11 @@ def get_slug_from_title(title):
     if not isinstance(title, str):
         log.warning(f'{title} is type {type(title)}, not string; using slug "{slug}"')
     else:
+        # The IGDB slug algorithm is not published, but this is pretty close
+        # Not always, but usually, an apostrophe is replaced with a dash
+        slug = title.replace("'", " ").replace("/", " slash ")
         # Remove special characters and replace whitespace with dashes
-        slug = alphanum_pattern.sub("", title).lower()
+        slug = alphanum_pattern.sub("", slug).lower()
         slug = re.sub(r"\s+", "-", slug)
 
         if not slug:
