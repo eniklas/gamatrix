@@ -145,15 +145,15 @@ class IGDBHelper:
         Returns True on success, False on failure
         """
         if release_key not in self.cache["igdb"]["games"]:
-            self.log.error(f"{release_key} not in cache; use get_igdb_id() first")
+            self.log.error(f"{release_key}: not in cache; use get_igdb_id() first")
             return False
         elif "info" in self.cache["igdb"]["games"][release_key] and not (
             update and not self.cache["igdb"]["games"][release_key]["info"]
         ):
-            self.log.debug(f"Found game info for {release_key} in cache")
+            self.log.debug(f"{release_key}: found game info in cache")
             return True
         elif "igdb_id" not in self.cache["igdb"]["games"][release_key]:
-            self.log.error("IGDB ID not found, can't get game info")
+            self.log.error(f"{release_key}: IGDB ID not found, can't get game info")
             return False
         elif self.cache["igdb"]["games"][release_key]["igdb_id"] == 0:
             self.log.debug(f"{release_key}: IGDB ID is 0, not looking up game info")
