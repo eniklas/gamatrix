@@ -255,7 +255,7 @@ class IGDBHelper:
             return True
 
         elif "igdb_id" not in self.cache["igdb"]["games"][release_key]:
-            self.log.error("IGDB ID not found, can't get max players")
+            self.log.error(f"{release_key}: IGDB ID not found, can't get max players")
             return False
 
         elif self.cache["igdb"]["games"][release_key]["igdb_id"] == 0:
