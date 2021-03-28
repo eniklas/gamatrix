@@ -35,7 +35,7 @@ The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool
 - compares the game libraries of an arbitrary number of users, with several filtering options
 - multiplayer support and max players autopopulated from IGDB when available
 - configuration via YAML file and/or command-line options
-- small (< 150MB) Docker container
+- small (~200MB) Docker container
 - IP whitelisting support
 - ability to upload DBs
 
@@ -77,29 +77,30 @@ The Game grid option shows all games owned by the selected users
 ## Usage
 
 ```pre
-usage: gamatrix-gog.py [-h] [-a] [-c CONFIG_FILE] [-d] [-i INTERFACE] [-I] [-p PORT] [-s] [-u [USERID [USERID ...]]] [db [db ...]]
+gamatrix-gog
+Show and compare between games owned by multiple users.
 
-Show games owned by multiple users.
+Usage:
+    gamatrix-gog.py --help
+    gamatrix-gog.py --version
+    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...] [<db> ... ]
 
-positional arguments:
-  db                    the GOG DB for a user; multiple can be listed
+Options:
+  -h, --help                   Show this help message and exit.
+  -v, --version                Print version and exit.
+  -c CFG, --config-file=CFG    The config file to use.
+  -d, --debug                  Print out verbose debug output.
+  -a, --all-games              List all games owned by the selected users (doesn't include single player unless -S is used).
+  -i IFC, --interface=IFC      The network interface to use if running in server mode; default is 0.0.0.0.
+  -I, --installed-only         Only show games installed by all users.
+  -p PORT, --port=PORT         The network port to use if running in server mode; default is 8080.
+  -s, --server                 Run in server mode.
+  -S, --include-single-player  Include single player games.
+  -U, --update-cache           Update cache entries that have incomplete info.
+  -u USERID, --userid=USERID   The GOG user IDs to compare, there can be multiples of this switch.
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -a, --all-games       list all games owned by the selected users (doesn't include single player unless -I is used)
-  -c CONFIG_FILE, --config-file CONFIG_FILE
-                        the config file to use
-  -d, --debug           debug output
-  -i INTERFACE, --interface INTERFACE
-                        the network interface to use if running in server mode; defaults to 0.0.0.0
-  -I, --include-single-player
-                        Include single player games
-  -p PORT, --port PORT  the network port to use if running in server mode; defaults to 8080
-  -s, --server          run in server mode
-  -u [USERID [USERID ...]], --userid [USERID [USERID ...]]
-                        the GOG user IDs to compare
-  -U, --update-cache    update cache entries that have incomplete info
-  -v, --version         print version and exit
+Positional Arguments:
+  <db>                         The GOG DB for a user, multiple can be listed.
 ```
 
 `db`: a GOG database to use. You can usually find a user's DB in `C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db`. Multiple DBs can be listed. Not compatible with `-u`.
@@ -110,9 +111,9 @@ optional arguments:
 
 `-d/--debug`: enable debug messages.
 
-`-I/--include-single-player`: include single-player games; by default, only multiplayer games are shown.
-
 `-s/--server`: run in server mode. This will use Flask to serve a small web page where you can select the options you want, and will output the results there.
+
+`-S/--include-single-player`: include single-player games; by default, only multiplayer games are shown.
 
 `-u/--userid`: a list of GOG user IDs to compare. The IDs must be in the [config file](#configuration). You can find the user ID by running `sqlite3 /path/to/galaxy-2.0.db "select * from Users;"`. If you use this option, you can't list DBs; they must be provided for the user IDs in the config file.
 

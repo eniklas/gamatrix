@@ -341,7 +341,7 @@ class gogDB:
 
         return working_game_list
 
-    def filter_games(self, game_list):
+    def filter_games(self, game_list, all_games=False):
         """
         Removes games that don't fit the search criteria. Note that
         we will not filter a game we have no multiplayer info on
@@ -358,15 +358,24 @@ class gogDB:
                 del working_game_list[k]
                 continue
 
+            # If all games was chosen, we don't want to filter anything else
+            if all_games:
+                continue
+
             # Delete any entries that aren't owned by all users we want
             for owner in self.config["user_ids_to_compare"]:
                 if owner not in game_list[k]["owners"]:
                     self.log.debug(
-                        "Deleting {} as owners {} does not include {}".format(
-                            game_list[k]["title"],
-                            game_list[k]["owners"],
-                            owner,
-                        )
+                        f'Deleting {game_list[k]["title"]} as owners {game_list[k]["owners"]} does not include {owner}'
+                    )
+                    del working_game_list[k]
+                    break
+                elif (
+                    self.config["installed_only"]
+                    and owner not in game_list[k]["installed"]
+                ):
+                    self.log.debug(
+                        f'Deleting {game_list[k]["title"]} as it\'s not installed by {owner}'
                     )
                     del working_game_list[k]
                     break
@@ -397,7 +406,7 @@ class gogDB:
             caption_middle = "games in common between"
 
         usernames_excluded = ""
-        if self.config["user_ids_to_exclude"]:
+        if self.config["user_ids_to_exclude"] and not self.config["all_games"]:
             usernames = [
                 self.config["users"][userid]["username"]
                 for userid in self.config["user_ids_to_exclude"]
@@ -412,16 +421,21 @@ class gogDB:
 
         self.log.debug("platforms_excluded = {}".format(platforms_excluded))
 
+        installed = ""
+        if self.config["installed_only"] and not self.config["all_games"]:
+            installed = " (installed only)"
+
         usernames = []
         for userid in self.config["user_ids_to_compare"]:
             usernames.append(self.config["users"][userid]["username"])
 
-        return "{} {} {}{}{}".format(
+        return "{} {} {}{}{}{}".format(
             num_games,
             caption_middle,
             ", ".join(usernames),
             usernames_excluded,
             platforms_excluded,
+            installed,
         )
 
     # Props to nradoicic!
