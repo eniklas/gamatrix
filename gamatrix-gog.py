@@ -6,18 +6,19 @@ Show and compare between games owned by multiple users.
 Usage:
     gamatrix-gog.py --help
     gamatrix-gog.py --version
-    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...] [<db> ... ]
+    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...] [<db> ... ]
 
 Options:
   -h, --help                   Show this help message and exit.
   -v, --version                Print version and exit.
   -c CFG, --config-file=CFG    The config file to use.
   -d, --debug                  Print out verbose debug output.
-  -a, --all-games              List all games owned by the selected users (doesn't include single player unless -I is used).
+  -a, --all-games              List all games owned by the selected users (doesn't include single player unless -S is used).
   -i IFC, --interface=IFC      The network interface to use if running in server mode; default is 0.0.0.0.
-  -I, --include-single-player  Include single player games.
+  -I, --installed-only         Only show games installed by all users.
   -p PORT, --port=PORT         The network port to use if running in server mode; default is 8080.
   -s, --server                 Run in server mode.
+  -S, --include-single-player  Include single player games.
   -U, --update-cache           Update cache entries that have incomplete info.
   -u USERID, --userid=USERID   The GOG user IDs to compare, there can be multiples of this switch.
 
@@ -174,8 +175,7 @@ def compare_libraries():
     set_multiplayer_status(common_games, cache.data)
     common_games = gog.merge_duplicate_titles(common_games)
 
-    if not gog.config["all_games"]:
-        common_games = gog.filter_games(common_games)
+    common_games = gog.filter_games(common_games, gog.config["all_games"])
 
     log.debug(f'user_ids_to_compare = {opts["user_ids_to_compare"]}')
 
@@ -253,8 +253,8 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
         config["db_path"] = "."
 
     config["all_games"] = args.get("--all-games", False)
-
     config["include_single_player"] = args.get("--include-single-player", False)
+    config["installed_only"] = args.get("--installed-only", False)
 
     if args.get(
         "--server", False
@@ -480,8 +480,7 @@ if __name__ == "__main__":
     set_multiplayer_status(common_games, cache.data)
     common_games = gog.merge_duplicate_titles(common_games)
 
-    if not config["all_games"]:
-        common_games = gog.filter_games(common_games)
+    common_games = gog.filter_games(common_games, config["all_games"])
 
     for key in common_games:
         usernames_with_game_installed = [

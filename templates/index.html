@@ -39,7 +39,8 @@
                             </div>
                             {% endfor -%}
                             <br>
-                            <div title="Games owned by the selected users, and not owned by unselected users">
+                            <div
+                                title="Games owned by the selected users, and not owned by unselected users (game list only)">
                                 <input type="checkbox" id="exclusive" name="exclusive">
                                 <label for="exclusive">Exclusively owned</label>
                             </div>
@@ -80,6 +81,10 @@
                             {% endfor -%}
                         </table>
                         <br>
+                        <div title="Only show games installed by all selected users (game list only)">
+                            <input type="checkbox" id="installed_only" name="installed_only">
+                            <label for="installed_only">Installed only</label><br>
+                        </div>
                         <input type="checkbox" id="include_single_player" name="include_single_player">
                         <label for="include_single_player">Include single-player</label><br>
                         <input type="checkbox" id="show_keys" name="show_keys">
