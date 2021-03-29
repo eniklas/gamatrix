@@ -9,7 +9,6 @@ def get_slug_from_title(title):
     IGDB slug if more accurate methods fail, and to match the title
     better when dealing with slightly different titles across platforms
     """
-    alphanum_pattern = re.compile(r"[^\s\w-]+")
     slug = "-"
 
     if not isinstance(title, str):
@@ -20,8 +19,8 @@ def get_slug_from_title(title):
         # so we'll miss those
         slug = title.replace("/", " slash ")
         # Remove special characters and replace whitespace with dashes
-        slug = alphanum_pattern.sub("", slug).lower()
         slug = re.sub(r"\s+", "-", slug)
+        slug = re.sub(r"[^0-9A-Za-z-]", "", slug).lower()
         # Collapse dashes for titles like "Dragon Age - Definitive Edition"
         slug = re.sub(r"[-]+", "-", slug)
 

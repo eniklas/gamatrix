@@ -104,6 +104,8 @@ def upload_file():
                     if os.path.exists(full_path):
                         os.replace(full_path, full_backup_path)
 
+                    # Put the cursor back to the start after the above file.read()
+                    file.seek(0)
                     file.save(full_path)
                     message = f"Great success! File uploaded as {filename}"
 

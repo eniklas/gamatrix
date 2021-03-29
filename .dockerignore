@@ -1,7 +1,12 @@
 __pycache__
+.cache*
+*.json
 config*
 Dockerfile
 .dockerignore
 .git*
+images
+out*
+tmp*
 venv
 .vscode

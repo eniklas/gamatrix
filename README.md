@@ -35,7 +35,7 @@ The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool
 - compares the game libraries of an arbitrary number of users, with several filtering options
 - multiplayer support and max players autopopulated from IGDB when available
 - configuration via YAML file and/or command-line options
-- small (~200MB) Docker container
+- small (< 150MB) Docker container
 - IP whitelisting support
 - ability to upload DBs
 

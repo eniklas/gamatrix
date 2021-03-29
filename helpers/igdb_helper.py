@@ -94,8 +94,9 @@ class IGDBHelper:
 
         # Back off when we have failed requests
         if self.api_failures > 0:
-            sleep_secs = time.sleep(5) * self.api_failures
+            sleep_secs = 2 * self.api_failures
             self.log.info(f"{self.api_failures} API failures, sleeping {sleep_secs}")
+            time.sleep(sleep_secs)
 
         while True:
             # Respect the API rate limit
@@ -131,8 +132,8 @@ class IGDBHelper:
             # This shouldn't happen, but just in case
             elif r.status_code == 429:
                 sleep_secs = self.api_call_delay * 2
-                self.log.info(f"Rate limit exceeded, sleeping {self.api_call_delay}s")
-                time.sleep(self.api_call_delay)
+                self.log.info(f"Rate limit exceeded, sleeping {sleep_secs}s")
+                time.sleep(sleep_secs)
             else:
                 self.log.error(
                     f"Request failed, response: {r.text} (status code {r.status_code})"
