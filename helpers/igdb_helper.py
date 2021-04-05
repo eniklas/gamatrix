@@ -181,8 +181,8 @@ class IGDBHelper:
 
         self.log.info(f"{release_key}: getting ID from IGDB")
 
-        # release_key is e.g. steam_379720
-        platform, platform_key = release_key.split("_")
+        # Using maxsplit prevents keys like battlenet_hs_beta from hosing us
+        platform, platform_key = release_key.split("_", 1)
 
         body = f'fields game; where uid = "{platform_key}"'
         # If we have a platform ID, specify it
