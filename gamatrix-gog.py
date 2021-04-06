@@ -375,7 +375,7 @@ def set_multiplayer_status(game_list, cache):
 
         elif "max_players" not in cache["igdb"]["games"][igdb_key]:
             reason = f"IGDB {igdb_key} max_players not found, did you call get_multiplayer_info()?"
-            log.warning(f"{k}: {reason}")
+            log.warning(f"{k}: something seems wrong, see next message")
 
         elif cache["igdb"]["games"][igdb_key]["max_players"] > 0:
             max_players = cache["igdb"]["games"][igdb_key]["max_players"]
