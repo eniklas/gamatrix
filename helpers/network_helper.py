@@ -1,14 +1,13 @@
 import logging
 
 from flask import abort
-from ipaddress import IPv4Address, IPv4Network
-from typing import List
+from ipaddress import IPv4Address
 
 
 log = logging.getLogger(__name__)
 
 
-def _ip_allowed(ip: str, networks: List[IPv4Network]) -> bool:
+def _ip_allowed(ip, networks):
     """Returns True if ip is in any of the networks, False otherwise"""
     # If no CIDRs are defined, all IPs are allowed
     ip_allowed = not networks
@@ -23,7 +22,7 @@ def _ip_allowed(ip: str, networks: List[IPv4Network]) -> bool:
     return ip_allowed
 
 
-def check_ip_is_authorized(ip: str, networks: List[IPv4Network]) -> None:
+def check_ip_is_authorized(ip, networks):
     if not _ip_allowed(ip, networks):
         log.info(f"Rejecting request from unauthorized IP {ip}")
         abort(401)
