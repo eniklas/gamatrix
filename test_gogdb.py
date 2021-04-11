@@ -65,3 +65,25 @@ def test_is_sqlite3_good_header_data(mocked_file, monkeypatch):
     monkeypatch.setattr(pathlib, "Path", mocked_path)
     result = gogdb_helper.is_sqlite3("/not/a/real/path")
     assert result == True
+
+
+def test_is_sqlite3_integration_non_db_file():
+    """Test against a real file that isn't an sqlite db file."""
+    result = gogdb_helper.is_sqlite3(__file__)
+    assert result == False
+
+
+def test_is_sqlite3_integration_sample_db_file():
+    """Test against a real file that is an sqlite db file."""
+    p = pathlib.Path(__file__)
+    sample_db_file = p.parent.joinpath("sample_db.sqlite3")
+    result = gogdb_helper.is_sqlite3(sample_db_file.absolute())
+    assert result == True
+
+
+def test_is_sqlite3_integration_file_not_found():
+    """Test against a real file path that isn't there."""
+    p = pathlib.Path(__file__)
+    sample_db_file = p.parent.joinpath("this_file_doesnt_exist.txt")
+    result = gogdb_helper.is_sqlite3(sample_db_file.absolute())
+    assert result == False
