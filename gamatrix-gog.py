@@ -27,7 +27,6 @@ Positional Arguments:
 """
 
 import logging
-import magic
 import os
 import sys
 from ipaddress import IPv4Address, IPv4Network
@@ -40,7 +39,7 @@ from werkzeug.utils import secure_filename
 
 from helpers import constants
 from helpers.cache_helper import Cache
-from helpers.gogdb_helper import gogDB
+from helpers.gogdb_helper import gogDB, is_sqlite3
 from helpers.igdb_helper import IGDBHelper
 from helpers.misc_helper import get_slug_from_title
 from helpers.network_helper import check_ip_is_authorized
@@ -88,7 +87,7 @@ def upload_file():
                 target_filename = get_db_name_from_ip(request.remote_addr)
                 if target_filename is None:
                     message += "failed to determine target filename from your IP; is it in the config file?"
-                elif not magic.from_buffer(file.read(2048)).startswith("SQLite "):
+                elif not is_sqlite3(file):
                     message += "file is not an SQLite database"
                 else:
                     log.info(f"Uploading {target_filename} from {request.remote_addr}")
