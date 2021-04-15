@@ -17,8 +17,6 @@ def is_sqlite3(path: str) -> bool:
 
     test_sql_file = pathlib.Path(path)
 
-    if not test_sql_file.exists():
-        return False
     if not test_sql_file.is_file():
         return False
 
