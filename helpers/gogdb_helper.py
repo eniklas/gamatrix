@@ -2,11 +2,31 @@ import copy
 import json
 import logging
 import os
+import pathlib
 import sqlite3
+from functools import cmp_to_key
+
+from helpers.misc_helper import get_slug_from_title
 
 from .constants import PLATFORMS
-from helpers.misc_helper import get_slug_from_title
-from functools import cmp_to_key
+
+
+def is_sqlite3(path: str) -> bool:
+    """Fast check to ensure a file is indeed an SQLite3 db file, based on the format."""
+    # Thanks! https://stackoverflow.com/a/15355790/895739
+
+    test_sql_file = pathlib.Path(path)
+
+    if not test_sql_file.is_file():
+        return False
+
+    with open(test_sql_file.absolute(), "rb") as file_:
+        header = file_.read(100)
+
+        if len(header) != 100:
+            return False
+
+        return header[:16] == b"SQLite format 3\000"
 
 
 class gogDB:
