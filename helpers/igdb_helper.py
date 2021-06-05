@@ -27,6 +27,7 @@ class IGDBHelper:
         if not self.access_token:
             self.log.info("No access token in cache, getting new one")
             self.get_access_token()
+        self._set_headers()
 
     def _init_cache(self):
         if "igdb" not in self.cache:
@@ -63,14 +64,13 @@ class IGDBHelper:
             )
         elif "access_token" not in r.json():
             self.log.error(
-                "Request succeded, but access_token not found in response: {}".format(
-                    r.text
-                )
+                f"Request succeeded, but access_token not found in response: {r.text}"
             )
         else:
-            self.log.info("Access token request succeeded")
+            self.log.info(f"Access token request succeeded, response: {r.text}")
             self.access_token = r.json()["access_token"]
             self.cache["igdb"]["access_token"] = self.access_token
+            self._set_headers()
             self.api_failures = 0
             return True
 
@@ -87,10 +87,6 @@ class IGDBHelper:
             return {}
 
         self.cache["dirty"] = True
-        headers = {
-            "Client-ID": self.client_id,
-            "Authorization": f"Bearer {self.access_token}",
-        }
 
         # Back off when we have failed requests
         if self.api_failures > 0:
@@ -110,9 +106,11 @@ class IGDBHelper:
                 time.sleep(secs_to_wait)
 
             self.last_api_call_time = time.time()
-            self.log.debug(f"Sending API request to {url}, body = '{body}'")
+            self.log.debug(
+                f"Sending API request to {url}, headers = '{self.headers}', body = '{body}'"
+            )
             try:
-                r = requests.post(url, headers=headers, data=body)
+                r = requests.post(url, headers=self.headers, data=body)
             except Exception as e:
                 self.log.error(f"Request to IGDB failed: {e}")
                 self.api_failures += 1
@@ -320,3 +318,9 @@ class IGDBHelper:
             )
 
         return True
+
+    def _set_headers(self):
+        self.headers = {
+            "Client-ID": self.client_id,
+            "Authorization": f"Bearer {self.access_token}",
+        }
