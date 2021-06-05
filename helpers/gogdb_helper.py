@@ -11,22 +11,10 @@ from helpers.misc_helper import get_slug_from_title
 from .constants import PLATFORMS
 
 
-def is_sqlite3(path: str) -> bool:
-    """Fast check to ensure a file is indeed an SQLite3 db file, based on the format."""
-    # Thanks! https://stackoverflow.com/a/15355790/895739
-
-    test_sql_file = pathlib.Path(path)
-
-    if not test_sql_file.is_file():
-        return False
-
-    with open(test_sql_file.absolute(), "rb") as file_:
-        header = file_.read(100)
-
-        if len(header) != 100:
-            return False
-
-        return header[:16] == b"SQLite format 3\000"
+def is_sqlite3(stream: bytearray) -> bool:
+    """Returns True if stream contains an SQLite3 DB header"""
+    # https://www.sqlite.org/fileformat.html
+    return len(stream) == 100 and stream[:16] == b"SQLite format 3\000"
 
 
 class gogDB:

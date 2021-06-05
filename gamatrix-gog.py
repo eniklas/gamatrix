@@ -87,7 +87,7 @@ def upload_file():
                 target_filename = get_db_name_from_ip(request.remote_addr)
                 if target_filename is None:
                     message += "failed to determine target filename from your IP; is it in the config file?"
-                elif not is_sqlite3(file):
+                elif not is_sqlite3(file.read(100)):
                     message += "file is not an SQLite database"
                 else:
                     log.info(f"Uploading {target_filename} from {request.remote_addr}")
