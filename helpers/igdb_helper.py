@@ -107,10 +107,10 @@ class IGDBHelper:
 
             self.last_api_call_time = time.time()
             self.log.debug(
-                f"Sending API request to {url}, headers = '{headers}', body = '{body}'"
+                f"Sending API request to {url}, headers = '{self.headers}', body = '{body}'"
             )
             try:
-                r = requests.post(url, headers=headers, data=body)
+                r = requests.post(url, headers=self.headers, data=body)
             except Exception as e:
                 self.log.error(f"Request to IGDB failed: {e}")
                 self.api_failures += 1
