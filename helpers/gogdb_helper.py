@@ -77,7 +77,7 @@ class gogDB:
         return user
 
     def get_gamepiecetype_id(self, name):
-        """ Returns the numeric ID for the specified type """
+        """Returns the numeric ID for the specified type"""
         return self.cursor.execute(
             'SELECT id FROM GamePieceTypes WHERE type="{}"'.format(name)
         ).fetchone()[0]
