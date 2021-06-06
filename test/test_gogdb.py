@@ -1,5 +1,7 @@
 """Tests for GOG db related functions."""
 
+from helpers import gogdb_helper
+
 
 def test_is_sqlite3_not_enough_data():
     assert not gogdb_helper.is_sqlite3(b"not long enough")
