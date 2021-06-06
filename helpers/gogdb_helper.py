@@ -2,7 +2,6 @@ import copy
 import json
 import logging
 import os
-import pathlib
 import sqlite3
 from functools import cmp_to_key
 
