@@ -13,7 +13,7 @@ from .constants import PLATFORMS
 def is_sqlite3(stream: bytearray) -> bool:
     """Returns True if stream contains an SQLite3 DB header"""
     # https://www.sqlite.org/fileformat.html
-    return len(stream) == 100 and stream[:16] == b"SQLite format 3\000"
+    return len(stream) >= 16 and stream[:16] == b"SQLite format 3\000"
 
 
 class gogDB:
