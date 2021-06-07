@@ -2,7 +2,6 @@ import copy
 import json
 import logging
 import os
-import pathlib
 import sqlite3
 from functools import cmp_to_key
 
@@ -11,22 +10,10 @@ from helpers.misc_helper import get_slug_from_title
 from .constants import PLATFORMS
 
 
-def is_sqlite3(path: str) -> bool:
-    """Fast check to ensure a file is indeed an SQLite3 db file, based on the format."""
-    # Thanks! https://stackoverflow.com/a/15355790/895739
-
-    test_sql_file = pathlib.Path(path)
-
-    if not test_sql_file.is_file():
-        return False
-
-    with open(test_sql_file.absolute(), "rb") as file_:
-        header = file_.read(100)
-
-        if len(header) != 100:
-            return False
-
-        return header[:16] == b"SQLite format 3\000"
+def is_sqlite3(stream: bytearray) -> bool:
+    """Returns True if stream contains an SQLite3 DB header"""
+    # https://www.sqlite.org/fileformat.html
+    return len(stream) >= 16 and stream[:16] == b"SQLite format 3\000"
 
 
 class gogDB:
@@ -90,7 +77,7 @@ class gogDB:
         return user
 
     def get_gamepiecetype_id(self, name):
-        """ Returns the numeric ID for the specified type """
+        """Returns the numeric ID for the specified type"""
         return self.cursor.execute(
             'SELECT id FROM GamePieceTypes WHERE type="{}"'.format(name)
         ).fetchone()[0]
