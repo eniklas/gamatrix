@@ -26,15 +26,16 @@ Positional Arguments:
   <db>                         The GOG DB for a user, multiple can be listed.
 """
 
+import docopt
 import logging
 import os
 import sys
-from ipaddress import IPv4Address, IPv4Network
-from typing import Any, Dict, List
+import time
 
-import docopt
 from flask import Flask, render_template, request
+from ipaddress import IPv4Address, IPv4Network
 from ruamel.yaml import YAML
+from typing import Any, Dict, List
 from werkzeug.utils import secure_filename
 
 from helpers import constants
@@ -84,7 +85,7 @@ def upload_file():
                 message += "unsupported file extension"
             else:
                 # Name the file according to who uploaded it
-                target_filename = get_db_name_from_ip(request.remote_addr)
+                user, target_filename = get_db_name_from_ip(request.remote_addr)
                 if target_filename is None:
                     message += "failed to determine target filename from your IP; is it in the config file?"
                 elif not is_sqlite3(file.read(16)):
@@ -106,14 +107,20 @@ def upload_file():
                     # Put the cursor back to the start after the above file.read()
                     file.seek(0)
                     file.save(full_path)
+                    # Could call get_db_mtime() here but this is less expensive
+                    config["users"][user]["db_mtime"] = time.strftime(
+                        constants.TIME_FORMAT, time.localtime()
+                    )
                     message = f"Great success! File uploaded as {filename}"
 
         return render_template("upload_status.html", message=message)
     else:
         return """
         <!doctype html>
-        <title>Upload new File</title>
-        <h1>Upload new File</h1>
+        <title>Upload DB</title>
+        <h1>Upload DB</h1>
+        GOG DBs are usually in C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db
+        <br><br>
         <form method=post enctype=multipart/form-data>
         <input type=file name=file>
         <input type=submit value=Upload>
@@ -193,16 +200,16 @@ def compare_libraries():
 
 
 def get_db_name_from_ip(ip):
-    """Returns the DB file name based on the IP of the user"""
+    """Returns the userid and DB filename based on the IP of the user"""
     ip = IPv4Address(ip)
 
     for user in config["users"]:
         if "cidrs" in config["users"][user]:
             for cidr in config["users"][user]["cidrs"]:
                 if ip in cidr:
-                    return config["users"][user]["db"]
+                    return user, config["users"][user]["db"]
 
-    return None
+    return None, None
 
 
 def allowed_file(filename):
@@ -226,6 +233,17 @@ def init_opts():
         "user_ids_to_compare": {},
         "exclude_platforms": [],
     }
+
+
+def get_db_mtime(db):
+    """Returns the modification time of DB in local time"""
+    try:
+        mtime = time.strftime(
+            constants.TIME_FORMAT, time.localtime(os.path.getmtime(db))
+        )
+    except Exception:
+        mtime = "unavailable"
+    return mtime
 
 
 def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
@@ -285,9 +303,9 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
         config["users"] = {}
 
     for userid in config["users"]:
-        config["db_list"].append(
-            "{}/{}".format(config["db_path"], config["users"][userid]["db"])
-        )
+        full_db_path = f'{config["db_path"]}/{config["users"][userid]["db"]}'
+        config["db_list"].append(full_db_path)
+        config["users"][userid]["db_mtime"] = get_db_mtime(full_db_path)
 
         # Convert CIDRs into IPv4Network objects; if there are none, disable uploads
         config["uploads_enabled"] = False
@@ -440,6 +458,7 @@ if __name__ == "__main__":
 
     if "mode" in config and config["mode"] == "server":
         # Start Flask to run in server mode until killed
+        time.tzset()
         app.config["UPLOAD_FOLDER"] = config["db_path"]
         app.config["MAX_CONTENT_LENGTH"] = constants.UPLOAD_MAX_SIZE
         app.run(host=config["interface"], port=config["port"])

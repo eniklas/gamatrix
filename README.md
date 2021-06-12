@@ -177,11 +177,14 @@ Then run it:
 
 ```bash
 docker run -d --name gamatrix-gog -p 8080:80/tcp \
+-e TZ="America/Vancouver" \
 -v /path/to/gog_dbs:/usr/src/app/gog_dbs \
 --mount type=bind,source=/path/to/.cache.json,target=/usr/src/app/.cache.json \
 --mount type=bind,source=/path/to/config.yaml,target=/usr/src/app/config/config.yaml,readonly \
 gamatrix-gog
 ```
+
+The value of `TZ` should be a valid time zone in `/usr/share/zoneinfo`; this time zone will be used when showing the timestamps of the DBs on the main page. If it's unset or not set correctly, UTC will be used.
 
 **Windows:**
 
