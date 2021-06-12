@@ -45,3 +45,6 @@ PLATFORMS = (
     "uplay",
     "xboxone",
 )
+
+# e.g. Sat Oct 31 2020 10:32:10 PDT
+TIME_FORMAT = "%a %b %d %Y %H:%M:%S %Z"

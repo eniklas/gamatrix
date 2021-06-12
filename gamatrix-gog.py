@@ -107,15 +107,18 @@ def upload_file():
                     # Put the cursor back to the start after the above file.read()
                     file.seek(0)
                     file.save(full_path)
-                    config["users"][user]["db_mtime"] = get_db_mtime(full_path)
+                    # Could call get_db_mtime() here but this is less expensive
+                    config["users"][user]["db_mtime"] = time.strftime(
+                        constants.TIME_FORMAT, time.localtime()
+                    )
                     message = f"Great success! File uploaded as {filename}"
 
         return render_template("upload_status.html", message=message)
     else:
         return """
         <!doctype html>
-        <title>Upload new file</title>
-        <h1>Upload new file</h1>
+        <title>Upload DB</title>
+        <h1>Upload DB</h1>
         GOG DBs are usually in C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db
         <br><br>
         <form method=post enctype=multipart/form-data>
@@ -235,9 +238,11 @@ def init_opts():
 def get_db_mtime(db):
     """Returns the modification time of DB in local time"""
     try:
-        mtime = time.ctime(os.path.getmtime(db))
+        mtime = time.strftime(
+            constants.TIME_FORMAT, time.localtime(os.path.getmtime(db))
+        )
     except Exception:
-        mtime = "(unavailable)"
+        mtime = "unavailable"
     return mtime
 
 
@@ -453,6 +458,7 @@ if __name__ == "__main__":
 
     if "mode" in config and config["mode"] == "server":
         # Start Flask to run in server mode until killed
+        time.tzset()
         app.config["UPLOAD_FOLDER"] = config["db_path"]
         app.config["MAX_CONTENT_LENGTH"] = constants.UPLOAD_MAX_SIZE
         app.run(host=config["interface"], port=config["port"])
