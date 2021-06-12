@@ -53,7 +53,7 @@ class gogDB:
 
     def use_db(self, db):
         if not os.path.exists(db):
-            raise FileNotFoundError("DB {} doesn't exist".format(db))
+            raise FileNotFoundError(f"DB {db} doesn't exist")
 
         self.db = db
         self.conn = sqlite3.connect(db)
