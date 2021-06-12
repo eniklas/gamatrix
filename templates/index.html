@@ -12,6 +12,23 @@
         td {
             border-collapse: collapse;
         }
+
+        {# Make links invisible so we can make the DB date tooltips cleanly -#}
+        a:link.com {
+            color: lightgray;
+        }
+
+        a:active {
+            color: lightgray;
+        }
+
+        a:visited {
+            color: lightgray;
+        }
+
+        a:hover {
+            color: lightgray;
+        }
     </style>
     <title>
         gamatrix-gog
@@ -30,12 +47,13 @@
                         <blockquote>
                             {% for user in users -%}
                             <div>
-                                <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked>
-                                <label for="{{ users[user]['username'] }}"><img
-                                        src="/static/{{ users[user]['pic']|default('question_block.jpg') }}" width="20"
-                                        height="20" title="DB date: {{ users[user]['db_mtime'] }}">
-                                    {{ users[user]['username'] }}
-                                </label>
+                                <input type="checkbox" id="{{ users[user]['username'] }}" name="{{ user }}" checked><a
+                                    href="" style="text-decoration: none"
+                                    title="DB date: {{ users[user]['db_mtime'] }}">
+                                    <label for="{{ users[user]['username'] }}"><img
+                                            src="/static/{{ users[user]['pic']|default('question_block.jpg') }}"
+                                            width="20" height="20"> {{ users[user]['username'] }}
+                                    </label></a>
                             </div>
                             {% endfor -%}
                             <br>
