@@ -28,7 +28,7 @@ users:
   12345:
     username: Bob
     db: bob-galaxy-2.0.db
-    # Profile pic in static/ dir
+    # Profile pic in static/profile_img/ dir
     pic: bob.png
     # The CIDRs the user's request can come from (public IP for external users)
     cidrs:
