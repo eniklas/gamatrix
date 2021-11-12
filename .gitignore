@@ -138,16 +138,7 @@ config-local.yaml
 .cache.json
 
 # Static files for flask, include logo images but not profile pics
-static/profile/*
-!battlenet.png
-!bethesda.png
-!epic.png
-!gog.png
-!origin.png
-!steam.png
-!uplay.png
-!xboxone.png
-!question_block.jpg
+static/profile_img/*
 
 # Web UX configuration files
 static/package-lock.json

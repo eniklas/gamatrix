@@ -78,7 +78,7 @@
                 {%- else -%}
                 {% for userid in value.installed -%}
                 {% if users[userid]['pic'] is defined -%}
-                <img src="/static/{{ users[userid]['pic'] }}" width="20" height="20"
+                <img src="/static/profile_img/{{ users[userid]['pic'] }}" width="20" height="20"
                     title="{{ users[userid]['username'] }}">&nbsp;
                 {%- else -%}
                 {{ users[userid]['username'] }}&nbsp;
