@@ -128,6 +128,40 @@ def upload_file():
         """
 
 
+@app.route("/api/users", methods=["GET"])
+def get_users():
+    return """{
+        [
+            {
+                "steam_username": "d3r3kk",
+                "name": "Derek"
+                "image": "static/d3r3kk.png"
+            },
+            {
+                "steam_username": "elsinore84",
+                "name": "elsinore84",
+                "image": "static/Blade Runner.png"
+            },
+            {
+                "steam_username": "Chief_Wahoo",
+                "name": "Chief Wahoo",
+                "image": "static/Chief Wahoo.png"
+            },
+            {
+                "steam_username": "Kane",
+                "name": "Kane",
+                "image": "static/Kane.png"
+            },
+            {
+                "steam_username": "MonkeyPox",
+                "name": "MonkeyPox",
+                "image": "static/MonkeyPox.png"
+            }
+        ]
+    }
+    """
+
+
 @app.route("/compare", methods=["GET", "POST"])
 def compare_libraries():
     check_ip_is_authorized(request.remote_addr, config["allowed_cidrs"])
