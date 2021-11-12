@@ -459,7 +459,7 @@ if __name__ == "__main__":
     if "mode" in config and config["mode"] == "server":
         # Start Flask to run in server mode until killed
         if os.name != "nt":
-            time.tzset()
+            time.tzset()  # type: ignore
 
         app.config["UPLOAD_FOLDER"] = config["db_path"]
         app.config["MAX_CONTENT_LENGTH"] = constants.UPLOAD_MAX_SIZE
