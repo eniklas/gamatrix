@@ -45,7 +45,7 @@ The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool
 
 Select your search criteria from the front page:
 
-![Selection page](images/gamatrix-gog-front-page.png)
+![Selection page](/doc/images/gamatrix-gog-front-page.png)
 
 #### Upload DB
 
@@ -60,7 +60,7 @@ pause
 
 The `Game list` option provides a list of games owned by the selected users:
 
-![Game list](images/gamatrix-gog-game-list.png)
+![Game list](/doc/images/gamatrix-gog-game-list.png)
 
 - titles supporting fewer players than selected are greyed out
 - under `Installed`, a check mark indicates all players have the game installed; otherwise the names (or profile pics, if available) of the users that have the game installed are shown
@@ -69,7 +69,7 @@ The `Game list` option provides a list of games owned by the selected users:
 
 The Game grid option shows all games owned by the selected users
 
-![Game grid](images/gamatrix-gog-game-grid.png)
+![Game grid](/doc/images/gamatrix-gog-game-grid.png)
 
 - green cells indicate the user owns the game, red indicates they don't
 - a check mark means the user has the game installed
