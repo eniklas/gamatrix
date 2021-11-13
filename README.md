@@ -204,7 +204,7 @@ You can add CIDRs to `allowed_cidrs` in the config file, as shown in the [sample
 
 #### iptables
 
-You can also block access with iptables. Network access is best handled at the network layer, not the application layer, so this is the more secure method, but more complicated. I use Ubuntu 18.04, so YMMV:
+You can also block access with iptables. Network access is best handled at the network layer, not the application layer, so this is the more secure method, but more complicated. I use Ubuntu 20.04, so YMMV:
 
 Create a new chain called gamatrix:
 
@@ -218,10 +218,10 @@ Allow access to your friends' IPs, and your own internal network:
 # for cidr in 192.168.0.0/24 1.2.3.4 5.6.7.8; do iptables -A gamatrix --src $cidr -j ACCEPT ; done
 ```
 
-Drop everyone else that tries to reach gamatrix-gog (be sure to use the right port):
+Reject everyone else that tries to reach gamatrix-gog (be sure to use the right port):
 
 ```pre
-# iptables -A gamatrix -m tcp -p tcp --dport 80 -j DROP
+# iptables -A gamatrix -m tcp -p tcp --dport 80 -j REJECT
 ```
 
 Return to the calling chain if none of the rules applied:
@@ -251,7 +251,7 @@ target     prot opt source               destination
 ACCEPT     all  --  192.168.0.0/24       anywhere
 ACCEPT     all  --  1.2.3.4              anywhere
 ACCEPT     all  --  5.6.7.8              anywhere
-DROP       tcp  --  anywhere             anywhere             tcp dpt:http
+REJECT     tcp  --  anywhere             anywhere             tcp dpt:http
 RETURN     all  --  anywhere             anywhere
 ```
 
