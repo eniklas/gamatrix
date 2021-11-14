@@ -256,7 +256,7 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
         # We didn't get a config file, so populate from args
         config = {}
 
-    # TODO: allow using both IDs and DBs (use one arg and detect if it's an int)
+    # TODO: allow using user IDs
     # TODO: should be able to use unambiguous partial names
     if "users" not in config:
         raise ValueError("You must use -u or have users in the config file")
