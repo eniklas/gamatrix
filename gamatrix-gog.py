@@ -6,7 +6,7 @@ Show and compare between games owned by multiple users.
 Usage:
     gamatrix-gog.py --help
     gamatrix-gog.py --version
-    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...] [<db> ... ]
+    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...]
 
 Options:
   -h, --help                   Show this help message and exit.
@@ -21,9 +21,6 @@ Options:
   -S, --include-single-player  Include single player games.
   -U, --update-cache           Update cache entries that have incomplete info.
   -u USERID, --userid=USERID   The GOG user IDs to compare, there can be multiples of this switch.
-
-Positional Arguments:
-  <db>                         The GOG DB for a user, multiple can be listed.
 """
 
 import docopt
@@ -261,8 +258,8 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
 
     # TODO: allow using both IDs and DBs (use one arg and detect if it's an int)
     # TODO: should be able to use unambiguous partial names
-    if not args.get("<db>", []) and "users" not in config:
-        raise ValueError("You must use -u, have users in the config file, or list DBs")
+    if "users" not in config:
+        raise ValueError("You must use -u or have users in the config file")
 
     # Command-line args override values in the config file
 
@@ -315,10 +312,6 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
                     config["users"][userid]["cidrs"][i]
                 )
                 config["uploads_enabled"] = True
-
-    for db in args.get("<db>", []):
-        if os.path.abspath(db) not in config["db_list"]:
-            config["db_list"].append(os.path.abspath(db))
 
     for userid_str in args.get("--userid", []):
         userid = int(userid_str)
