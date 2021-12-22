@@ -1,6 +1,6 @@
-# gamatrix-gog
+# gamatrix
 
-[![CI](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/eniklas/gamatrix-gog/actions/workflows/ci.yml)
+[![CI](https://github.com/eniklas/gamatrix/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/eniklas/gamatrix/actions/workflows/ci.yml)
 
 * [Quick start](#quick-start)
 * [Introduction](#introduction)
@@ -26,9 +26,7 @@ Jump to [command-line mode](#command-line-mode) or [building with Docker](#runni
 
 ## Introduction
 
-gamatrix-gog is a tool to compare the games owned by several users, and list all the games they have in common. Since [GOG Galaxy](https://www.gog.com/galaxy) supports almost all major digital distribution platforms through integrations, it's a great service for aggregating most of your games in one place. gamatrix-gog uses the sqlite database that GOG Galaxy stores locally to pull its data from; users can upload their DBs via the main page.
-
-The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool for comparing games. This project may eventually be integrated into it.
+gamatrix is a tool to compare the games owned by several users, and list all the games they have in common. It requires all users to use [GOG Galaxy](https://www.gog.com/galaxy); since GOG Galaxy supports almost all major digital distribution platforms through integrations, it's a great service for aggregating your games in one place. gamatrix uses the sqlite database that GOG Galaxy stores locally to pull its data from; users can upload their DBs via the main page or with a provided script.
 
 ### Features
 
@@ -45,14 +43,14 @@ The name comes from [gamatrix](https://github.com/d3r3kk/gamatrix), another tool
 
 Select your search criteria from the front page:
 
-![Selection page](/doc/images/gamatrix-gog-front-page.png)
+![Selection page](/doc/images/gamatrix-front-page.png)
 
 #### Upload DB
 
-Upload a new GOG DB. Only files with a `.db` extension are allowed; the requesting IP is used to identify the uploader and name the target file correctly. To upload from a script, you can download [curl for Windows](https://curl.se/windows/) and run the following batch script, replacing `your-gamatrix-gog-url` with your server's DNS name or IP address:
+Upload a new GOG DB. Only files with a `.db` extension are allowed; the requesting IP is used to identify the uploader and name the target file correctly. To upload from a script, you can download [curl for Windows](https://curl.se/windows/) and run the following batch script, replacing `your-gamatrix-url` with your server's DNS name or IP address:
 
 ```bat
-curl -F file=@"C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db" http://<your-gamatrix-gog-url>/compare?option=upload
+curl -F file=@"C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db" http://<your-gamatrix-url>/compare?option=upload
 pause
 ```
 
@@ -60,7 +58,7 @@ pause
 
 The `Game list` option provides a list of games owned by the selected users:
 
-![Game list](/doc/images/gamatrix-gog-game-list.png)
+![Game list](/doc/images/gamatrix-game-list.png)
 
 - titles supporting fewer players than selected are greyed out
 - under `Installed`, a check mark indicates all players have the game installed; otherwise the names (or profile pics, if available) of the users that have the game installed are shown
@@ -69,7 +67,7 @@ The `Game list` option provides a list of games owned by the selected users:
 
 The Game grid option shows all games owned by the selected users
 
-![Game grid](/doc/images/gamatrix-gog-game-grid.png)
+![Game grid](/doc/images/gamatrix-game-grid.png)
 
 - green cells indicate the user owns the game, red indicates they don't
 - a check mark means the user has the game installed
@@ -77,13 +75,13 @@ The Game grid option shows all games owned by the selected users
 ## Usage
 
 ```pre
-gamatrix-gog
+gamatrix
 Show and compare between games owned by multiple users.
 
 Usage:
-    gamatrix-gog.py --help
-    gamatrix-gog.py --version
-    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...] [<db> ... ]
+    gamatrix.py --help
+    gamatrix.py --version
+    gamatrix.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...] [<db> ... ]
 
 Options:
   -h, --help                   Show this help message and exit.
@@ -142,7 +140,7 @@ py -3 -m venv venv
 ```bash
 python -m pip install -U pip
 python -m pip install -r requirements.txt
-./gamatrix-gog.py
+./gamatrix.py
 ```
 
 **Note:** Python 3.7+ is recommended. Dictionaries are assumed to be ordered, which is a 3.7+ feature.
@@ -159,16 +157,16 @@ A YAML file provides the runtime configuration; by default, this is `config.yaml
 
 ### IGDB
 
-[IGDB](https://www.igdb.com) will be used to pull multiplayer info if you have the needed credentials. See [this page](https://api-docs.igdb.com/#account-creation) for instructions on getting a client ID and secret, and put these in your config file as `igdb_client_id` and `igdb_client_secret`. Once this is set up, IGDB will be checked for all titles the first time they're processed, and if available, will categorize the title as multiplayer or single player, and set the maximum players. Note that this takes about a second per title, so the first time you use it, it can take a long time. The data is saved to disk in a cache file, which is read each time gamatrix-gog is launched, so once the cache is populated it's quite fast.
+[IGDB](https://www.igdb.com) will be used to pull multiplayer info if you have the needed credentials. See [this page](https://api-docs.igdb.com/#account-creation) for instructions on getting a client ID and secret, and put these in your config file as `igdb_client_id` and `igdb_client_secret`. Once this is set up, IGDB will be checked for all titles the first time they're processed, and if available, will categorize the title as multiplayer or single player, and set the maximum players. Note that this takes about a second per title, so the first time you use it, it can take a long time. The data is saved to disk in a cache file, which is read each time gamatrix is launched, so once the cache is populated it's quite fast.
 
-gamatrix-gog respects the IGDB rate limit and auto-renews your access token, so once you set your ID and secret in your config you should be good to go.
+gamatrix respects the IGDB rate limit and auto-renews your access token, so once you set your ID and secret in your config you should be good to go.
 
 ## Running in Docker
 
-A [Dockerfile](Dockerfile) is provided for running gamatrix-gog in a container. Build it with:
+A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. Build it with:
 
 ```bash
-docker build -t gamatrix-gog .
+docker build -t gamatrix .
 ```
 
 Then run it:
@@ -176,12 +174,12 @@ Then run it:
 **Linux/MacOS:**
 
 ```bash
-docker run -d --name gamatrix-gog -p 8080:80/tcp \
+docker run -d --name gamatrix -p 8080:80/tcp \
 -e TZ="America/Vancouver" \
 -v /path/to/gog_dbs:/usr/src/app/gog_dbs \
 --mount type=bind,source=/path/to/.cache.json,target=/usr/src/app/.cache.json \
 --mount type=bind,source=/path/to/config.yaml,target=/usr/src/app/config/config.yaml,readonly \
-gamatrix-gog
+gamatrix
 ```
 
 The value of `TZ` should be a valid time zone in `/usr/share/zoneinfo`; this time zone will be used when showing the timestamps of the DBs on the main page. If it's unset or not set correctly, UTC will be used.
@@ -189,7 +187,7 @@ The value of `TZ` should be a valid time zone in `/usr/share/zoneinfo`; this tim
 **Windows:**
 
 ```pwsh
-C:\Users\me> docker --name gamatrix-gog -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-gog-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix-gog\.cache.json:/usr/src/app/.cache.json -v C:\Users\me\dev\gamatrix-gog\derek-config.yaml:/usr/src/app/config/config.yaml gamatrix-gog
+C:\Users\me> docker --name gamatrix -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix\.cache.json:/usr/src/app/.cache.json -v C:\Users\me\dev\gamatrix\derek-config.yaml:/usr/src/app/config/config.yaml gamatrix
 ```
 
 Now you should be able to access the web page. If not, use `docker logs` to see what went wrong. The DBs are read on every call, so you can update them and they'll be used immediately. If you change the config file you'll need to restart the container for it to take effect.
@@ -218,7 +216,7 @@ Allow access to your friends' IPs, and your own internal network:
 # for cidr in 192.168.0.0/24 1.2.3.4 5.6.7.8; do iptables -A gamatrix --src $cidr -j ACCEPT ; done
 ```
 
-Reject everyone else that tries to reach gamatrix-gog (be sure to use the right port):
+Reject everyone else that tries to reach gamatrix (be sure to use the right port):
 
 ```pre
 # iptables -A gamatrix -m tcp -p tcp --dport 80 -j REJECT

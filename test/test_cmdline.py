@@ -12,8 +12,7 @@ all_games: True | False # use -a
 from typing import Any, List
 
 import pytest
-
-gog = __import__("gamatrix-gog")
+import gamatrix as gog
 
 
 @pytest.mark.parametrize(
@@ -22,7 +21,7 @@ gog = __import__("gamatrix-gog")
         [
             "No switches",  # Description, should this test pass fail.
             [
-                "./gamatrix-gog.py",  # standard, just left here to simulate actual command line argv list...
+                "./gamatrix.py",  # standard, just left here to simulate actual command line argv list...
                 "--config-file",  # use long switch names, more descriptive this way
                 "./config-sample.yaml",  # use the sample yaml as a test data source
             ],
@@ -44,7 +43,7 @@ gog = __import__("gamatrix-gog")
         [
             "Assorted values all in one",
             [
-                "./gamatrix-gog.py",  # just here to simulate actual command line argv list...
+                "./gamatrix.py",  # just here to simulate actual command line argv list...
                 "--config-file",
                 "./config-sample.yaml",
                 "--server",
@@ -67,7 +66,7 @@ gog = __import__("gamatrix-gog")
         [
             "Only set the mode to server",
             [
-                "./gamatrix-gog.py",
+                "./gamatrix.py",
                 "--config-file",
                 "./config-sample.yaml",
                 "--server",
@@ -78,7 +77,7 @@ gog = __import__("gamatrix-gog")
         [
             "Allow the cache to update missing items.",
             [
-                "./gamatrix-gog.py",
+                "./gamatrix.py",
                 "--config-file",
                 "./config-sample.yaml",
                 "--update-cache",
