@@ -33,7 +33,7 @@ gamatrix is a tool to compare the games owned by several users, and list all the
 - compares the game libraries of an arbitrary number of users, with several filtering options
 - multiplayer support and max players autopopulated from IGDB when available
 - configuration via YAML file and/or command-line options
-- small (< 150MB) Docker container
+- small (<150MB) Docker container
 - IP whitelisting support
 - ability to upload DBs
 
@@ -159,7 +159,7 @@ A YAML file provides the runtime configuration; by default, this is `config.yaml
 
 [IGDB](https://www.igdb.com) will be used to pull multiplayer info if you have the needed credentials. See [this page](https://api-docs.igdb.com/#account-creation) for instructions on getting a client ID and secret, and put these in your config file as `igdb_client_id` and `igdb_client_secret`. Once this is set up, IGDB will be checked for all titles the first time they're processed, and if available, will categorize the title as multiplayer or single player, and set the maximum players. Note that this takes about a second per title, so the first time you use it, it can take a long time. The data is saved to disk in a cache file, which is read each time gamatrix is launched, so once the cache is populated it's quite fast.
 
-gamatrix respects the IGDB rate limit and auto-renews your access token, so once you set your ID and secret in your config you should be good to go.
+gamatrix respects the IGDB rate limit and auto-renews your access token, so once you set your ID and secret in your config you should be good to go. If you have issues, debug by running in CLI mode with the `-d` option.
 
 ## Running in Docker
 
@@ -202,7 +202,7 @@ You can add CIDRs to `allowed_cidrs` in the config file, as shown in the [sample
 
 #### iptables
 
-You can also block access with iptables. Network access is best handled at the network layer, not the application layer, so this is the more secure method, but more complicated. I use Ubuntu 20.04, so YMMV:
+You can also block access with iptables. Network access is best handled at the network layer, not the application layer, so this is the more secure method, but more complicated. The example below is for Ubuntu 20.04, but should work for just about any Linux distribution.
 
 Create a new chain called gamatrix:
 
