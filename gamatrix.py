@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-gamatrix-gog
+gamatrix
 Show and compare between games owned by multiple users.
 
 Usage:
-    gamatrix-gog.py --help
-    gamatrix-gog.py --version
-    gamatrix-gog.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...]
+    gamatrix.py --help
+    gamatrix.py --version
+    gamatrix.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...]
 
 Options:
   -h, --help                   Show this help message and exit.
@@ -51,7 +51,7 @@ def root():
     check_ip_is_authorized(request.remote_addr, config["allowed_cidrs"])
 
     return render_template(
-        "index.html",
+        "index.html.jinja",
         users=config["users"],
         uploads_enabled=config["uploads_enabled"],
         platforms=constants.PLATFORMS,
@@ -110,7 +110,7 @@ def upload_file():
                     )
                     message = f"Great success! File uploaded as {filename}"
 
-        return render_template("upload_status.html", message=message)
+        return render_template("upload_status.html.jinja", message=message)
     else:
         return """
         <!doctype html>
@@ -154,9 +154,9 @@ def compare_libraries():
 
     if request.args["option"] == "grid":
         gog.config["all_games"] = True
-        template = "game_grid.html"
+        template = "game_grid.html.jinja"
     elif request.args["option"] == "list":
-        template = "game_list.html"
+        template = "game_list.html.jinja"
     else:
         return root()
 
