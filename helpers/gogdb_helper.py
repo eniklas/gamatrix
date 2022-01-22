@@ -87,8 +87,8 @@ class gogDB:
         """Returns a list of release keys owned per the current DB"""
 
         owned_game_database = """CREATE TEMP VIEW MasterList AS
-            SELECT GamePieces.releaseKey, GamePieces.gamePieceTypeId, GamePieces.value FROM GameLinks
-            JOIN GamePieces ON GameLinks.releaseKey = GamePieces.releaseKey;"""
+            SELECT GamePieces.releaseKey, GamePieces.gamePieceTypeId, GamePieces.value FROM ProductPurchaseDates
+            JOIN GamePieces ON ProductPurchaseDates.gameReleaseKey = GamePieces.releaseKey;"""
         og_fields = [
             """CREATE TEMP VIEW MasterDB AS SELECT DISTINCT(MasterList.releaseKey) AS releaseKey, MasterList.value AS title, PLATFORMS.value AS platformList"""
         ]
