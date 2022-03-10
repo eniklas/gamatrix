@@ -26,6 +26,7 @@ Options:
 import docopt
 import logging
 import os
+import random
 import sys
 import time
 
@@ -59,7 +60,7 @@ def root():
     )
 
 
-# https://flask.palletsprojects.com/en/1.1.x/patterns/fileuploads/
+# https://flask.palletsprojects.com/en/2.0.x/patterns/fileuploads/
 @app.route("/upload", methods=["GET", "POST"])
 def upload_file():
     check_ip_is_authorized(request.remote_addr, config["allowed_cidrs"])
@@ -181,8 +182,14 @@ def compare_libraries():
     common_games = gog.merge_duplicate_titles(common_games)
 
     common_games = gog.filter_games(common_games, gog.config["all_games"])
+    num_games = len(common_games)
 
     log.debug(f'user_ids_to_compare = {opts["user_ids_to_compare"]}')
+
+    if opts["randomize"]:
+        key = random.choice(list(common_games))
+        log.debug(f"Chose random release key {key}")
+        common_games = {key: common_games[key]}
 
     debug_str = ""
     return render_template(
@@ -190,8 +197,9 @@ def compare_libraries():
         debug_str=debug_str,
         games=common_games,
         users=opts["user_ids_to_compare"],
-        caption=gog.get_caption(len(common_games)),
+        caption=gog.get_caption(num_games, opts["randomize"]),
         show_keys=opts["show_keys"],
+        randomize=opts["randomize"],
         platforms=constants.PLATFORMS,
     )
 
@@ -227,6 +235,7 @@ def init_opts():
         "include_single_player": False,
         "exclusive": False,
         "show_keys": False,
+        "randomize": False,
         "user_ids_to_compare": {},
         "exclude_platforms": [],
     }

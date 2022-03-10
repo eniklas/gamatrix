@@ -402,8 +402,13 @@ class gogDB:
 
         return working_game_list
 
-    def get_caption(self, num_games):
+    def get_caption(self, num_games, random=False):
         """Returns the caption string"""
+
+        if random:
+            caption_start = f"Random game selected from {num_games}"
+        else:
+            caption_start = num_games
 
         if self.config["all_games"]:
             caption_middle = "total games owned by"
@@ -437,7 +442,7 @@ class gogDB:
             usernames.append(self.config["users"][userid]["username"])
 
         return "{} {} {}{}{}{}".format(
-            num_games,
+            caption_start,
             caption_middle,
             ", ".join(usernames),
             usernames_excluded,
