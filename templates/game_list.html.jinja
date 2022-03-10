@@ -66,8 +66,8 @@
                 </div>
             </td>
             <td>
-                {%- if value.max_players > 0 -%}
-                {{ value.max_players }}
+                {%- if max_players > 0 -%}
+                {{ max_players }}
                 {%- endif -%}
             </td>
             {# Put a check mark if all users have the game installed #}
@@ -93,7 +93,10 @@
         </tr>
         {%- endfor -%}
     </table>
-    <br><br>
+    {% if randomize -%}
+    <p style="color: lightgray;">Refresh the page to reroll the dice!</p>
+    {%- endif -%}
+    <br>
     <a href="/">Back to home page</a>
 </body>
 
