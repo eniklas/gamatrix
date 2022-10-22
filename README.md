@@ -55,6 +55,14 @@ curl -F file=@"C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db" http://<your
 pause
 ```
 
+To set up a scheduled task to upload your DB automatically, save the above script without the `pause` line; for example, on your desktop with the name `gamatrix-upload-nopause.bat`. Then, open a command prompt and run:
+
+```cmd
+SCHTASKS /CREATE /SC DAILY /TN "gamatrix DB upload" /TR "%USERPROFILE%\Desktop\gamatrix-upload-nopause.bat" /ST 21:00
+```
+
+where `21:00` is the time of day the task will run, which should be a time you're typically logged in. You may also want to set the option "Run task as soon as possible after a scheduled start is missed", which you can find in Task Scheduler under the settings for your task; this option is not available from the command line.
+
 #### Game list
 
 The `Game list` option provides a list of games owned by the selected users:
