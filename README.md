@@ -55,6 +55,12 @@ curl -F file=@"C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db" http://<your
 pause
 ```
 
+Alternatively, you can utilize powershell
+```bat
+Invoke-WebRequest -Method Post -Uri "http://<your-gamatrix-url>/compare?option=upload" -InFile "C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db"
+pause
+```
+
 To set up a scheduled task to upload your DB automatically, save the above script without the `pause` line; for example, on your desktop with the name `gamatrix-upload-nopause.bat`. Then, open a command prompt and run:
 
 ```cmd
