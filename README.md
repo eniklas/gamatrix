@@ -196,7 +196,7 @@ The value of `TZ` should be a valid time zone in `/usr/share/zoneinfo`; this tim
 **Windows:**
 
 ```pwsh
-C:\Users\me> docker --name gamatrix -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix\.cache.json:/usr/src/app/.cache.json -v C:\Users\me\dev\gamatrix\derek-config.yaml:/usr/src/app/config/config.yaml gamatrix
+C:\Users\me> docker run --name gamatrix -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix\.cache.json:/usr/src/app/.cache.json -v C:\Users\me\dev\gamatrix\myown-config.yaml:/usr/src/app/config/config.yaml gamatrix
 ```
 
 Now you should be able to access the web page. If not, use `docker logs` to see what went wrong. The DBs are read on every call, so you can update them and they'll be used immediately. If you change the config file you'll need to restart the container for it to take effect.
