@@ -13,7 +13,7 @@ from typing import Any, List
 
 import pytest
 
-import src.__main__ as gog
+import gamatrix_gog.__main__ as gog
 
 
 @pytest.mark.parametrize(

@@ -36,13 +36,13 @@ import yaml
 from typing import Any, Dict, List
 from werkzeug.utils import secure_filename
 
-from helpers import constants
+import helpers.constants as constants
 from helpers.cache_helper import Cache
 from helpers.gogdb_helper import gogDB, is_sqlite3
 from helpers.igdb_helper import IGDBHelper
 from helpers.misc_helper import get_slug_from_title
 from helpers.network_helper import check_ip_is_authorized
-from src.version import VERSION
+from gamatrix_gog.version import VERSION
 
 app = Flask(__name__)
 
@@ -117,7 +117,7 @@ def upload_file():
         <!doctype html>
         <title>Upload DB</title>
         <h1>Upload DB</h1>
-        GOG DBs are usually in C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db
+        GOG DBs are usually in C:\\ProgramData\\GOG.com\\Galaxy\\storage\\galaxy-2.0.db
         <br><br>
         <form method=post enctype=multipart/form-data>
         <input type=file name=file>
