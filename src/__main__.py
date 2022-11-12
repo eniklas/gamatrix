@@ -32,7 +32,7 @@ import time
 
 from flask import Flask, render_template, request
 from ipaddress import IPv4Address, IPv4Network
-from ruamel.yaml import YAML
+import yaml
 from typing import Any, Dict, List
 from werkzeug.utils import secure_filename
 
@@ -42,7 +42,7 @@ from helpers.gogdb_helper import gogDB, is_sqlite3
 from helpers.igdb_helper import IGDBHelper
 from helpers.misc_helper import get_slug_from_title
 from helpers.network_helper import check_ip_is_authorized
-from version import VERSION
+from src.version import VERSION
 
 app = Flask(__name__)
 
@@ -258,9 +258,8 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
     """
     config_file = args.get("--config-file", None)
     if config_file is not None:
-        yaml = YAML(typ="safe")
         with open(config_file, "r") as config_file:
-            config = yaml.load(config_file)
+            config = yaml.safe_load(config_file)
     else:
         # We didn't get a config file, so populate from args
         config = {}

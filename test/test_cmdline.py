@@ -12,7 +12,8 @@ all_games: True | False # use -a
 from typing import Any, List
 
 import pytest
-import gamatrix as gog
+
+import src.__main__ as gog
 
 
 @pytest.mark.parametrize(
