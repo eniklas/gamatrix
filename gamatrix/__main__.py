@@ -4,9 +4,9 @@ gamatrix
 Show and compare between games owned by multiple users.
 
 Usage:
-    gamatrix.py --help
-    gamatrix.py --version
-    gamatrix.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...]
+    gamatrix --help
+    gamatrix --version
+    gamatrix [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...]
 
 Options:
   -h, --help                   Show this help message and exit.
