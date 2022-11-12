@@ -9,11 +9,7 @@ authors = [
 description = "A tool to compare the games owned by several users, and list all the games they have in common. It requires all users to use [GOG Galaxy](https://www.gog.com/galaxy); since GOG Galaxy supports almost all major digital distribution platforms."
 readme = "README.md"
 requires-python = ">=3.9"
-
-[project.packages] = [
-    "gamatrix.py",
-    "gamatrix_gog"
-]
+license = { file = "LICENSE" }
 
 classifiers = [
     "Development Status :: 3 - Alpha",
