@@ -25,7 +25,6 @@ dependencies = [
     "docopt==0.6.2",
     "Flask==1.1.2",
     "Jinja2==2.11.2",
-    "MarkupSafe==1.1.1",
     "pyyaml==6.0",
     "requests==2.25.1",
 ]
@@ -37,6 +36,9 @@ dev = [
     "mypy",
     "pytest",
     "pytest-cov",
+    "types-docopt",
+    "types-PyYAML",
+    "types-requests",
 ]
 
 [tool.mypy]
@@ -45,3 +47,6 @@ ignore_missing_imports = "True"
 
 [tool.pytest.ini_options]
 addopts = "--cov=gamatrix --cov=helpers --cov-branch --cov-fail-under=10"
+
+[tool.coverage.run]
+source = ["src"]
