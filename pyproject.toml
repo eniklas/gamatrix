@@ -41,9 +41,6 @@ dev = [
     "types-requests",
 ]
 
-[tool.setuptools.packages.find]
-include = ["gamatrix_gog"]
-
 [tool.mypy]
 files = "src"
 ignore_missing_imports = "True"
