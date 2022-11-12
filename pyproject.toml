@@ -1,5 +1,5 @@
 [project]
-name = "gamatrix-gog"
+name = "gamatrix_gog"
 version = "1.0.0"
 authors = [
     {name = "Erik Niklas", email = "github@bobanddoug.com"},
@@ -26,10 +26,8 @@ dependencies = [
     "Flask==1.1.2",
     "Jinja2==2.11.2",
     "MarkupSafe==1.1.1",
-    "pyyaml==5.3.1",
+    "pyyaml==6.0",
     "requests==2.25.1",
-    "ruamel.yaml==0.16.12",
-    "ruamel.yaml.clib==0.2.2",
 ]
 
 [project.optional-dependencies]
@@ -40,3 +38,10 @@ dev = [
     "pytest",
     "pytest-cov",
 ]
+
+[tool.mypy]
+files = "gamatrix"
+ignore_missing_imports = "True"
+
+[tool.pytest.ini_options]
+addopts = "--cov=gamatrix --cov=helpers --cov-branch --cov-fail-under=10"
