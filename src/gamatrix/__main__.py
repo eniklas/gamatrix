@@ -36,13 +36,13 @@ import yaml
 from typing import Any, Dict, List
 from werkzeug.utils import secure_filename
 
-import gamatrix_gog.helpers.constants as constants
-from gamatrix_gog.helpers.cache_helper import Cache
-from gamatrix_gog.helpers.gogdb_helper import gogDB, is_sqlite3
-from gamatrix_gog.helpers.igdb_helper import IGDBHelper
-from gamatrix_gog.helpers.misc_helper import get_slug_from_title
-from gamatrix_gog.helpers.network_helper import check_ip_is_authorized
-from gamatrix_gog.version import VERSION
+import gamatrix.helpers.constants as constants
+from gamatrix.helpers.cache_helper import Cache
+from gamatrix.helpers.gogdb_helper import gogDB, is_sqlite3
+from gamatrix.helpers.igdb_helper import IGDBHelper
+from gamatrix.helpers.misc_helper import get_slug_from_title
+from gamatrix.helpers.network_helper import check_ip_is_authorized
+from gamatrix.version import VERSION
 
 app = Flask(__name__)
 

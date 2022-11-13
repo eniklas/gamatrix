@@ -1,12 +1,15 @@
 [project]
-name = "gamatrix_gog"
+name = "gamatrix"
 version = "1.4.3"
 authors = [
     {name = "Erik Niklas", email = "github@bobanddoug.com"},
     {name = "Derek Keeler", email = "34773432+derek-keeler@users.noreply.github.com"},
     {name = "Klosteinmann", email = "34807323+klosteinmann@users.noreply.github.com"},
 ]
-description = "A tool to compare the games owned by several users, and list all the games they have in common. It requires all users to use [GOG Galaxy](https://www.gog.com/galaxy); since GOG Galaxy supports almost all major digital distribution platforms."
+description = """A tool to compare the games owned by several users, and list
+                 all the games they have in common. It requires all users to
+                 use [GOG Galaxy](https://www.gog.com/galaxy); since GOG Galaxy
+                 supports almost all major digital distribution platforms."""
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
@@ -46,7 +49,7 @@ files = "src"
 ignore_missing_imports = "True"
 
 [tool.pytest.ini_options]
-addopts = "--cov=gamatrix_gog --cov-branch --cov-fail-under=18"
+addopts = "--cov=gamatrix --cov-branch --cov-fail-under=18"
 pythonpath = ["src"]
 
 [tool.coverage.run]
