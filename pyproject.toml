@@ -46,8 +46,7 @@ files = "src"
 ignore_missing_imports = "True"
 
 [tool.pytest.ini_options]
-addopts = "--ignore=.venv/ --cov-branch --cov-fail-under=18 test/"
+addopts = "--cov=gamatrix_gog --cov-branch --cov-fail-under=18"
+pythonpath = ["src"]
 
 [tool.coverage.run]
-source = ["gamatrix"]
-omit = [".venv/"]
