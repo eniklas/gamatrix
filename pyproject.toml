@@ -51,3 +51,8 @@ ignore_missing_imports = "True"
 [tool.pytest.ini_options]
 addopts = "--cov=gamatrix --cov-branch --cov-fail-under=18"
 pythonpath = ["src"]
+
+[tool.setuptools.package-data]
+"gamatrix.templates" = ["*.jinja"]
+"gamatrix.static" = ["*.png", "*.jpg"]
+"gamatrix.static.profile_img" = ["*.png", "*.jpg"]
