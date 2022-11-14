@@ -32,7 +32,10 @@ dependencies = [
     "requests==2.28.1",
 ]
 
+# Optional dependencies for specific workflows. Install these with
+# the command line `pip install .[name-of-optional-dependency]`.
 [project.optional-dependencies]
+# Dependencies for local developement.
 dev = [
     "black",
     "flake8",
@@ -42,6 +45,11 @@ dev = [
     "types-docopt",
     "types-PyYAML",
     "types-requests",
+]
+# Dependencies for CI/CD automation system.
+ci = [
+    "build",
+    "wheel",
 ]
 
 [tool.mypy]
