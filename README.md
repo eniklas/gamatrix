@@ -172,11 +172,9 @@ gamatrix respects the IGDB rate limit and auto-renews your access token, so once
 
 ## Running in Docker
 
-A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. Build it by generating the wheel file for the project (see Contributing below) then building it via:
+A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. (See [contributing section below for details](#contributing)). Build it by:
 
 ```bash
-python -m pip install .[dev,ci]
-python -m build --wheel
 docker build -t gamatrix .
 ```
 
@@ -314,17 +312,20 @@ python -m pip install .[dev]
 
 > Note: We prefer to use VSCode but as long as you keep formatting consistent to what our files currently have, you are good to use what you like.
 
-#### Extended Contributions: Packaging and Docker
+#### Extended Contributions: Packaging and a word about the Dockerfile
 
 We've also included the ability to create a `wheel` file for our project that you can
 use to distribute/make use of however you wish. Use the following commands after your
-development environment is set up to generate the `whl` package file, and generate a
-docker image you can use to host your own instance. Note that the CI system (GitHub)
-will also generate the `whl` file you create with your GH Actions if you set them up.
+development environment is set up to generate the `whl` package file. Note that the CI
+system (GitHub) will also generate the `whl` file you create with your GH Actions if you
+set them up.
 
 ```bash
 python -m pip install .[ci]     # install the build tools
 python -m build --wheel         # generate the dist/gamatrix-[ver]-none-any.whl file
-
-docker build -t gamatrix .      # generate the docker image
 ```
+
+For building the Docker image you will see that the [`Dockerfile`](./Dockerfile) now generates
+a `whl` package, installs it, and then removes the working folder containing the project 
+sources. Be sure to keep that flow in mind when you update the project sources, in particular
+if you add more data folders to the content of the project.
