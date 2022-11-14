@@ -319,7 +319,8 @@ python -m pip install .[dev]
 We've also included the ability to create a `wheel` file for our project that you can
 use to distribute/make use of however you wish. Use the following commands after your
 development environment is set up to generate the `whl` package file, and generate a
-docker image you can use to host your own instance.
+docker image you can use to host your own instance. Note that the CI system (GitHub)
+will also generate the `whl` file you create with your GH Actions if you set them up.
 
 ```bash
 python -m pip install .[ci]     # install the build tools
