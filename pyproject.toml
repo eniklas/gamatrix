@@ -57,7 +57,7 @@ files = "src"
 ignore_missing_imports = "True"
 
 [tool.pytest.ini_options]
-addopts = "--cov=gamatrix --cov-branch --cov-fail-under=18"
+addopts = "--cov=gamatrix --cov-branch --cov-fail-under=17"
 pythonpath = ["src"]
 
 [tool.setuptools.package-data]
