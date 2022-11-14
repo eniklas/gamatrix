@@ -148,7 +148,7 @@ py -3 -m venv venv
 
 ```bash
 python -m pip install -U pip
-python -m pip install -r requirements.txt
+python -m pip install .
 ./gamatrix.py
 ```
 
@@ -172,9 +172,11 @@ gamatrix respects the IGDB rate limit and auto-renews your access token, so once
 
 ## Running in Docker
 
-A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. Build it with:
+A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. Build it by generating the wheel file for the project (see Contributing below) then building it via:
 
 ```bash
+python -m pip install .[dev,ci]
+python -m build --wheel
 docker build -t gamatrix .
 ```
 
@@ -274,3 +276,54 @@ Now you can open the port on your router. For more information on using iptables
 ## Contributing
 
 PR's welcome! If you're making nontrivial changes, please include test output if possible. Update [version.py](version.py) following [SemVer](https://semver.org/) conventions.
+
+### Setting up your development environment
+
+If you do wish to contribute, here's a quickstart to get your development environment up and running:
+
+#### Quick Start
+
+__Linux/MacOS__
+
+```bash
+git clone https://github.com/my-github-username/gamatrix
+cd gamatrix
+python -m venv .venv
+
+. .venv/bin/activate        # Linux/MacOS
+.venv/Scripts/Activate.ps1  # Windows
+
+python -m pip install -U pip
+python -m pip install .[dev]
+```
+
+#### Details
+
+1. Install Python 3.7 or above. Currently, the project should support 3.7 through to the latest version.
+1. Fork the gamatrix repository into your personal profile using the `Fork` button on GitHub.com.
+1. Sync to the sources. ( `git clone https://github.com/my-github-username/gamatrix` ) and `cd` into your clone ( `cd gamatrix` ).
+1. Set up a virtual environment for managing Python dependencies.
+    - Linux/MacOS ( `python -m venv .venv` ) # assumes your system Python points at 3.7+
+    - Windows ( `py -m venv .venv` )         # sets up the latest Python version on your system
+1. Activate your virtual environment
+    - Linux/MacOS ( `. .venv/bin/activate` )
+    - Windows ( `.venv/bin/Activate.ps1` )
+1. Update the Python package manager ( `python -m pip install -U pip` )
+1. Install the dependencies as well as the _development dependencies_ for the project. ( `python -m pip install .[dev]` )
+1. You are good to go.
+
+> Note: We prefer to use VSCode but as long as you keep formatting consistent to what our files currently have, you are good to use what you like.
+
+#### Extended Contributions: Packaging and Docker
+
+We've also included the ability to create a `wheel` file for our project that you can
+use to distribute/make use of however you wish. Use the following commands after your
+development environment is set up to generate the `whl` package file, and generate a
+docker image you can use to host your own instance.
+
+```bash
+python -m pip install .[ci]     # install the build tools
+python -m build --wheel         # generate the dist/gamatrix-[ver]-none-any.whl file
+
+docker build -t gamatrix .      # generate the docker image
+```
