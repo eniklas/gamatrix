@@ -3,8 +3,8 @@ FROM python:3.11-slim
 WORKDIR /usr/src/app
 
 # Limit what we copy to keep image size down.
-# We currently only need the src/ folder and the pyproject.toml file.
-COPY pyproject.toml src .
+# We only need the src/ folder and the pyproject.toml file.
+COPY pyproject.toml src ./
 
 # Build and then install the gamatrix package only.
 RUN python -m pip install -U pip && \

@@ -1,7 +1,0 @@
-# Note: Flake8 does not support pyproject.toml
-
-[flake8]
-ignore = C,E,W
-exclude = .venv
-# match black's default
-max-line-length = 88

@@ -4,20 +4,20 @@
 
 * [Quick start](#quick-start)
 * [Introduction](#introduction)
-    * [Features](#features)
-    * [Screen shots](#screen-shots)
-        * [Front page](#front-page)
-        * [Game list](#game-list)
-        * [Game grid](#game-grid)
+  * [Features](#features)
+  * [Screen shots](#screen-shots)
+    * [Front page](#front-page)
+    * [Game list](#game-list)
+    * [Game grid](#game-grid)
 * [Usage](#usage)
-    * [Command-line mode](#command-line-mode)
-    * [Server mode](#server-mode)
+  * [Command-line mode](#command-line-mode)
+  * [Server mode](#server-mode)
 * [Configuration](#configuration)
-    * [IGDB](#igdb)
+  * [IGDB](#igdb)
 * [Running in Docker](#running-in-docker)
-    * [Restricting access](#restricting-access)
-    * [Allowed CIDRs](#allowed-cidrs)
-    * [iptables](#iptables)
+  * [Restricting access](#restricting-access)
+  * [Allowed CIDRs](#allowed-cidrs)
+  * [iptables](#iptables)
 * [Contributing](#contributing)
 
 ## Quick start
@@ -30,13 +30,13 @@ gamatrix is a tool to compare the games owned by several users, and list all the
 
 ### Features
 
-- compares the game libraries of an arbitrary number of users, with several filtering options
-- multiplayer support and max players autopopulated from IGDB when available
-- option to pick a random game
-- configuration via YAML file and/or command-line options
-- small (<150MB) Docker container
-- IP whitelisting support
-- ability to upload DBs
+* compares the game libraries of an arbitrary number of users, with several filtering options
+* multiplayer support and max players autopopulated from IGDB when available
+* option to pick a random game
+* configuration via YAML file and/or command-line options
+* small (<150MB) Docker container
+* IP whitelisting support
+* ability to upload DBs
 
 ### Screen shots
 
@@ -69,8 +69,8 @@ The `Game list` option provides a list of games owned by the selected users:
 
 ![Game list](/doc/images/gamatrix-game-list.png)
 
-- titles supporting fewer players than selected are greyed out
-- under `Installed`, a check mark indicates all players have the game installed; otherwise the names (or profile pics, if available) of the users that have the game installed are shown
+* titles supporting fewer players than selected are greyed out
+* under `Installed`, a check mark indicates all players have the game installed; otherwise the names (or profile pics, if available) of the users that have the game installed are shown
 
 #### Game grid
 
@@ -78,8 +78,8 @@ The Game grid option shows all games owned by the selected users
 
 ![Game grid](/doc/images/gamatrix-game-grid.png)
 
-- green cells indicate the user owns the game, red indicates they don't
-- a check mark means the user has the game installed
+* green cells indicate the user owns the game, red indicates they don't
+* a check mark means the user has the game installed
 
 ## Usage
 
@@ -281,12 +281,12 @@ If you do wish to contribute, here's a quickstart to get your development enviro
 
 #### Quick Start
 
-__Linux/MacOS__
+**Linux/MacOS**
 
 ```bash
 git clone https://github.com/my-github-username/gamatrix
 cd gamatrix
-python -m venv .venv
+python3 -m venv .venv
 
 . .venv/bin/activate        # Linux/MacOS
 .venv/Scripts/Activate.ps1  # Windows
@@ -301,11 +301,11 @@ python -m pip install .[dev]
 1. Fork the gamatrix repository into your personal profile using the `Fork` button on GitHub.com.
 1. Sync to the sources. ( `git clone https://github.com/my-github-username/gamatrix` ) and `cd` into your clone ( `cd gamatrix` ).
 1. Set up a virtual environment for managing Python dependencies.
-    - Linux/MacOS ( `python -m venv .venv` ) # assumes your system Python points at 3.7+
-    - Windows ( `py -m venv .venv` )         # sets up the latest Python version on your system
+    * `python3 -m venv .venv # Linux/MacOS`
+    * `py -3 -m venv .venv   # Windows`
 1. Activate your virtual environment
-    - Linux/MacOS ( `. .venv/bin/activate` )
-    - Windows ( `.venv/bin/Activate.ps1` )
+    * `. .venv/bin/activate   # Linux/MacOS`
+    * `.venv/bin/Activate.ps1 # Windows`
 1. Update the Python package manager ( `python -m pip install -U pip` )
 1. Install the dependencies as well as the _development dependencies_ for the project. ( `python -m pip install .[dev]` )
 1. You are good to go.
@@ -325,7 +325,7 @@ python -m pip install .[ci]     # install the build tools
 python -m build --wheel         # generate the dist/gamatrix-[ver]-none-any.whl file
 ```
 
-For building the Docker image you will see that the [`Dockerfile`](./Dockerfile) now generates
-a `whl` package, installs it, and then removes the working folder containing the project 
-sources. Be sure to keep that flow in mind when you update the project sources, in particular
-if you add more data folders to the content of the project.
+For building the Docker image you will see that the [`Dockerfile`](./Dockerfile) generates
+a wheel, or `whl` package, installs it, and then removes the working folder containing the
+project sources. Be sure to keep that flow in mind when you update the project sources, in
+particular if you add more data folders to the content of the project.

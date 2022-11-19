@@ -11,7 +11,7 @@ description = """A tool to compare the games owned by several users, and list
                  use [GOG Galaxy](https://www.gog.com/galaxy); since GOG Galaxy
                  supports almost all major digital distribution platforms."""
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.7"
 license = { file = "LICENSE" }
 
 classifiers = [
@@ -20,6 +20,8 @@ classifiers = [
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
