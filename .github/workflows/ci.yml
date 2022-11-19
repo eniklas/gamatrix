@@ -34,11 +34,7 @@ jobs:
         python -m pip install wheel
         python -m pip install .[dev,ci]
 
-    - name: Lint with flake8
-      run: |
-        python -m flake8
-
-    - name: Lint with mypy
+    - name: Analyze with mypy
       run: |
         python -m mypy
 
