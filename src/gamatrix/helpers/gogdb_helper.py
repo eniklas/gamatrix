@@ -5,9 +5,9 @@ import os
 import sqlite3
 from functools import cmp_to_key
 
-from helpers.misc_helper import get_slug_from_title
+from gamatrix.helpers.misc_helper import get_slug_from_title
 
-from .constants import PLATFORMS
+from gamatrix.helpers.constants import PLATFORMS
 
 
 def is_sqlite3(stream: bytearray) -> bool:

@@ -4,9 +4,9 @@ gamatrix
 Show and compare between games owned by multiple users.
 
 Usage:
-    gamatrix.py --help
-    gamatrix.py --version
-    gamatrix.py [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...]
+    gamatrix --help
+    gamatrix --version
+    gamatrix [--config-file=CFG] [--debug] [--all-games] [--interface=IFC] [--installed-only] [--include-single-player] [--port=PORT] [--server] [--update-cache] [--userid=UID ...]
 
 Options:
   -h, --help                   Show this help message and exit.
@@ -32,17 +32,17 @@ import time
 
 from flask import Flask, render_template, request
 from ipaddress import IPv4Address, IPv4Network
-from ruamel.yaml import YAML
+import yaml
 from typing import Any, Dict, List
 from werkzeug.utils import secure_filename
 
-from helpers import constants
-from helpers.cache_helper import Cache
-from helpers.gogdb_helper import gogDB, is_sqlite3
-from helpers.igdb_helper import IGDBHelper
-from helpers.misc_helper import get_slug_from_title
-from helpers.network_helper import check_ip_is_authorized
-from version import VERSION
+import gamatrix.helpers.constants as constants
+from gamatrix.helpers.cache_helper import Cache
+from gamatrix.helpers.gogdb_helper import gogDB, is_sqlite3
+from gamatrix.helpers.igdb_helper import IGDBHelper
+from gamatrix.helpers.misc_helper import get_slug_from_title
+from gamatrix.helpers.network_helper import check_ip_is_authorized
+from gamatrix.version import VERSION
 
 app = Flask(__name__)
 
@@ -117,7 +117,7 @@ def upload_file():
         <!doctype html>
         <title>Upload DB</title>
         <h1>Upload DB</h1>
-        GOG DBs are usually in C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db
+        GOG DBs are usually in C:\\ProgramData\\GOG.com\\Galaxy\\storage\\galaxy-2.0.db
         <br><br>
         <form method=post enctype=multipart/form-data>
         <input type=file name=file>
@@ -173,7 +173,7 @@ def compare_libraries():
             common_games[k]["igdb_key"],
             common_games[k]["slug"],
             config["update_cache"],
-        )
+        )  # type: ignore
         igdb.get_game_info(common_games[k]["igdb_key"])
         igdb.get_multiplayer_info(common_games[k]["igdb_key"])
 
@@ -258,9 +258,8 @@ def build_config(args: Dict[str, Any]) -> Dict[str, Any]:
     """
     config_file = args.get("--config-file", None)
     if config_file is not None:
-        yaml = YAML(typ="safe")
         with open(config_file, "r") as config_file:
-            config = yaml.load(config_file)
+            config = yaml.safe_load(config_file)
     else:
         # We didn't get a config file, so populate from args
         config = {}
@@ -427,9 +426,14 @@ def set_multiplayer_status(game_list, cache):
         game_list[k]["max_players"] = max_players
 
 
-def parse_cmdline(argv: List[str]) -> Dict[str, Any]:
+def parse_cmdline(argv: List[str], docstr: str) -> Dict[str, Any]:
+    """Get the docopt stuff out of the way because ugly."""
     return docopt.docopt(
-        __doc__, argv=argv, help=True, version=VERSION, options_first=True
+        docstr,
+        argv=argv,
+        help=True,
+        version=VERSION,
+        options_first=True,
     )
 
 
@@ -441,7 +445,10 @@ if __name__ == "__main__":
     )
     log = logging.getLogger()
 
-    opts = parse_cmdline(sys.argv[1:])
+    opts = parse_cmdline(
+        argv=sys.argv[1:],
+        docstr=__doc__ if __doc__ is not None else "",
+    )
 
     if opts.get("--debug", False):
         log.setLevel(logging.DEBUG)
@@ -496,7 +503,7 @@ if __name__ == "__main__":
             common_games[k]["igdb_key"],
             common_games[k]["slug"],
             config["update_cache"],
-        )
+        )  # type: ignore
         igdb.get_game_info(common_games[k]["igdb_key"], config["update_cache"])
         igdb.get_multiplayer_info(common_games[k]["igdb_key"], config["update_cache"])
 

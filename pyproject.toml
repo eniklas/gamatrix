@@ -1,0 +1,68 @@
+[project]
+name = "gamatrix"
+version = "1.4.3"
+authors = [
+    {name = "Erik Niklas", email = "github@bobanddoug.com"},
+    {name = "Derek Keeler", email = "34773432+derek-keeler@users.noreply.github.com"},
+    {name = "Klosteinmann", email = "34807323+klosteinmann@users.noreply.github.com"},
+]
+description = """A tool to compare the games owned by several users, and list
+                 all the games they have in common. It requires all users to
+                 use [GOG Galaxy](https://www.gog.com/galaxy); since GOG Galaxy
+                 supports almost all major digital distribution platforms."""
+readme = "README.md"
+requires-python = ">=3.7"
+license = { file = "LICENSE" }
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "docopt==0.6.2",
+    "Flask==2.2.2",
+    "Jinja2==3.1.2",
+    "pyyaml==6.0",
+    "requests==2.28.1",
+]
+
+# Optional dependencies for specific workflows. Install these with
+# the command line `pip install .[name-of-optional-dependency]`.
+[project.optional-dependencies]
+# Dependencies for local developement.
+dev = [
+    "black",
+    "flake8",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "types-docopt",
+    "types-PyYAML",
+    "types-requests",
+]
+# Dependencies for CI/CD automation system.
+ci = [
+    "build",
+    "wheel",
+]
+
+[tool.mypy]
+files = "src"
+ignore_missing_imports = "True"
+
+[tool.pytest.ini_options]
+addopts = "--cov=gamatrix --cov-branch --cov-fail-under=17"
+pythonpath = ["src"]
+
+[tool.setuptools.package-data]
+"gamatrix.templates" = ["*.jinja"]
+"gamatrix.static" = ["*.png", "*.jpg"]
+"gamatrix.static.profile_img" = ["*.png", "*.jpg"]

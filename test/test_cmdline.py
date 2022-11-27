@@ -12,7 +12,8 @@ all_games: True | False # use -a
 from typing import Any, List
 
 import pytest
-import gamatrix as gog
+
+import gamatrix.__main__ as gog
 
 
 @pytest.mark.parametrize(
@@ -94,7 +95,10 @@ def test_new_cmdline_handling(
     expected_values: List[Any],
 ):
     """Parse the command line and build the config file, checking for problems."""
-    args = gog.parse_cmdline(commandline[1:])
+    args = gog.parse_cmdline(
+        argv=commandline[1:],
+        docstr=str(gog.__doc__),
+    )
     config = gog.build_config(args)
     for i in range(len(config_fields)):
         assert (

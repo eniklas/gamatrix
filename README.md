@@ -2,24 +2,6 @@
 
 [![CI](https://github.com/eniklas/gamatrix/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/eniklas/gamatrix/actions/workflows/ci.yml)
 
-* [Quick start](#quick-start)
-* [Introduction](#introduction)
-    * [Features](#features)
-    * [Screen shots](#screen-shots)
-        * [Front page](#front-page)
-        * [Game list](#game-list)
-        * [Game grid](#game-grid)
-* [Usage](#usage)
-    * [Command-line mode](#command-line-mode)
-    * [Server mode](#server-mode)
-* [Configuration](#configuration)
-    * [IGDB](#igdb)
-* [Running in Docker](#running-in-docker)
-    * [Restricting access](#restricting-access)
-    * [Allowed CIDRs](#allowed-cidrs)
-    * [iptables](#iptables)
-* [Contributing](#contributing)
-
 ## Quick start
 
 Jump to [command-line mode](#command-line-mode) or [building with Docker](#running-in-docker).
@@ -30,13 +12,13 @@ gamatrix is a tool to compare the games owned by several users, and list all the
 
 ### Features
 
-- compares the game libraries of an arbitrary number of users, with several filtering options
-- multiplayer support and max players autopopulated from IGDB when available
-- option to pick a random game
-- configuration via YAML file and/or command-line options
-- small (<150MB) Docker container
-- IP whitelisting support
-- ability to upload DBs
+* compares the game libraries of an arbitrary number of users, with several filtering options
+* multiplayer support and max players autopopulated from IGDB when available
+* option to pick a random game
+* configuration via YAML file and/or command-line options
+* small (<200MB) Docker container
+* IP whitelisting support
+* ability to upload DBs
 
 ### Screen shots
 
@@ -75,8 +57,8 @@ The `Game list` option provides a list of games owned by the selected users:
 
 ![Game list](/doc/images/gamatrix-game-list.png)
 
-- titles supporting fewer players than selected are greyed out
-- under `Installed`, a check mark indicates all players have the game installed; otherwise the names (or profile pics, if available) of the users that have the game installed are shown
+* titles supporting fewer players than selected are greyed out
+* under `Installed`, a check mark indicates all players have the game installed; otherwise the names (or profile pics, if available) of the users that have the game installed are shown
 
 #### Game grid
 
@@ -84,8 +66,8 @@ The Game grid option shows all games owned by the selected users
 
 ![Game grid](/doc/images/gamatrix-game-grid.png)
 
-- green cells indicate the user owns the game, red indicates they don't
-- a check mark means the user has the game installed
+* green cells indicate the user owns the game, red indicates they don't
+* a check mark means the user has the game installed
 
 ## Usage
 
@@ -154,7 +136,7 @@ py -3 -m venv venv
 
 ```bash
 python -m pip install -U pip
-python -m pip install -r requirements.txt
+python -m pip install .
 ./gamatrix.py
 ```
 
@@ -178,7 +160,7 @@ gamatrix respects the IGDB rate limit and auto-renews your access token, so once
 
 ## Running in Docker
 
-A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. Build it with:
+A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. (See [contributing section below for details](#contributing)). Build it by:
 
 ```bash
 docker build -t gamatrix .
@@ -202,7 +184,7 @@ The value of `TZ` should be a valid time zone in `/usr/share/zoneinfo`; this tim
 **Windows:**
 
 ```pwsh
-C:\Users\me> docker --name gamatrix -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix\.cache.json:/usr/src/app/.cache.json -v C:\Users\me\dev\gamatrix\derek-config.yaml:/usr/src/app/config/config.yaml gamatrix
+C:\Users\me> docker run --name gamatrix -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix\.cache.json:/usr/src/app/.cache.json -v C:\Users\me\dev\gamatrix\myown-config.yaml:/usr/src/app/config/config.yaml gamatrix
 ```
 
 Now you should be able to access the web page. If not, use `docker logs` to see what went wrong. The DBs are read on every call, so you can update them and they'll be used immediately. If you change the config file you'll need to restart the container for it to take effect.
@@ -280,3 +262,58 @@ Now you can open the port on your router. For more information on using iptables
 ## Contributing
 
 PR's welcome! If you're making nontrivial changes, please include test output if possible. Update [version.py](version.py) following [SemVer](https://semver.org/) conventions.
+
+### Setting up your development environment
+
+If you do wish to contribute, here's a quickstart to get your development environment up and running:
+
+#### Quick Start
+
+**Linux/MacOS**
+
+```bash
+git clone https://github.com/my-github-username/gamatrix
+cd gamatrix
+python3 -m venv .venv
+
+. .venv/bin/activate        # Linux/MacOS
+.venv/Scripts/Activate.ps1  # Windows
+
+python -m pip install -U pip
+python -m pip install .[dev]
+```
+
+#### Details
+
+1. Install Python 3.7 or above. Currently, the project should support 3.7 through to the latest version.
+1. Fork the gamatrix repository into your personal profile using the `Fork` button on GitHub.com.
+1. Sync to the sources. ( `git clone https://github.com/my-github-username/gamatrix` ) and `cd` into your clone ( `cd gamatrix` ).
+1. Set up a virtual environment for managing Python dependencies.
+    * `python3 -m venv .venv # Linux/MacOS`
+    * `py -3 -m venv .venv   # Windows`
+1. Activate your virtual environment
+    * `. .venv/bin/activate   # Linux/MacOS`
+    * `.venv/bin/Activate.ps1 # Windows`
+1. Update the Python package manager ( `python -m pip install -U pip` )
+1. Install the dependencies as well as the _development dependencies_ for the project. ( `python -m pip install .[dev]` )
+1. You are good to go.
+
+> Note: We prefer to use VSCode but as long as you keep formatting consistent to what our files currently have, you are good to use what you like.
+
+#### Extended Contributions: Packaging and a word about the Dockerfile
+
+We've also included the ability to create a `wheel` file for our project that you can
+use to distribute/make use of however you wish. Use the following commands after your
+development environment is set up to generate the `whl` package file. Note that the CI
+system (GitHub) will also generate the `whl` file you create with your GH Actions if you
+set them up.
+
+```bash
+python -m pip install .[ci]     # install the build tools
+python -m build --wheel         # generate the dist/gamatrix-[ver]-none-any.whl file
+```
+
+For building the Docker image you will see that the [`Dockerfile`](./Dockerfile) generates
+a wheel, or `whl` package, installs it, and then removes the working folder containing the
+project sources. Be sure to keep that flow in mind when you update the project sources, in
+particular if you add more data folders to the content of the project.
