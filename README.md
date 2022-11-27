@@ -16,7 +16,7 @@ gamatrix is a tool to compare the games owned by several users, and list all the
 * multiplayer support and max players autopopulated from IGDB when available
 * option to pick a random game
 * configuration via YAML file and/or command-line options
-* small (<150MB) Docker container
+* small (<200MB) Docker container
 * IP whitelisting support
 * ability to upload DBs
 
