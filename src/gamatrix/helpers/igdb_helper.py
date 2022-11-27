@@ -2,7 +2,7 @@ import logging
 import requests
 import time
 
-from .constants import (
+from gamatrix.helpers.constants import (
     IGDB_API_CALL_DELAY,
     IGDB_GAME_MODE,
     IGDB_MAX_PLAYER_KEYS,

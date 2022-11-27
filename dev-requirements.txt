@@ -1,5 +1,0 @@
-black==21.5b2
-flake8==3.8.4
-mypy==0.812
-pytest==6.2.3
-pytest-cov==2.12.1
