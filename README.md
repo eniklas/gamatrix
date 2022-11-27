@@ -2,24 +2,6 @@
 
 [![CI](https://github.com/eniklas/gamatrix/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/eniklas/gamatrix/actions/workflows/ci.yml)
 
-* [Quick start](#quick-start)
-* [Introduction](#introduction)
-  * [Features](#features)
-  * [Screen shots](#screen-shots)
-    * [Front page](#front-page)
-    * [Game list](#game-list)
-    * [Game grid](#game-grid)
-* [Usage](#usage)
-  * [Command-line mode](#command-line-mode)
-  * [Server mode](#server-mode)
-* [Configuration](#configuration)
-  * [IGDB](#igdb)
-* [Running in Docker](#running-in-docker)
-  * [Restricting access](#restricting-access)
-  * [Allowed CIDRs](#allowed-cidrs)
-  * [iptables](#iptables)
-* [Contributing](#contributing)
-
 ## Quick start
 
 Jump to [command-line mode](#command-line-mode) or [building with Docker](#running-in-docker).
