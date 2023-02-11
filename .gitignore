@@ -138,4 +138,4 @@ config-local.yaml
 .cache.json
 
 # Static files for flask, include logo images but not profile pics
-static/profile_img/*
+profile_img/

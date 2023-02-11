@@ -157,7 +157,7 @@ gamatrix respects the IGDB rate limit and auto-renews your access token, so once
 A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. (See [contributing section below for details](#contributing)). Build it by:
 
 ```bash
-docker build -t gamatrix .
+docker build -t gamatrix:$(awk -F\" '{print $2}' src/gamatrix/version.py) -t gamatrix:latest .
 ```
 
 Then run it:
