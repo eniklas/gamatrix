@@ -134,7 +134,9 @@ class gogDB:
         self.log.debug("Running query: {}".format(query))
         self.cursor.execute(query)
 
-        result = json.loads(self.cursor.fetchall()[0][-1])
+        raw_result = self.cursor.fetchall()
+        self.log.debug(f"raw_result = {raw_result}")
+        result = json.loads(raw_result[0][3])
         self.log.debug(f"{release_key}: all release keys: {result}")
         if "releases" not in result:
             self.log.debug(
