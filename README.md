@@ -30,7 +30,7 @@ Select your search criteria from the front page:
 
 #### Upload DB
 
-Upload a new GOG DB. Only files with a `.db` extension are allowed; the requesting IP is used to identify the uploader and name the target file correctly. To upload from a script, put the following in a `.bat` script, replacing `your-gamatrix-url` with your server's DNS name or IP address:
+Upload a new GOG DB. Only files with a `.db` extension are allowed; the requesting IP is used to identify the uploader and name the target file correctly. To upload from a script, you can download [curl for Windows](https://curl.se/windows/) and run the following batch script, replacing `your-gamatrix-url` with your server's DNS name or IP address:
 
 ```bat
 curl -F file=@"C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db" http://<your-gamatrix-url>/compare?option=upload
@@ -130,8 +130,8 @@ py -3 -m venv venv
 
 ```bash
 python -m pip install -U pip
-python -m pip install .
-./gamatrix.py
+python -m pip install -e .[dev]
+python -m gamatrix
 ```
 
 **Note:** Python 3.7+ is recommended. Dictionaries are assumed to be ordered, which is a 3.7+ feature.
@@ -157,7 +157,7 @@ gamatrix respects the IGDB rate limit and auto-renews your access token, so once
 A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. (See [contributing section below for details](#contributing)). Build it by:
 
 ```bash
-docker build -t gamatrix:$(awk -F\" '{print $2}' src/gamatrix/version.py) -t gamatrix:latest .
+docker build -t gamatrix .
 ```
 
 Then run it:
@@ -274,7 +274,7 @@ python3 -m venv .venv
 .venv/Scripts/Activate.ps1  # Windows
 
 python -m pip install -U pip
-python -m pip install .[dev]
+python -m pip install -e .[dev]  # NOTE: The `-e` puts the local install into _editable_ mode, don't skip this!
 ```
 
 #### Details
@@ -289,7 +289,7 @@ python -m pip install .[dev]
     * `. .venv/bin/activate   # Linux/MacOS`
     * `.venv/bin/Activate.ps1 # Windows`
 1. Update the Python package manager ( `python -m pip install -U pip` )
-1. Install the dependencies as well as the _development dependencies_ for the project. ( `python -m pip install .[dev]` )
+1. Install the dependencies as well as the _development dependencies_ for the project. ( `python -m pip install -e .[dev]` )
 1. You are good to go.
 
 > Note: We prefer to use VSCode but as long as you keep formatting consistent to what our files currently have, you are good to use what you like.
