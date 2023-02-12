@@ -96,8 +96,7 @@ def test_new_cmdline_handling(
 ):
     """Parse the command line and build the config file, checking for problems."""
     args = gog.parse_cmdline(
-        argv=commandline[1:],
-        docstr=str(gog.__doc__),
+        argv=commandline[1:], docstr=str(gog.__doc__), version="1.4.5"
     )
     config = gog.build_config(args)
     for i in range(len(config_fields)):

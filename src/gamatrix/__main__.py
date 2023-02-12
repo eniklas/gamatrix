@@ -26,6 +26,7 @@ Options:
 import docopt
 import logging
 import os
+import pkg_resources
 import random
 import sys
 import time
@@ -42,7 +43,6 @@ from gamatrix.helpers.gogdb_helper import gogDB, is_sqlite3
 from gamatrix.helpers.igdb_helper import IGDBHelper
 from gamatrix.helpers.misc_helper import get_slug_from_title
 from gamatrix.helpers.network_helper import check_ip_is_authorized
-from gamatrix.version import VERSION
 
 app = Flask(__name__)
 
@@ -56,7 +56,7 @@ def root():
         users=config["users"],
         uploads_enabled=config["uploads_enabled"],
         platforms=constants.PLATFORMS,
-        version=VERSION,
+        version=version,
     )
 
 
@@ -426,13 +426,13 @@ def set_multiplayer_status(game_list, cache):
         game_list[k]["max_players"] = max_players
 
 
-def parse_cmdline(argv: List[str], docstr: str) -> Dict[str, Any]:
+def parse_cmdline(argv: List[str], docstr: str, version: str) -> Dict[str, Any]:
     """Get the docopt stuff out of the way because ugly."""
     return docopt.docopt(
         docstr,
         argv=argv,
         help=True,
-        version=VERSION,
+        version=version,
         options_first=True,
     )
 
@@ -445,9 +445,12 @@ if __name__ == "__main__":
     )
     log = logging.getLogger()
 
+    version = pkg_resources.get_distribution("gamatrix").version
+
     opts = parse_cmdline(
         argv=sys.argv[1:],
         docstr=__doc__ if __doc__ is not None else "",
+        version=version,
     )
 
     if opts.get("--debug", False):

@@ -1,6 +1,6 @@
 [project]
 name = "gamatrix"
-version = "1.4.4"
+version = "1.4.5"
 authors = [
     {name = "Erik Niklas", email = "github@bobanddoug.com"},
     {name = "Derek Keeler", email = "34773432+derek-keeler@users.noreply.github.com"},
@@ -56,10 +56,10 @@ ci = [
 
 [tool.mypy]
 files = "src"
-ignore_missing_imports = "True"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-addopts = "--cov=gamatrix --cov-branch --cov-fail-under=17"
+addopts = "--cov=gamatrix --cov-branch"
 pythonpath = ["src"]
 
 [tool.setuptools.package-data]
