@@ -36,7 +36,7 @@ jobs:
 
     - name: Analyze with mypy
       run: |
-        python -m mypy
+        python -m mypy --install-types --non-interactive
 
     - name: Check format with Black
       run: |
@@ -45,11 +45,11 @@ jobs:
     - name: Test with pytest
       run: |
         python -m pytest
-    
+
     - name: Build a Wheel
       run: |
         python -m build --wheel
-    
+
     - uses: actions/upload-artifact@v3
       with:
         name: wheel
