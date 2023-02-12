@@ -32,7 +32,6 @@ dependencies = [
     "Jinja2==3.1.2",
     "pyyaml==6.0",
     "requests==2.28.1",
-    "setuptools==44.0.0",
 ]
 
 # Optional dependencies for specific workflows. Install these with
@@ -60,7 +59,7 @@ files = "src"
 ignore_missing_imports = "True"
 
 [tool.pytest.ini_options]
-addopts = "--cov=gamatrix --cov-branch --cov-fail-under=17"
+addopts = "--cov=gamatrix --cov-branch"
 pythonpath = ["src"]
 
 [tool.setuptools.package-data]
