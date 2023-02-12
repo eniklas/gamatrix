@@ -56,8 +56,7 @@ ci = [
 
 [tool.mypy]
 files = "src"
-ignore_missing_imports = "True"
-addopts = "--install-types --non-interactive"
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "--cov=gamatrix --cov-branch"
