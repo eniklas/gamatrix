@@ -1,6 +1,6 @@
 [project]
 name = "gamatrix"
-version = "1.4.4"
+version = "1.4.5"
 authors = [
     {name = "Erik Niklas", email = "github@bobanddoug.com"},
     {name = "Derek Keeler", email = "34773432+derek-keeler@users.noreply.github.com"},
