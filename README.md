@@ -255,7 +255,7 @@ Now you can open the port on your router. For more information on using iptables
 
 ## Contributing
 
-PR's welcome! If you're making nontrivial changes, please include test output if possible. Update [version.py](version.py) following [SemVer](https://semver.org/) conventions.
+PR's welcome! If you're making nontrivial changes, please include test output if possible. Update the version in [pyproject.toml](pyproject.toml) following [SemVer](https://semver.org/) conventions.
 
 ### Setting up your development environment
 

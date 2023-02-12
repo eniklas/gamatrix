@@ -426,7 +426,7 @@ def set_multiplayer_status(game_list, cache):
         game_list[k]["max_players"] = max_players
 
 
-def parse_cmdline(argv: List[str], docstr: str) -> Dict[str, Any]:
+def parse_cmdline(argv: List[str], docstr: str, version: str) -> Dict[str, Any]:
     """Get the docopt stuff out of the way because ugly."""
     return docopt.docopt(
         docstr,
@@ -450,6 +450,7 @@ if __name__ == "__main__":
     opts = parse_cmdline(
         argv=sys.argv[1:],
         docstr=__doc__ if __doc__ is not None else "",
+        version=version,
     )
 
     if opts.get("--debug", False):
