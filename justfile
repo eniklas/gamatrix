@@ -54,7 +54,6 @@ git-tag:
 dev:
   #!/usr/bin/env bash
   set -eu -o pipefail
-  set -x
 
   # These env vars come from .env
   set_mounts() {
@@ -108,8 +107,10 @@ dev:
 
   # Stop any accidental running copies of the build container
   cleanup
-
   set_mounts
+
+  # Ensure we make it to cleanup even if there's a failure from this point
+  set +e
 
   docker run --rm -d -t \
       --name=${CONTAINER_NAME} \
