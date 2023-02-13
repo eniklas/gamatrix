@@ -113,7 +113,7 @@ dev:
 
   docker run --rm -d -t \
       --name=${CONTAINER_NAME} \
-      -p ${PORT}:80 \
+      -p ${PORT}:${PORT} \
       -v $(pwd):/usr/src/app \
       -v /var/run/docker.sock:/var/run/docker.sock \
       $bashrc_user_mount \
