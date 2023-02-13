@@ -35,7 +35,7 @@ jobs:
 
     - name: Analyze with mypy
       run: |
-        python -m mypy --install-types --non-interactive
+        python -m mypy
 
     - name: Check format with Black
       run: |
