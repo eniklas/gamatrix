@@ -47,6 +47,7 @@ git-tag:
   if [ ! "$(git diff --quiet --exit-code)" ]; then
     git commit -am "bump version"
     git tag --annotate --message="bump to version {{version}}" "{{version}}"
+    git push
     git push --tags
   fi
 
@@ -99,8 +100,8 @@ dev:
 
   # Default to latest if env var is not set
   CONTAINER_VERSION=${CONTAINER_VERSION:=latest}
-  CONTAINER_NAME=gamatrix-dev
-  CONTAINER_IMAGE=gamatrix:${CONTAINER_VERSION}
+  CONTAINER_NAME={{ container_name }}-dev
+  CONTAINER_IMAGE={{ container_name }}:${CONTAINER_VERSION}
   PORT=${PORT:=8080}
 
   echo "Container image: ${CONTAINER_IMAGE}"
