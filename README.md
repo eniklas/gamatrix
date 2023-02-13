@@ -154,24 +154,15 @@ Gamatrix respects the IGDB rate limit and auto-renews your access token, so once
 
 ## Just recipes
 
-Common operations are provided in the included [justfile](justfile); install [just](https://github.com/casey/just) to use them, or refer to the justfile to run the commands manually if you prefer. Some recipes are only available in Linux.
+If you're using Linux, common operations are provided in the included [justfile](justfile); install [just](https://github.com/casey/just) to use them, or refer to the justfile to run the commands manually if you prefer. `just` will use environment variables defined in `.env` if it exists. A [sample .env](.env-sample) is provided for reference.
 
 ## Running in Docker
 
-A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. (See [contributing section below for details](#contributing)). Build it with `just build`, then run it:
+A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. Build it with `just build`, then run it:
 
 **Linux/MacOS:**
 
-```bash
-docker run -d --name gamatrix -p 8080:80/tcp \
--e TZ="America/Vancouver" \
--v /path/to/gog_dbs:/usr/src/app/gog_dbs \
---mount type=bind,source=/path/to/.cache.json,target=/usr/src/app/.cache.json \
---mount type=bind,source=/path/to/config.yaml,target=/usr/src/app/config/config.yaml,readonly \
-gamatrix
-```
-
-The value of `TZ` should be a valid time zone in `/usr/share/zoneinfo`; this time zone will be used when showing the timestamps of the DBs on the main page. If it's unset or not set correctly, UTC will be used.
+`just run`
 
 **Windows:**
 
@@ -261,33 +252,45 @@ If you do wish to contribute, here's a quickstart to get your development enviro
 
 #### Quick Start
 
-**Linux/MacOS**
-
 ```bash
-git clone https://github.com/my-github-username/gamatrix
+git clone https://github.com/eniklas/gamatrix
 cd gamatrix
 python3 -m venv .venv
 
 . .venv/bin/activate        # Linux/MacOS
 .venv/Scripts/Activate.ps1  # Windows
+```
 
+**Linux/MacOS**
+
+`just dev`
+
+Before you merge:
+
+`just bump-version` (by default this bumps the patch rev, add `minor` or `major` to bump those numbers)
+
+**Windows**
+
+```pwsh
 python -m pip install -U pip
-python -m pip install -e .[dev]  # NOTE: The `-e` puts the local install into _editable_ mode, don't skip this!
+python -m pip install -e .[dev]
 ```
 
 #### Details
 
 1. Install Python 3.7 or above.
-1. Fork the gamatrix repository into your personal profile using the `Fork` button on GitHub.com.
-1. Sync to the sources. ( `git clone https://github.com/my-github-username/gamatrix` ) and `cd` into your clone ( `cd gamatrix` ).
+1. Clone or fork the gamatrix repository.
+    - Clone: `git clone https://github.com/eniklas/gamatrix`
+    - Fork: `git clone https://github.com/my-github-username/gamatrix`
+1. `cd gamatrix`
 1. Set up a virtual environment for managing Python dependencies.
-    * `python3 -m venv .venv # Linux/MacOS`
-    * `py -3 -m venv .venv   # Windows`
+    - Linux/MacOS: `python3 -m venv .venv`
+    - Windows: `py -3 -m venv .venv`
 1. Activate your virtual environment
-    * `. .venv/bin/activate   # Linux/MacOS`
-    * `.venv/bin/Activate.ps1 # Windows`
-1. Update the Python package manager ( `python -m pip install -U pip` )
-1. Install the dependencies as well as the _development dependencies_ for the project. ( `python -m pip install -e .[dev]` )
+    - Linux/MacOS: `. .venv/bin/activate`
+    - Windows: `.venv/bin/Activate.ps1`
+1. Update the Python package manager: `python -m pip install -U pip`
+1. Install the dependencies as well as the _development dependencies_ for the project: `python -m pip install -e .[dev]`
 1. You are good to go.
 
 > Note: We prefer to use VSCode but as long as you keep formatting consistent to what our files currently have, you are good to use what you like.

@@ -38,7 +38,23 @@ build:
 
 # Run the container
 run:
-  docker run -it {{container_name}} bash
+  PORT=${PROD_PORT:=80}
+  TZ=${TZ:="America/Vancouver"}
+  [ -z "$PROD_GOG_DBS" ] && echo "PROD_GOG_DBS env var must be set" && exit 1
+  [ -z "$PROD_CACHE" ] && echo "PROD_CACHE env var must be set" && exit 1
+  [ -z "$PROD_CONFIG" ] && echo "PROD_CONFIG env var must be set" && exit 1
+  docker run \
+    -d \
+    --name {{container_name}} \
+    --dns 1.1.1.1 \
+    --dns 8.8.8.8 \
+    --log-driver=journald \
+    -p ${PORT}:${PORT}/tcp \
+    -e TZ="$TZ" \
+    -v ${PROD_GOG_DBS}:/usr/src/app/gog_dbs \
+    --mount type=bind,source=${PROD_CACHE},target=/usr/src/app/.cache.json \
+    --mount type=bind,source=${PROD_CONFIG},target=/usr/src/app/config/config.yaml,readonly \
+    gamatrix
 
 # Tag commit with current release version
 git-tag:
@@ -55,38 +71,35 @@ git-tag:
 dev:
   #!/usr/bin/env bash
   set -eu -o pipefail
+  set -x
 
   # These env vars come from .env
   set_mounts() {
-    if [ "${GOG_DBS}x" == "x" ]; then
-      echo "WARNING: GOG_DBS not set in .env; DBs won't be available"
+    if [ "${DEV_GOG_DBS}x" == "x" ]; then
+      echo "WARNING: DEV_GOG_DBS not set in .env; DBs won't be available"
       db_mount=""
     else
-      db_mount="-v ${GOG_DBS}:/usr/src/app/gog_dbs"
+      db_mount="-v ${DEV_GOG_DBS}:/usr/src/app/gog_dbs"
     fi
 
-    if [ "${CONFIG}x" == "x" ]; then
-      echo "WARNING: CONFIG not set in .env; config won't be available"
+    if [ "${DEV_CONFIG}x" == "x" ]; then
+      echo "WARNING: DEV_CONFIG not set in .env; config won't be available"
       config_mount=""
     else
-      config_mount="-v ${CONFIG}:/usr/src/app/config.yaml"
+      config_mount="-v ${DEV_CONFIG}:/usr/src/app/config.yaml"
     fi
 
-    if [ "${CACHE}x" == "x" ]; then
-      echo "WARNING: CACHE not set in .env; cache won't be available"
+    if [ "${DEV_CACHE}x" == "x" ]; then
+      echo "WARNING: DEV_CACHE not set in .env; cache won't be available"
       cache_mount=""
     else
-      cache_mount="-v ${CACHE}:/usr/src/app/.cache.json"
-    fi
-
-    if [ "${BASHRC_USER}x" != "x" ]; then
-      bashrc_user_mount="-v ${BASHRC_USER}:/root/.bashrc.user"
+      cache_mount="-v ${DEV_CACHE}:/usr/src/app/.cache.json"
     fi
 
     # This allows the user to set their own aliases, set -o vi, etc.
     bashrc_user_mount=""
-    if [ -e ~/.gamatrix/.bashrc.user ]; then
-        bashrc_user_mount="-v $HOME/.gamatrix/.bashrc.user:/root/.bashrc.user"
+    if [ "${BASHRC_USER}x" != "x" ] && [ -e "$BASHRC_USER" ]; then
+      bashrc_user_mount="-v ${BASHRC_USER}:/root/.bashrc.user"
     fi
   }
 
@@ -100,9 +113,10 @@ dev:
 
   # Default to latest if env var is not set
   CONTAINER_VERSION=${CONTAINER_VERSION:=latest}
-  CONTAINER_NAME={{ container_name }}-dev
-  CONTAINER_IMAGE={{ container_name }}:${CONTAINER_VERSION}
-  PORT=${PORT:=8080}
+  CONTAINER_NAME={{container_name}}-dev
+  CONTAINER_IMAGE={{container_name}}:${CONTAINER_VERSION}
+  # Default to 8080 if not set in .env
+  PORT=${DEV_PORT:=8080}
 
   echo "Container image: ${CONTAINER_IMAGE}"
 
