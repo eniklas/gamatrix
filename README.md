@@ -16,7 +16,7 @@ Gamatrix is a tool to compare the games owned by several users, and list all the
 * multiplayer support and max players autopopulated from IGDB when available
 * option to pick a random game
 * configuration via YAML file and/or command-line options
-* option to run in Docker
+* optional Docker container
 * IP whitelisting support
 * ability to upload DBs
 
@@ -114,14 +114,14 @@ Command-line mode lists the output to a terminal, and doesn't use Flask. It's a 
 
 **1. Setup your virtual environment:**
 
-Linux:
+**Linux/MacOS**
 
 ```bash
 python3 -m venv venv
 . venv/bin/activate
 ```
 
-Windows:
+**Windows**
 
 ```pwsh
 py -3 -m venv venv
@@ -160,11 +160,11 @@ If you're using Linux, common operations are provided in the included [justfile]
 
 A [Dockerfile](Dockerfile) is provided for running gamatrix in a container. Build it with `just build`, then run it:
 
-**Linux/MacOS:**
+**Linux/MacOS**
 
 `just run`
 
-**Windows:**
+**Windows**
 
 ```pwsh
 C:\Users\me> docker run --name gamatrix -p 8080:80/tcp -v C:\Users\me\dev\gamatrix-dbs:/usr/src/app/gog_dbs -v C:\Users\me\dev\gamatrix\.cache.json:/usr/src/app/.cache.json -v C:\Users\me\dev\gamatrix\myown-config.yaml:/usr/src/app/config/config.yaml gamatrix

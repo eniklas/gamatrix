@@ -71,7 +71,6 @@ git-tag:
 dev:
   #!/usr/bin/env bash
   set -eu -o pipefail
-  set -x
 
   # These env vars come from .env
   set_mounts() {
