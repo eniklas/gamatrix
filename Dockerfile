@@ -1,4 +1,6 @@
-FROM python:3.11-slim
+FROM python:3.11
+
+ENV JUST_VERSION=1.13.0
 
 WORKDIR /usr/src/app
 
@@ -16,4 +18,11 @@ RUN python -m pip install -U pip && \
     # Create config and data directories mounted in the Docker run command. (See README for details).
     mkdir /usr/src/app/gog_dbs /usr/src/app/config
 
-CMD [ "python", "-m", "gamatrix", "-c", "/usr/src/app/config/config.yaml" ]
+# Install just
+# RUN wget -qO- https://github.com/casey/just/releases/download/${JUST_VERSION}/just-${JUST_VERSION}-x86_64-unknown-linux-musl.tar.gz \
+#     | tar xzv -C /usr/local/bin just
+
+# This is used by "just dev"
+RUN echo '[ -e /root/.bashrc.user ] && . /root/.bashrc.user' >> /root/.bashrc
+
+CMD [ "python", "-m", "gamatrix", "-c", "/usr/src/app/config.yaml" ]
