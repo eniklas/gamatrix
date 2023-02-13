@@ -44,7 +44,7 @@ run:
 git-tag:
   #!/usr/bin/env bash
   # Nonzero exit code means there are changes
-  if [ "$(git diff --quiet --exit-code)" ]; then
+  if [ ! "$(git diff --quiet --exit-code)" ]; then
     git commit -am "bump version"
     git tag --annotate --message="bump to version {{version}}" "{{version}}"
     git push --tags
