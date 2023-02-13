@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11
 
 WORKDIR /usr/src/app
 
@@ -16,4 +16,7 @@ RUN python -m pip install -U pip && \
     # Create config and data directories mounted in the Docker run command. (See README for details).
     mkdir /usr/src/app/gog_dbs /usr/src/app/config
 
-CMD [ "python", "-m", "gamatrix", "-c", "/usr/src/app/config/config.yaml" ]
+# This is used by "just dev"
+RUN echo '[ -e /root/.bashrc.user ] && . /root/.bashrc.user' >> /root/.bashrc
+
+CMD [ "python", "-m", "gamatrix", "-c", "/usr/src/app/config.yaml", "-p", "80", "-s" ]
