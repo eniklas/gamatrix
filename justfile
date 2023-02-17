@@ -100,6 +100,16 @@ dev:
     if [ "${BASHRC_USER}x" != "x" ] && [ -e "$BASHRC_USER" ]; then
       bashrc_user_mount="-v ${BASHRC_USER}:/root/.bashrc.user"
     fi
+
+    ssh_mount=""
+    if [ -e "$HOME/.ssh" ]; then
+      ssh_mount="-v $HOME/.ssh:/root/.ssh"
+    fi
+
+    gitconfig_mount=""
+    if [ -e "$HOME/.gitconfig" ]; then
+      ssh_mount="-v $HOME/.gitconfig:/root/.gitconfig"
+    fi
   }
 
   cleanup() {
@@ -132,6 +142,8 @@ dev:
       -v $(pwd):/usr/src/app \
       -v /var/run/docker.sock:/var/run/docker.sock \
       $bashrc_user_mount \
+      $ssh_mount \
+      $gitconfig_mount \
       $db_mount \
       $config_mount \
       $cache_mount \
