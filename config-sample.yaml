@@ -18,8 +18,8 @@ allowed_cidrs:
 
 # IGDB client setup
 # Instructions for how to obtain a client ID & secret can be found at https://api-docs.igdb.com/#about
-igdb_client_secret: abcdefghi01234jklmno56789pqrst
 igdb_client_id: 0123uvwxyz4567abcde89012fg34hi
+igdb_client_secret: abcdefghi01234jklmno56789pqrst
 # File to cache the IGDB setup from
 cache: /path/to/cache/file
 

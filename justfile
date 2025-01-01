@@ -38,6 +38,7 @@ build:
 
 # Run the container
 run:
+  #!/usr/bin/env bash
   PORT=${PROD_PORT:=80}
   TZ=${TZ:="America/Vancouver"}
   [ -z "$PROD_GOG_DBS" ] && echo "PROD_GOG_DBS env var must be set" && exit 1
@@ -53,8 +54,10 @@ run:
     -e TZ="$TZ" \
     -v ${PROD_GOG_DBS}:/usr/src/app/gog_dbs \
     --mount type=bind,source=${PROD_CACHE},target=/usr/src/app/.cache.json \
-    --mount type=bind,source=${PROD_CONFIG},target=/usr/src/app/config/config.yaml,readonly \
-    gamatrix
+    --mount type=bind,source=${PROD_CONFIG},target=/usr/src/app/config.yaml,readonly \
+    -w /usr/src/app \
+    gamatrix \
+    sh -c "python -m gamatrix -c config.yaml -p 80 -s"
 
 # Tag commit with current release version
 git-tag:

@@ -1,6 +1,6 @@
 # Allowed extensions for uploaded files
 UPLOAD_ALLOWED_EXTENSIONS = ["db"]
-UPLOAD_MAX_SIZE = 100 * 1024 * 1024
+UPLOAD_MAX_SIZE = 300 * 1024 * 1024
 
 # Full mapping is at https://api-docs.igdb.com/#external-game-enums,
 # but only Steam and GOG actually work; the other platforms' IDs
