@@ -236,10 +236,10 @@ class gogDB:
                         if platform == "steam":
                             game_list[release_key]["igdb_key"] = release_key
                         else:
-                            game_list[release_key][
-                                "igdb_key"
-                            ] = self.get_igdb_release_key(
-                                self.gamepiecetype_id, release_key
+                            game_list[release_key]["igdb_key"] = (
+                                self.get_igdb_release_key(
+                                    self.gamepiecetype_id, release_key
+                                )
                             )
 
                         self.log.debug(
