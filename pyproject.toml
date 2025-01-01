@@ -1,7 +1,7 @@
 [project]
 name = "gamatrix"
 # Changing this requires rebuilding even if in editable mode
-version = "1.4.6"
+version = "1.4.7"
 authors = [
     {name = "Erik Niklas", email = "github@bobanddoug.com"},
     {name = "Derek Keeler", email = "34773432+derek-keeler@users.noreply.github.com"},
