@@ -1,0 +1,73 @@
+# Gamatrix infrastructure (CDK)
+
+AWS CDK (Python) stack for gamatrix v2.
+
+## Prerequisites
+
+- Node + the CDK CLI (`npm install -g aws-cdk`)
+- Docker (the Lambdas are built as container images)
+- AWS credentials configured
+
+## Install
+
+```bash
+uv pip install -e ".[cdk]"   # from the repo root
+```
+
+## Deploy
+
+```bash
+cd infrastructure/cdk
+cdk bootstrap      # first time in an account/region
+cdk deploy
+```
+
+## What it creates
+
+- DynamoDB tables: `games`, `users`, `user_libraries` (+ `release_key-index` GSI),
+  `enrichment_jobs`, `metadata_overrides`, `config` (PAY_PER_REQUEST, PITR on)
+- S3 upload bucket (1-day lifecycle expiry, CORS for browser POST)
+- SQS enrichment queue
+- Lambdas: web (HTTP API + Mangum), enricher (SQS-triggered), parser (S3-triggered)
+- HTTP API (API Gateway v2) in front of the web Lambda
+- **If a deployment config supplies a domain** (see below): a custom domain +
+  ACM certificate (DNS-validated via the Route 53 hosted zone) + alias A-record,
+  and an SES domain identity with DKIM CNAMEs so the sender address can send
+  password-reset email. Without it, the app is served from the default API
+  Gateway URL and SES is skipped.
+- Secrets Manager secret `gamatrix/igdb` — populate after deploy:
+  ```bash
+  aws secretsmanager put-secret-value --secret-id gamatrix/igdb \
+    --secret-string '{"client_id":"...","client_secret":"..."}'
+  ```
+- SSM params for the hidden / single-player lists and stale-days threshold
+
+## Deployment config (domain / SES)
+
+Domain and sender values are **not** stored in this public repo. They come from
+a private config file, by default `../gamatrix-configs/cdk-config.yaml`
+(override the directory with `GAMATRIX_CONFIG_DIR`):
+
+```yaml
+hosted_zone: example.com          # existing Route 53 hosted zone
+site_domain: gamatrix.example.com # public hostname for the app
+email_from: noreply@example.com   # SES sender for password-reset email
+```
+
+If the file is absent (or omits `hosted_zone`/`site_domain`), the stack deploys
+without a custom domain or SES — the app is reached at the default API Gateway
+URL. When a domain *is* configured, the hosted zone is looked up via
+`HostedZone.from_lookup`, so the stack must be deployed with an explicit
+account/region (set by `app.py` from `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION`).
+
+## Post-deploy
+
+1. Put the IGDB credentials in the secret (above).
+2. Set the `JWT_SECRET` env var on the web Lambda (or move it to Secrets Manager).
+3. **SES sandbox**: the domain identity and DKIM records are created by the
+   stack, but a new SES account starts in the sandbox (can only send to verified
+   recipients). Request production access in the SES console so reset emails
+   reach all users. The cert and DKIM validations complete automatically once
+   the Route 53 records propagate.
+4. Seed user accounts: run `scripts/seed_users.py` against the deployed tables
+   (set `TABLE_PREFIX` and AWS creds, unset the local endpoint env vars).

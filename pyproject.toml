@@ -1,7 +1,6 @@
 [project]
 name = "gamatrix"
-# Changing this requires rebuilding even if in editable mode
-version = "1.4.7"
+version = "2.0.0"
 authors = [
     {name = "Erik Niklas", email = "github@bobanddoug.com"},
     {name = "Derek Keeler", email = "34773432+derek-keeler@users.noreply.github.com"},
@@ -9,62 +8,78 @@ authors = [
 ]
 description = """A tool to compare the games owned by several users, and list
                  all the games they have in common. It requires all users to
-                 use [GOG Galaxy](https://www.gog.com/galaxy); since GOG Galaxy
-                 supports almost all major digital distribution platforms."""
+                 use GOG Galaxy, since GOG Galaxy supports almost all major
+                 digital distribution platforms."""
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.12"
 license = { file = "LICENSE" }
 
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "docopt==0.6.2",
-    "Flask==3.1.0",
-    "Jinja2==3.1.5",
-    "pyyaml==6.0.2",
-    "requests==2.32.3",
+    "fastapi==0.115.6",
+    "mangum==0.19.0",
+    "uvicorn[standard]==0.34.0",
+    "jinja2==3.1.5",
+    "python-multipart==0.0.20",
+    "boto3==1.35.92",
+    "httpx==0.28.1",
+    "python-jose[cryptography]==3.3.0",
+    "bcrypt==4.2.1",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.1",
+    "rapidfuzz==3.11.0",
+    "itsdangerous==2.2.0",
 ]
 
-# Optional dependencies for specific workflows. Install these with
-# the command line `pip install .[name-of-optional-dependency]`.
 [project.optional-dependencies]
-# Dependencies for local developement.
+# Local development and testing.
 dev = [
     "black",
     "flake8",
     "mypy",
     "pytest",
+    "pytest-asyncio",
     "pytest-cov",
-    "types-docopt",
-    "types-PyYAML",
-    "types-requests",
-    "types-setuptools",
+    "moto[dynamodb,s3,sqs,ses]",
+    "boto3-stubs[dynamodb,s3,sqs,ses]",
+    "types-python-jose",
 ]
-# Dependencies for CI/CD automation system.
-ci = [
-    "build",
-    "wheel",
+# Infrastructure-as-code (CDK).
+cdk = [
+    "aws-cdk-lib==2.173.4",
+    "constructs>=10.0.0,<11.0.0",
+    "pyyaml>=6.0",
 ]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"gamatrix.templates" = ["*.jinja"]
+"gamatrix.static" = ["*.png", "*.jpg", "*.css"]
+"gamatrix.static.profile_img" = ["*.png", "*.jpg"]
 
 [tool.mypy]
 files = "src"
 ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 addopts = "--cov=gamatrix --cov-branch"
 pythonpath = ["src"]
+asyncio_mode = "auto"
+testpaths = ["tests"]
 
-[tool.setuptools.package-data]
-"gamatrix.templates" = ["*.jinja"]
-"gamatrix.static" = ["*.png", "*.jpg"]
-"gamatrix.static.profile_img" = ["*.png", "*.jpg"]
+[tool.black]
+target-version = ["py312"]

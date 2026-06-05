@@ -1,0 +1,118 @@
+/* gamatrix v2 — dark theme carried over from v1 */
+:root {
+  --bg: rgb(50, 50, 50);
+  --fg: lightgray;
+  --accent: rgb(124, 207, 228);
+  --row-a: rgb(180, 227, 239);
+  --row-b: rgb(201, 235, 243);
+  --row-text: #102027;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: sans-serif;
+  margin: 0;
+  padding: 1rem 1.5rem;
+}
+
+a { color: var(--accent); }
+a:visited { color: lightseagreen; }
+
+h1, h2 { font-weight: 600; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #666;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+.topbar .right { display: flex; gap: 1rem; align-items: center; }
+
+/* Filter bar */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+.filters fieldset { border: none; margin: 0; padding: 0; }
+.filters legend { font-weight: 600; margin-bottom: 0.25rem; }
+.filters label { display: inline-flex; align-items: center; gap: 4px; }
+.filter-group { display: flex; flex-direction: column; gap: 2px; }
+.platform-grid { display: grid; grid-template-columns: repeat(2, auto); gap: 2px 12px; }
+
+button, .btn {
+  background: var(--accent);
+  color: var(--row-text);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+button:hover, .btn:hover { filter: brightness(1.1); }
+button.secondary { background: #777; color: white; }
+
+/* Results table */
+table.results {
+  border-collapse: collapse;
+  width: 100%;
+}
+table.results th, table.results td {
+  border: 1px solid black;
+  padding: 4px 8px;
+  color: var(--row-text);
+}
+table.results caption { color: var(--fg); text-align: left; margin-bottom: 0.5rem; }
+table.results thead th {
+  background-color: var(--accent);
+  cursor: pointer;
+  user-select: none;
+}
+table.results thead th:hover { filter: brightness(1.05); }
+table.results tbody tr:nth-child(odd) { background-color: var(--row-a); }
+table.results tbody tr:nth-child(even) { background-color: var(--row-b); }
+table.results tr.subthreshold td { color: grey; }
+.platform-icons { float: right; white-space: nowrap; }
+.platform-icons img { vertical-align: middle; }
+.sort-arrow { font-size: 0.8em; }
+
+/* Job progress */
+.job-progress {
+  background: rgba(124, 207, 228, 0.15);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+.bar { background: #333; border-radius: 4px; height: 10px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); }
+
+/* Auth forms */
+.card {
+  max-width: 360px;
+  margin: 3rem auto;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+.card h2 { margin-top: 0; }
+.card input[type=email], .card input[type=password] {
+  width: 100%;
+  padding: 8px;
+  margin: 6px 0 12px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1px solid #888;
+}
+.error { color: #ff8a80; }
+.muted { color: #aaa; font-size: 0.9rem; }

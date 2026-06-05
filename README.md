@@ -2,7 +2,48 @@
 
 [![CI](https://github.com/eniklas/gamatrix/actions/workflows/ci.yml/badge.svg?branch=master&event=push)](https://github.com/eniklas/gamatrix/actions/workflows/ci.yml)
 
-## Quick start
+## Version 2.0
+
+> Gamatrix v2 is a serverless rewrite. The design is in [`design-v2.md`](design-v2.md);
+> infrastructure lives in [`infrastructure/cdk`](infrastructure/cdk). The v1 docs
+> below are retained for historical reference.
+
+v2 runs as a FastAPI app on AWS Lambda backed by DynamoDB, with IGDB enrichment
+done asynchronously so the page loads instantly and updates live when fresh data
+arrives. Login replaces IP allow-listing; the request page is gone — you land on
+results and filter in place.
+
+**Architecture:** API Gateway → web Lambda (FastAPI + Mangum) · DynamoDB (all
+state) · S3 (DB uploads) → parser Lambda · SQS → enricher Lambda · SES (password
+reset). HTMX + Jinja2 for the UI.
+
+### Local development
+
+```bash
+cp .env-sample .env          # fill in IGDB credentials
+just up                      # app + dynamodb-local + minio + mailhog
+just init-local              # create tables/bucket, seed default users
+just worker                  # background enrichment worker (stands in for SQS Lambda)
+```
+
+Then sign in at http://localhost:8080 (default users seeded by
+`scripts/seed_users.py`, password `changeme`; mailhog UI at
+http://localhost:8025). Import a v1 cache with
+`python scripts/migrate_cache.py /path/to/.cache.json`.
+
+### Checks
+
+```bash
+just check     # black + flake8 + mypy + pytest
+```
+
+### Deploy
+
+See [`infrastructure/cdk/README.md`](infrastructure/cdk/README.md).
+
+---
+
+## Quick start (v1)
 
 Jump to [command-line mode](#command-line-mode) or [building with Docker](#running-in-docker).
 
