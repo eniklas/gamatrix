@@ -54,7 +54,7 @@ worker:
 
 # Run the app locally without Docker (expects local services + .env)
 dev:
-  uv run uvicorn gamatrix.app:app --host 0.0.0.0 --port 8080 --reload
+  uv run uvicorn gamatrix.app:app --host 0.0.0.0 --port 8088 --reload
 
 # Run all checks (what CI runs)
 check: lint typecheck test

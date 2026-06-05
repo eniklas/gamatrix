@@ -14,7 +14,7 @@ services:
       target: dev
     command: uvicorn gamatrix.app:app --host 0.0.0.0 --port 8080 --reload
     ports:
-      - "8080:8080"
+      - "8088:8080"
     volumes:
       - ./src:/app/src
       - ./scripts:/app/scripts
