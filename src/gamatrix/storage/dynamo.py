@@ -193,6 +193,19 @@ class Repository:
             if j.get("status") == JOB_PENDING
         ]
 
+    def get_active_job(self) -> dict | None:
+        """Return the most recently created pending-or-running job, if any."""
+        from gamatrix.constants import JOB_PENDING, JOB_RUNNING
+
+        active = [
+            j
+            for j in self._scan(self.settings.jobs_table)
+            if j.get("status") in (JOB_PENDING, JOB_RUNNING)
+        ]
+        if not active:
+            return None
+        return max(active, key=lambda j: j.get("created_at", ""))
+
     # ------------------------------------------------------------------
     # metadata_overrides  (PK slug)
     # ------------------------------------------------------------------

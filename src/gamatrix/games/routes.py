@@ -67,7 +67,16 @@ def _parse_options(request: Request, user: dict) -> CompareOptions:
 
 
 def _maybe_enrich(repo: Repository, opts: CompareOptions) -> str | None:
-    """Find stale/pending games among the selected libraries and enqueue a job."""
+    """Find stale/pending games among the selected libraries and enqueue a job.
+
+    If a job is already pending or running, return its id rather than
+    creating a duplicate — each /games page load would otherwise queue a
+    new batch of the same games, exhausting Lambda concurrency.
+    """
+    active = repo.get_active_job()
+    if active:
+        return active["job_id"]
+
     settings = get_settings()
     cutoff = datetime.now(timezone.utc) - timedelta(days=settings.igdb_stale_days)
 
