@@ -4,87 +4,109 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Gamatrix is a Python web application (Flask) that compares game libraries across multiple users via GOG Galaxy SQLite databases. It supports both CLI and server (web) modes. Game metadata (multiplayer support, max players) is fetched from the IGDB API and cached locally in a JSON file.
+Gamatrix is a Python web application that compares game libraries across multiple users. Users upload their GOG Galaxy SQLite database through the browser; the app parses it, stores ownership data in DynamoDB, and enriches each game with multiplayer metadata from the IGDB API. The web layer runs as a FastAPI app on AWS Lambda (via Mangum); background work (parsing uploads, enriching games) runs as separate Lambda functions triggered by S3 events and SQS messages.
 
 ## Development Setup
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -U pip
-python -m pip install -e .[dev]
+uv sync --extra dev    # or: just install
 ```
 
-If you have `just` installed and a `.env` file configured (see `.env-sample`):
+The full local stack (app + DynamoDB local + MinIO + MailHog) runs via Docker Compose:
 
 ```bash
-just dev   # runs a dev Docker container with the source mounted
+cp .env-sample .env   # fill in any blanks
+just up               # bring up all services
+just init-local       # create tables/bucket and seed test users (first time)
+just worker           # run the local background job worker (separate terminal)
+```
+
+Or run the app directly without Docker (requires local services already running):
+
+```bash
+just dev              # uvicorn with --reload
 ```
 
 ## Key Commands
 
 ```bash
 # Run all checks (what CI runs)
-python -m mypy
-python -m black --check .
-python -m pytest
+just check            # lint + typecheck + test
+
+# Individual checks
+just lint             # black --check + flake8
+just typecheck        # mypy
+just test             # pytest
 
 # Run a single test file
-python -m pytest test/test_gogdb.py
+uv run pytest tests/test_gogdb.py
 
-# Run tests with verbose output
-python -m pytest -v
-
-# Auto-format code
-python -m black .
-
-# Run in server mode locally
-python -m gamatrix -c config.yaml -s
-
-# Run in CLI mode
-python -m gamatrix -c config.yaml -u <userid>
+# Auto-format
+just format           # black .
 
 # Bump version (patch by default; pass "minor" or "major" for others)
 just bump-version
 just bump-version minor
 
-# Build Docker image
+# Build Lambda container images
 just build
 
-# Build wheel
-python -m pip install .[ci]
-python -m build --wheel
+# Deploy infrastructure with CDK
+just deploy
+
+# Store IGDB API credentials in Secrets Manager (post-deploy)
+just set-igdb-secret <client_id> <client_secret>
 ```
 
 ## Architecture
 
-**Entry point:** `src/gamatrix/__main__.py` — parses CLI args with docopt, builds config, initializes Flask routes, and runs either server or CLI mode.
+**Entry point:** `src/gamatrix/app.py` — creates the FastAPI `app`, mounts static files, and registers four routers. In AWS, `src/gamatrix/lambda_handler.py` wraps this app with Mangum.
 
-**Helpers (`src/gamatrix/helpers/`):**
-- `gogdb_helper.py` — `gogDB` class: opens GOG Galaxy SQLite DBs, queries game ownership/install status, computes common games across users, merges duplicates, and filters results. Core data extraction logic lives here.
-- `igdb_helper.py` — `IGDBHelper` class: authenticates with the IGDB (Twitch) API, looks up game metadata (multiplayer modes, max players) by GOG release key or slug, respects rate limits, and stores results in the cache.
-- `cache_helper.py` — `Cache` class: reads/writes the JSON cache file (`.cache.json`). The cache stores IGDB API responses keyed by GOG release key. Only saved when dirty.
-- `misc_helper.py` — utility functions, notably `get_slug_from_title()` which normalizes titles to lowercase alphanumeric for fuzzy matching.
-- `network_helper.py` — IP/CIDR authorization check used by Flask routes.
-- `constants.py` — platform names, IGDB game mode IDs, upload settings, etc.
+**Routers:**
+- `auth/routes.py` — login, logout, forgot/reset password (SES email in AWS, SMTP/MailHog locally)
+- `games/routes.py` — `/games` page, `/games/table` HTMX fragment, `/api/jobs/{job_id}` polling endpoint, admin refresh routes
+- `preferences.py` — user preference saves (selected users, view mode, filters)
+- `upload.py` — S3 presigned POST generation for browser uploads
 
-**Templates (`src/gamatrix/templates/`):** Jinja2 templates for the web UI — `index.html.jinja` (user selection), `game_list.html.jinja`, `game_grid.html.jinja`, `upload_status.html.jinja`.
+**Background Lambdas** (also run as local workers via `scripts/local_worker.py`):
+- **Parser** (`gogdb/`) — triggered by S3 `OBJECT_CREATED`; reads the uploaded GOG Galaxy SQLite DB, extracts ownership and install status, writes to DynamoDB `user_libraries` and `games` tables.
+- **Enricher** (`igdb/enricher.py`) — triggered by SQS; calls IGDB API for multiplayer metadata, writes results back to `games` table, updates job status.
 
-**Config flow:** YAML config file is merged with CLI args in `build_config()`. The config dict is the single shared state object — server mode deep-copies it per request (in `gogDB.__init__`) since Flask reuses the global config.
+**Storage (`storage/`):**
+- `dynamo.py` — `Repository` class: all DynamoDB reads/writes. Handles Decimal serialization, pagination (`_scan`, `_query_all`), and table-name prefixing.
+- `s3.py` — presigned POST generation for browser uploads; file downloads.
+- `queue.py` — SQS `send_message` wrapper.
 
-**Data flow (server mode):**
-1. `/compare` route receives user selections from the web form
-2. `gogDB` reads the relevant SQLite DBs, finds games common to selected users
-3. `IGDBHelper` enriches each game with multiplayer/max-player data from IGDB (with caching)
-4. `set_multiplayer_status()` in `__main__.py` applies precedence rules: config metadata > IGDB cache > inferred from game modes
-5. Jinja template renders the result
+**IGDB client (`igdb/client.py`):**
+- `IGDBClient` authenticates with the Twitch/IGDB API, looks up multiplayer metadata by GOG release key or slug, and respects rate limits with exponential backoff (`_RateLimiter` + `push_out()`).
 
-**Tests:** Located in `test/`, run with `pytest`. Coverage is configured in `pyproject.toml` (`--cov=gamatrix --cov-branch`).
+**Config (`config.py`):**
+- `Settings` (pydantic-settings): sourced from environment variables / `.env`. In AWS, secrets come from Secrets Manager — `igdb_secret_name` and `jwt_secret_name` point at the relevant secrets; `resolve_igdb_credentials()` and `resolve_jwt_secret()` fetch and cache them.
+- A `model_validator` rejects startup with the default JWT secret in production (unless `LOCAL_DEV=true`).
 
-## Configuration
+**Templates (`src/gamatrix/templates/`):** Jinja2 + HTMX. `games.html.jinja` renders the main game list; `job_status.html.jinja` is polled via HTMX to show enrichment progress.
 
-Users, DB paths, IGDB credentials, and game metadata/overrides are all in the YAML config file (`config.yaml`; see `config-sample.yaml`). The `metadata` section lets you override `max_players`, add `comment`, or set a `url` per game title. The `hidden` and `single_player` lists filter titles by slug (lowercase, alphanumeric only).
+**Data flow:**
+1. User uploads GOG Galaxy DB via the browser → S3 presigned POST → S3 `OBJECT_CREATED` → Parser Lambda
+2. Parser writes games/ownership to DynamoDB
+3. `/games` page load → `_maybe_enrich()` checks for stale/unenriched games → enqueues SQS job (deduped: returns existing job if one is already active)
+4. Enricher Lambda processes the job, calls IGDB, writes metadata back
+5. HTMX polls `/api/jobs/{job_id}` until the job completes, then swaps in the updated game table
+
+**Tests:** `tests/`, run with `pytest`. `tests/conftest.py` provides fixtures. Coverage configured in `pyproject.toml`.
+
+## Infrastructure
+
+CDK stack in `infrastructure/cdk/gamatrix_stack.py`. See `infrastructure/cdk/README.md` for deploy instructions and post-deploy steps (IGDB secret, SES sandbox, seeding users).
+
+DynamoDB tables (all `PAY_PER_REQUEST`, PITR on, name-prefixed with `TABLE_PREFIX`):
+- `games` (PK: `release_key`)
+- `users` (PK: `email`)
+- `user_libraries` (PK: `user_id`, SK: `release_key`) + GSI on `release_key`
+- `enrichment_jobs` (PK: `job_id`)
+- `metadata_overrides` (PK: `slug`)
+- `config` (PK: `key`) — locally holds hidden/single-player lists; in AWS these come from SSM
 
 ## Version
 
-Version is defined in `pyproject.toml` under `[project]`. Use `just bump-version` to update it — this edits `pyproject.toml` in place. Bump before merging a PR.
+Version is defined in `pyproject.toml` under `[project]`. Use `just bump-version` to update it. Bump before merging a PR.
