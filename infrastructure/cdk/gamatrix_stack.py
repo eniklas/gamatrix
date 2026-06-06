@@ -86,12 +86,19 @@ class GamatrixStack(Stack):
         # a hosted zone + site domain. Otherwise the stack still deploys and the
         # app is reached via the default API Gateway URL.
         hosted_zone = None
+        alias_hosted_zone = None
         if cfg.has_custom_domain:
-            # Existing Route 53 hosted zone. Used to DNS-validate the ACM cert
-            # and alias the custom domain.
             hosted_zone = route53.HostedZone.from_lookup(
                 self, "HostedZone", domain_name=cfg.hosted_zone
             )
+            if cfg.alias_domains and cfg.alias_hosted_zone:
+                # Reuse the primary zone lookup if they happen to be the same.
+                if cfg.alias_hosted_zone == cfg.hosted_zone:
+                    alias_hosted_zone = hosted_zone
+                else:
+                    alias_hosted_zone = route53.HostedZone.from_lookup(
+                        self, "AliasHostedZone", domain_name=cfg.alias_hosted_zone
+                    )
 
         common_env = {
             "TABLE_PREFIX": TABLE_PREFIX,
@@ -147,7 +154,7 @@ class GamatrixStack(Stack):
             s3.NotificationKeyFilter(prefix="uploads/"),
         )
 
-        http_api = self._http_api(web_fn, cfg, hosted_zone)
+        http_api = self._http_api(web_fn, cfg, hosted_zone, alias_hosted_zone)
 
         # The app builds password-reset links from APP_BASE_URL. Use the custom
         # domain when configured, else the default API Gateway URL.
@@ -168,18 +175,30 @@ class GamatrixStack(Stack):
         web_fn: lambda_.IFunction,
         cfg: DeployConfig,
         hosted_zone: route53.IHostedZone | None,
+        alias_hosted_zone: route53.IHostedZone | None = None,
     ) -> apigw.HttpApi:
         integration = integrations.HttpLambdaIntegration("WebIntegration", web_fn)
 
         if not (cfg.has_custom_domain and hosted_zone is not None):
             return apigw.HttpApi(self, "HttpApi", default_integration=integration)
 
-        # TLS cert for the custom domain, DNS-validated through Route 53.
+        # Build a validation map so primary and alias domains can live in
+        # different Route 53 hosted zones.
+        validation_map: dict[str, route53.IHostedZone] = {
+            cfg.site_domain: hosted_zone  # type: ignore[index]
+        }
+        aliases_to_wire: list[str] = []
+        if alias_hosted_zone and cfg.alias_domains:
+            for alias in cfg.alias_domains:
+                validation_map[alias] = alias_hosted_zone
+                aliases_to_wire.append(alias)
+
         certificate = acm.Certificate(
             self,
             "SiteCertificate",
             domain_name=cfg.site_domain,
-            validation=acm.CertificateValidation.from_dns(hosted_zone),
+            subject_alternative_names=aliases_to_wire or None,
+            validation=acm.CertificateValidation.from_dns_multi_zone(validation_map),
         )
         domain_name = apigw.DomainName(
             self,
@@ -193,7 +212,6 @@ class GamatrixStack(Stack):
             default_integration=integration,
             default_domain_mapping=apigw.DomainMappingOptions(domain_name=domain_name),
         )
-        # Alias record so the hostname resolves to the API Gateway domain.
         route53.ARecord(
             self,
             "SiteAliasRecord",
@@ -206,6 +224,34 @@ class GamatrixStack(Stack):
                 )
             ),
         )
+
+        # Wire each alias: its own API Gateway domain name + mapping + A record.
+        for i, alias in enumerate(aliases_to_wire):
+            alias_dn = apigw.DomainName(
+                self,
+                f"AliasDomain{i}",
+                domain_name=alias,
+                certificate=certificate,
+            )
+            apigw.ApiMapping(
+                self,
+                f"AliasMapping{i}",
+                api=http_api,
+                domain_name=alias_dn,
+            )
+            route53.ARecord(
+                self,
+                f"AliasARecord{i}",
+                zone=alias_hosted_zone,  # type: ignore[arg-type]
+                record_name=alias,
+                target=route53.RecordTarget.from_alias(
+                    route53_targets.ApiGatewayv2DomainProperties(
+                        alias_dn.regional_domain_name,
+                        alias_dn.regional_hosted_zone_id,
+                    )
+                ),
+            )
+
         return http_api
 
     def _create_tables(self) -> dict[str, dynamodb.Table]:
