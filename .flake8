@@ -1,0 +1,4 @@
+[flake8]
+# Match black's line length; ignore E203 (black's slice-colon spacing).
+max-line-length = 88
+extend-ignore = E203

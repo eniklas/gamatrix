@@ -1,0 +1,16 @@
+{% extends "base.html.jinja" %}
+{% block title %}gamatrix — sign in{% endblock %}
+{% block body %}
+<div class="card">
+    <h2>gamatrix</h2>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <form method="post" action="/auth/login">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autofocus>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+        <button type="submit">Sign in</button>
+    </form>
+    <p class="muted"><a href="/auth/forgot-password">Forgot your password?</a></p>
+</div>
+{% endblock %}

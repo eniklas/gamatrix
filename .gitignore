@@ -140,4 +140,15 @@ config-local.yaml
 # Static files for flask, include logo images but not profile pics
 profile_img/
 
+# Machine-specific Claude Code settings (may contain local paths)
+.claude/settings.local.json
+
+# CDK caches account id + hosted-zone id from context lookups here
+cdk.context.json
+infrastructure/cdk/cdk.context.json
+
+# CDK synthesized output (can be very large due to Docker image assets)
+cdk.out/
+infrastructure/cdk/cdk.out/
+
 tmp/

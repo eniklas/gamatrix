@@ -1,0 +1,90 @@
+# Local development stack. Brings up the app plus local replacements for the
+# AWS services it depends on: DynamoDB, S3 (minio), and email (mailhog).
+#
+#   docker compose up
+#
+# First run: `just init-local` (or `python scripts/init_local.py`) to create the
+# DynamoDB tables and seed test users, then start the local job worker with
+# `just worker` (or `python scripts/local_worker.py`).
+
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    command: uvicorn gamatrix.app:app --host 0.0.0.0 --port 8080 --reload
+    ports:
+      - "8088:8080"
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ../gamatrix-configs:/gamatrix-configs:ro
+    env_file:
+      - .env
+    environment:
+      LOCAL_DEV: "true"
+      GAMATRIX_CONFIG_DIR: /gamatrix-configs
+      DYNAMODB_ENDPOINT_URL: http://dynamodb-local:8000
+      S3_ENDPOINT_URL: http://minio:9000
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: localminio
+      AWS_DEFAULT_REGION: ca-central-1
+    depends_on:
+      - dynamodb-local
+      - minio
+      - mailhog
+
+  # Background worker that polls the enrichment_jobs table and runs jobs.
+  # In AWS this role is played by the SQS-triggered enricher Lambda.
+  worker:
+    build:
+      context: .
+      target: dev
+    command: python scripts/local_worker.py
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+    env_file:
+      - .env
+    environment:
+      LOCAL_DEV: "true"
+      DYNAMODB_ENDPOINT_URL: http://dynamodb-local:8000
+      S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: localminio
+      AWS_DEFAULT_REGION: ca-central-1
+    depends_on:
+      - dynamodb-local
+      - minio
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /data"
+    ports:
+      - "8000:8000"
+    volumes:
+      - dynamodb-data:/data
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: local
+      MINIO_ROOT_PASSWORD: localminio
+    volumes:
+      - minio-data:/data
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # web UI
+
+volumes:
+  dynamodb-data:
+  minio-data:

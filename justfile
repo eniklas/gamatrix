@@ -32,126 +32,70 @@ bump-version type="patch":
   echo "Bumping version from $old_version to $new_version"
   sed -i "s/^version =.*/version = \"$new_version\"/" pyproject.toml
 
-# Build the container
-build:
-  docker build -t {{container_name}}:{{version}} -t {{container_name}}:latest .
+# Install dependencies into a local uv-managed virtualenv
+install:
+  uv sync --extra dev
 
-# Run the container
-run:
-  #!/usr/bin/env bash
-  PORT=${PROD_PORT:=80}
-  TZ=${TZ:="America/Vancouver"}
-  [ -z "$PROD_GOG_DBS" ] && echo "PROD_GOG_DBS env var must be set" && exit 1
-  [ -z "$PROD_CACHE" ] && echo "PROD_CACHE env var must be set" && exit 1
-  [ -z "$PROD_CONFIG" ] && echo "PROD_CONFIG env var must be set" && exit 1
-  docker run \
-    -d \
-    --name {{container_name}} \
-    --dns 1.1.1.1 \
-    --dns 8.8.8.8 \
-    --log-driver=journald \
-    -p ${PORT}:${PORT}/tcp \
-    -e TZ="$TZ" \
-    -v ${PROD_GOG_DBS}:/usr/src/app/gog_dbs \
-    --mount type=bind,source=${PROD_CACHE},target=/usr/src/app/.cache.json \
-    --mount type=bind,source=${PROD_CONFIG},target=/usr/src/app/config.yaml,readonly \
-    -w /usr/src/app \
-    gamatrix \
-    sh -c "python -m gamatrix -c config.yaml -p 80 -s"
+# Bring up the local dev stack (app, DynamoDB, minio, mailhog)
+up:
+  docker compose up --build
+
+# Tear down the local dev stack
+down:
+  docker compose down
+
+# Create DynamoDB tables and S3 bucket locally, then seed test users
+init-local:
+  docker compose run --rm app python scripts/init_local.py
+
+# Run the local background job worker (stands in for the enricher Lambda)
+worker:
+  docker compose run --rm worker
+
+# Run the app locally without Docker (expects local services + .env)
+dev:
+  uv run uvicorn gamatrix.app:app --host 0.0.0.0 --port 8088 --reload
+
+# Run all checks (what CI runs)
+check: lint typecheck test
+
+lint:
+  uv run black --check .
+  uv run flake8 src tests
+
+typecheck:
+  uv run mypy
+
+test:
+  uv run pytest
+
+# Auto-format code
+format:
+  uv run black .
+
+# Build the Lambda container images
+build:
+  docker build --target lambda-web -t {{container_name}}-web:{{version}} .
+  docker build --target lambda-enricher -t {{container_name}}-enricher:{{version}} .
+  docker build --target lambda-parser -t {{container_name}}-parser:{{version}} .
+
+# Deploy infrastructure with CDK
+deploy:
+  cd infrastructure/cdk && CDK_DEFAULT_REGION=ca-central-1 npx cdk deploy --region ca-central-1
+
+# Store IGDB API credentials in Secrets Manager
+set-igdb-secret client_id client_secret:
+  aws secretsmanager put-secret-value \
+    --region ca-central-1 \
+    --secret-id gamatrix/igdb \
+    --secret-string "{\"client_id\":\"{{client_id}}\",\"client_secret\":\"{{client_secret}}\"}"
 
 # Tag commit with current release version
 git-tag:
   #!/usr/bin/env bash
-  # Nonzero exit code means there are changes
   if [ ! "$(git diff --quiet --exit-code)" ]; then
     git commit -am "bump version"
     git tag --annotate --message="bump to version {{version}}" "{{version}}"
     git push
     git push --tags
   fi
-
-# Run the container in dev mode
-dev:
-  #!/usr/bin/env bash
-  set -eu -o pipefail
-
-  # These env vars come from .env
-  set_mounts() {
-    if [ "${DEV_GOG_DBS}x" == "x" ]; then
-      echo "WARNING: DEV_GOG_DBS not set in .env; DBs won't be available"
-      db_mount=""
-    else
-      db_mount="-v ${DEV_GOG_DBS}:/usr/src/app/gog_dbs"
-    fi
-
-    if [ "${DEV_CONFIG}x" == "x" ]; then
-      echo "WARNING: DEV_CONFIG not set in .env; config won't be available"
-      config_mount=""
-    else
-      config_mount="-v ${DEV_CONFIG}:/usr/src/app/config.yaml"
-    fi
-
-    if [ "${DEV_CACHE}x" == "x" ]; then
-      echo "WARNING: DEV_CACHE not set in .env; cache won't be available"
-      cache_mount=""
-    else
-      cache_mount="-v ${DEV_CACHE}:/usr/src/app/.cache.json"
-    fi
-
-    # This allows the user to set their own aliases, set -o vi, etc.
-    bashrc_user_mount=""
-    if [ "${BASHRC_USER}x" != "x" ] && [ -e "$BASHRC_USER" ]; then
-      bashrc_user_mount="-v ${BASHRC_USER}:/root/.bashrc.user"
-    fi
-  }
-
-  cleanup() {
-      echo "Removing old docker containers. Names will appear upon success:"
-      set +e
-      # This will rm itself
-      docker stop $CONTAINER_NAME
-      set -e
-  }
-
-  # Default to latest if env var is not set
-  CONTAINER_VERSION=${CONTAINER_VERSION:=latest}
-  CONTAINER_NAME={{container_name}}-dev
-  CONTAINER_IMAGE={{container_name}}:${CONTAINER_VERSION}
-  # Default to 8080 if not set in .env
-  PORT=${DEV_PORT:=8080}
-
-  echo "Container image: ${CONTAINER_IMAGE}"
-
-  # Stop any accidental running copies of the build container
-  cleanup
-  set_mounts
-
-  # Ensure we make it to cleanup even if there's a failure from this point
-  set +e
-
-  docker run --rm -d -t \
-      --name=${CONTAINER_NAME} \
-      -p ${PORT}:${PORT} \
-      -v $(pwd):/usr/src/app \
-      -v /var/run/docker.sock:/var/run/docker.sock \
-      $bashrc_user_mount \
-      $db_mount \
-      $config_mount \
-      $cache_mount \
-      -w /usr/src/app \
-      ${CONTAINER_IMAGE} \
-      /bin/bash
-
-  # Install gamatrix in editable mode
-  docker exec -d \
-      -w /usr/src/app \
-      ${CONTAINER_NAME} \
-      sh -c "python -m pip install -e .[dev]"
-
-  # Launch container
-  docker exec -it \
-      -w /usr/src/app \
-      ${CONTAINER_NAME} \
-      /bin/bash
-
-  cleanup

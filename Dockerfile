@@ -1,22 +1,37 @@
-FROM python:3.11
+# syntax=docker/dockerfile:1
 
-WORKDIR /usr/src/app
+# ---- base: shared layer with uv and the project source ----
+FROM python:3.12-slim AS base
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    UV_SYSTEM_PYTHON=1
+WORKDIR /app
+# Install uv (https://docs.astral.sh/uv/)
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY pyproject.toml README.md ./
+COPY src ./src
 
-# Limit what we copy to keep image size down.
-# We only need the src/ folder and the pyproject.toml file.
-COPY pyproject.toml src ./
+# ---- dev: includes dev dependencies, used by docker-compose ----
+FROM base AS dev
+RUN uv pip install --system -e ".[dev]"
+EXPOSE 8080
+CMD ["uvicorn", "gamatrix.app:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
 
-# Build and then install the gamatrix package only.
-RUN python -m pip install -U pip && \
-    python -m pip install build && \
-    python -m build --wheel && \
-    python -m pip install dist/gamatrix-*.whl && \
-    # Clean up work folder
-    rm -rf /usr/src/app/* && \
-    # Create config and data directories mounted in the Docker run command. (See README for details).
-    mkdir /usr/src/app/gog_dbs /usr/src/app/config
+# ---- lambda-web: image for the API Gateway-backed web Lambda ----
+FROM public.ecr.aws/lambda/python:3.12 AS lambda-web
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY pyproject.toml README.md ./
+COPY src ./src
+RUN uv pip install --system .
+COPY src/gamatrix ${LAMBDA_TASK_ROOT}/gamatrix
+CMD ["gamatrix.lambda_handler.handler"]
 
-# This is used by "just dev"
-RUN echo '[ -e /root/.bashrc.user ] && . /root/.bashrc.user' >> /root/.bashrc
+# ---- lambda-enricher: SQS-triggered IGDB enrichment worker ----
+FROM lambda-web AS lambda-enricher
+COPY lambdas/igdb_enricher/handler.py ${LAMBDA_TASK_ROOT}/
+CMD ["handler.handler"]
 
-CMD [ "python", "-m", "gamatrix", "-c", "/usr/src/app/config.yaml", "-p", "80", "-s" ]
+# ---- lambda-parser: S3-triggered GOG DB parser ----
+FROM lambda-web AS lambda-parser
+COPY lambdas/db_parser/handler.py ${LAMBDA_TASK_ROOT}/
+CMD ["handler.handler"]

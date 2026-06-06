@@ -1,0 +1,58 @@
+{% extends "base.html.jinja" %}
+{% block title %}gamatrix — preferences{% endblock %}
+{% block body %}
+<div class="topbar">
+    <h2>Preferences</h2>
+    <div class="right"><a href="/games">Back to games</a></div>
+</div>
+
+<form id="filters" method="post" action="/preferences" class="filters"
+      hx-post="/preferences" hx-swap="none"
+      hx-on::after-request="this.querySelector('.saved').style.display='inline'">
+
+    <fieldset class="filter-group">
+        <legend>Default users</legend>
+        {% for uid, u in users.items() %}
+        <label>
+            <input type="checkbox" name="user" value="{{ uid }}"
+                {% if prefs.selected_users == 'all' or uid in prefs.selected_users %}checked{% endif %}>
+            {{ u.username }}
+        </label>
+        {% endfor %}
+    </fieldset>
+
+    <fieldset class="filter-group">
+        <legend>Default view</legend>
+        <label><input type="radio" name="view" value="list"
+            {% if prefs.default_view == 'list' %}checked{% endif %}> Game list</label>
+        <label><input type="radio" name="view" value="grid"
+            {% if prefs.default_view == 'grid' %}checked{% endif %}> Game grid</label>
+    </fieldset>
+
+    <fieldset class="filter-group">
+        <legend>Default options</legend>
+        <label><input type="checkbox" name="single_player" value="true"
+            {% if prefs.include_single_player %}checked{% endif %}> Include single-player</label>
+        <label><input type="checkbox" name="installed_only" value="true"
+            {% if prefs.installed_only %}checked{% endif %}> Installed only</label>
+        <label><input type="checkbox" name="exclusive" value="true"
+            {% if prefs.exclusive %}checked{% endif %}> Exclusively owned</label>
+    </fieldset>
+
+    <fieldset class="filter-group">
+        <legend>Exclude platforms</legend>
+        <div class="platform-grid">
+            {% for p in platforms %}
+            <label><input type="checkbox" name="exclude" value="{{ p }}"
+                {% if p in prefs.exclude_platforms %}checked{% endif %}> {{ p|capitalize }}</label>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <fieldset class="filter-group">
+        <legend>&nbsp;</legend>
+        <button type="submit">Save preferences</button>
+        <span class="saved muted" style="display:none;">Saved ✓</span>
+    </fieldset>
+</form>
+{% endblock %}
