@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python_version: ['3.9']
+        python_version: ['3.12']
     env:
       PYTHONDEVMODE: 1
 
