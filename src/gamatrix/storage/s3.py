@@ -23,9 +23,7 @@ class S3Storage:
         # redirect, breaking the direct-to-S3 upload.
         endpoint_url = self.settings.s3_endpoint_url
         if not endpoint_url and self.settings.aws_region:
-            endpoint_url = (
-                f"https://s3.{self.settings.aws_region}.amazonaws.com"
-            )
+            endpoint_url = f"https://s3.{self.settings.aws_region}.amazonaws.com"
         self._client = boto3.client(
             "s3",
             region_name=self.settings.aws_region,
