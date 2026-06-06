@@ -18,16 +18,18 @@ services:
     volumes:
       - ./src:/app/src
       - ./scripts:/app/scripts
+      - ../gamatrix-configs:/gamatrix-configs:ro
     env_file:
       - .env
     environment:
       LOCAL_DEV: "true"
+      GAMATRIX_CONFIG_DIR: /gamatrix-configs
       DYNAMODB_ENDPOINT_URL: http://dynamodb-local:8000
       S3_ENDPOINT_URL: http://minio:9000
       SMTP_HOST: mailhog
       SMTP_PORT: "1025"
       AWS_ACCESS_KEY_ID: local
-      AWS_SECRET_ACCESS_KEY: local
+      AWS_SECRET_ACCESS_KEY: localminio
       AWS_DEFAULT_REGION: ca-central-1
     depends_on:
       - dynamodb-local
@@ -51,7 +53,7 @@ services:
       DYNAMODB_ENDPOINT_URL: http://dynamodb-local:8000
       S3_ENDPOINT_URL: http://minio:9000
       AWS_ACCESS_KEY_ID: local
-      AWS_SECRET_ACCESS_KEY: local
+      AWS_SECRET_ACCESS_KEY: localminio
       AWS_DEFAULT_REGION: ca-central-1
     depends_on:
       - dynamodb-local

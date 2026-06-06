@@ -147,4 +147,8 @@ profile_img/
 cdk.context.json
 infrastructure/cdk/cdk.context.json
 
+# CDK synthesized output (can be very large due to Docker image assets)
+cdk.out/
+infrastructure/cdk/cdk.out/
+
 tmp/

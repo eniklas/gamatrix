@@ -81,7 +81,7 @@ build:
 
 # Deploy infrastructure with CDK
 deploy:
-  cd infrastructure/cdk && uv run cdk deploy
+  cd infrastructure/cdk && uv run cdk deploy --output /tmp/cdk.out
 
 # Tag commit with current release version
 git-tag:
