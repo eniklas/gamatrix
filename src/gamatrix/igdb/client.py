@@ -66,6 +66,10 @@ class _RateLimiter:
                 await asyncio.sleep(self._delay - elapsed)
             self._last = time.monotonic()
 
+    def push_out(self, extra: float) -> None:
+        """Defer the next permitted call by `extra` seconds beyond now."""
+        self._last = max(self._last, time.monotonic()) + extra
+
 
 class IGDBClient:
     TOKEN_URL = "https://id.twitch.tv/oauth2/token"
@@ -112,7 +116,7 @@ class IGDBClient:
         """POST an Apicalypse query, refreshing the token once on 401."""
         if self.access_token is None:
             await self.authenticate()
-        for attempt in range(2):
+        for attempt in range(6):
             await self._limiter.wait()
             resp = await self._http.post(
                 f"{self.API_BASE}/{endpoint}", headers=self._headers, content=body
@@ -122,11 +126,13 @@ class IGDBClient:
                 await self.authenticate()
                 continue
             if resp.status_code == 429:
-                log.warning("IGDB rate limit hit; backing off")
-                await asyncio.sleep(IGDB_API_CALL_DELAY * 4)
+                backoff = min(10 * (2 ** attempt), 120)
+                log.warning("IGDB rate limit hit; backing off %ds (attempt %d)", backoff, attempt)
+                self._limiter.push_out(backoff)
                 continue
             resp.raise_for_status()
             return resp.json()
+        log.error("IGDB: exhausted retries for %s", endpoint)
         return []
 
     # ------------------------------------------------------------------
