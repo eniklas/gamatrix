@@ -98,17 +98,20 @@ def begin_password_reset(
         f"{settings.app_base_url}/auth/reset-password"
         f"?token={token}&email={quote(email)}"
     )
-    _send_email(
-        settings,
-        to=email,
-        subject="Reset your gamatrix password",
-        body=(
-            "Someone requested a password reset for your gamatrix account.\n\n"
-            f"Reset it here (valid for {settings.reset_token_ttl_minutes} "
-            f"minutes):\n{link}\n\n"
-            "If you didn't request this, you can ignore this email."
-        ),
-    )
+    try:
+        _send_email(
+            settings,
+            to=email,
+            subject="Reset your gamatrix password",
+            body=(
+                "Someone requested a password reset for your gamatrix account.\n\n"
+                f"Reset it here (valid for {settings.reset_token_ttl_minutes} "
+                f"minutes):\n{link}\n\n"
+                "If you didn't request this, you can ignore this email."
+            ),
+        )
+    except Exception:
+        log.exception("Failed to send password reset email to %s", email)
 
 
 def complete_password_reset(
