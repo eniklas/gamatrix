@@ -83,6 +83,13 @@ build:
 deploy:
   cd infrastructure/cdk && CDK_DEFAULT_REGION=ca-central-1 npx cdk deploy --output /tmp/cdk.out
 
+# Store IGDB API credentials in Secrets Manager
+set-igdb-secret client_id client_secret:
+  aws secretsmanager put-secret-value \
+    --region ca-central-1 \
+    --secret-id gamatrix/igdb \
+    --secret-string "{\"client_id\":\"{{client_id}}\",\"client_secret\":\"{{client_secret}}\"}"
+
 # Tag commit with current release version
 git-tag:
   #!/usr/bin/env bash

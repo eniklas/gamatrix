@@ -113,6 +113,7 @@ def games_page(
             "opts": opts,
             "prefs": merge_preferences(user.get("preferences", {})),
             "job_id": job_id,
+            "job": repo.get_job(job_id) if job_id else None,
             "is_grid": opts.all_games,
         },
     )
