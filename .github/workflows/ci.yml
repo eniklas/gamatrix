@@ -49,7 +49,7 @@ jobs:
       run: |
         python -m build --wheel
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v7
       with:
         name: wheel
         path: dist/gamatrix-*-none-any.whl
