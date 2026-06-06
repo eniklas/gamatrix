@@ -126,8 +126,12 @@ class IGDBClient:
                 await self.authenticate()
                 continue
             if resp.status_code == 429:
-                backoff = min(10 * (2 ** attempt), 120)
-                log.warning("IGDB rate limit hit; backing off %ds (attempt %d)", backoff, attempt)
+                backoff = min(10 * (2**attempt), 120)
+                log.warning(
+                    "IGDB rate limit hit; backing off %ds (attempt %d)",
+                    backoff,
+                    attempt,
+                )
                 self._limiter.push_out(backoff)
                 continue
             resp.raise_for_status()
