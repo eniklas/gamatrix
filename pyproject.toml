@@ -51,6 +51,10 @@ dev = [
     "boto3-stubs[dynamodb,s3,sqs,ses]",
     "types-python-jose",
 ]
+# CI build tooling.
+ci = [
+    "build",
+]
 # Infrastructure-as-code (CDK).
 cdk = [
     "aws-cdk-lib==2.173.4",
