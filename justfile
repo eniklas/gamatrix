@@ -81,7 +81,7 @@ build:
 
 # Deploy infrastructure with CDK
 deploy:
-  cd infrastructure/cdk && uv run cdk deploy --output /tmp/cdk.out
+  cd infrastructure/cdk && CDK_DEFAULT_REGION=ca-central-1 npx cdk deploy --output /tmp/cdk.out
 
 # Tag commit with current release version
 git-tag:

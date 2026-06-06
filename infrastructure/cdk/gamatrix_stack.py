@@ -35,7 +35,6 @@ from aws_cdk import aws_route53_targets as route53_targets
 from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_s3_notifications as s3n
 from aws_cdk import aws_secretsmanager as secrets
-from aws_cdk import aws_ses as ses
 from aws_cdk import aws_sqs as sqs
 from aws_cdk import aws_ssm as ssm
 from constructs import Construct
@@ -77,18 +76,10 @@ class GamatrixStack(Stack):
         # app is reached via the default API Gateway URL.
         hosted_zone = None
         if cfg.has_custom_domain:
-            # Existing Route 53 hosted zone. Used to DNS-validate the ACM cert,
-            # alias the custom domain, and add SES DKIM records.
+            # Existing Route 53 hosted zone. Used to DNS-validate the ACM cert
+            # and alias the custom domain.
             hosted_zone = route53.HostedZone.from_lookup(
                 self, "HostedZone", domain_name=cfg.hosted_zone
-            )
-            # Verify the domain for sending via SES; DKIM CNAMEs are added to
-            # the zone automatically so the sender address can send once
-            # deployed.
-            ses.EmailIdentity(
-                self,
-                "EmailIdentity",
-                identity=ses.Identity.public_hosted_zone(hosted_zone),
             )
 
         common_env = {
@@ -155,7 +146,7 @@ class GamatrixStack(Stack):
 
         CfnOutput(self, "SiteUrl", value=base_url)
         CfnOutput(self, "ApiUrl", value=http_api.url or "")
-        CfnOutput(self, "UploadBucket", value=upload_bucket.bucket_name)
+        CfnOutput(self, "UploadBucketName", value=upload_bucket.bucket_name)
         CfnOutput(self, "IgdbSecretArn", value=igdb_secret.secret_arn)
 
     # ------------------------------------------------------------------
@@ -294,6 +285,22 @@ class GamatrixStack(Stack):
                 file="Dockerfile",
                 target=image_target,
                 cmd=[cmd],
+                exclude=[
+                    ".git",
+                    ".venv",
+                    "cdk.out",
+                    "infrastructure/cdk/cdk.out",
+                    "__pycache__",
+                    "*.pyc",
+                    "*.pyo",
+                    ".mypy_cache",
+                    ".pytest_cache",
+                    "htmlcov",
+                    ".coverage",
+                    "dist",
+                    "build",
+                    "node_modules",
+                ],
             ),
             environment=env,
             timeout=timeout,

@@ -31,10 +31,10 @@ cdk deploy
 - Lambdas: web (HTTP API + Mangum), enricher (SQS-triggered), parser (S3-triggered)
 - HTTP API (API Gateway v2) in front of the web Lambda
 - **If a deployment config supplies a domain** (see below): a custom domain +
-  ACM certificate (DNS-validated via the Route 53 hosted zone) + alias A-record,
-  and an SES domain identity with DKIM CNAMEs so the sender address can send
-  password-reset email. Without it, the app is served from the default API
-  Gateway URL and SES is skipped.
+  ACM certificate (DNS-validated via the Route 53 hosted zone) + alias A-record.
+  Without it, the app is served from the default API Gateway URL.
+- SES domain identity is **not** managed by this stack — verify the sender
+  domain in the SES console once and it persists independently.
 - Secrets Manager secret `gamatrix/igdb` — populate after deploy:
   ```bash
   aws secretsmanager put-secret-value --secret-id gamatrix/igdb \
