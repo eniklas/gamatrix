@@ -81,7 +81,7 @@ build:
 
 # Deploy infrastructure with CDK
 deploy:
-  cd infrastructure/cdk && CDK_DEFAULT_REGION=ca-central-1 npx cdk deploy --region ca-central-1 --output /tmp/cdk.out
+  cd infrastructure/cdk && CDK_DEFAULT_REGION=ca-central-1 npx cdk deploy --region ca-central-1
 
 # Store IGDB API credentials in Secrets Manager
 set-igdb-secret client_id client_secret:
