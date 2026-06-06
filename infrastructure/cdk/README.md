@@ -63,7 +63,9 @@ account/region (set by `app.py` from `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION
 ## Post-deploy
 
 1. Put the IGDB credentials in the secret (above).
-2. Set the `JWT_SECRET` env var on the web Lambda (or move it to Secrets Manager).
+2. The JWT signing key is created automatically as the `gamatrix/jwt-secret`
+   Secrets Manager secret (generated on first deploy, stable thereafter) and the
+   web Lambda reads it via `JWT_SECRET_NAME` — no manual step required.
 3. **SES sandbox**: the domain identity and DKIM records are created by the
    stack, but a new SES account starts in the sandbox (can only send to verified
    recipients). Request production access in the SES console so reset emails

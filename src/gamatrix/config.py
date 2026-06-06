@@ -11,7 +11,10 @@ from __future__ import annotations
 import json
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+DEFAULT_JWT_SECRET = "change-me-in-production"
 
 
 class Settings(BaseSettings):
@@ -37,7 +40,10 @@ class Settings(BaseSettings):
     enrichment_queue_url: str | None = None
 
     # --- Auth ---
-    jwt_secret: str = "change-me-in-production"
+    jwt_secret: str = DEFAULT_JWT_SECRET
+    # Secrets Manager secret name holding the JWT signing key; when set (in AWS)
+    # it takes precedence over the plain jwt_secret above.
+    jwt_secret_name: str | None = None
     jwt_algorithm: str = "HS256"
     jwt_ttl_hours: int = 24
     reset_token_ttl_minutes: int = 60
@@ -89,6 +95,22 @@ class Settings(BaseSettings):
         """Small key/value table; locally holds the hidden/single-player lists."""
         return f"{self.table_prefix}_config"
 
+    @model_validator(mode="after")
+    def _require_jwt_secret(self) -> "Settings":
+        """Fail loudly rather than silently signing sessions with the public
+        default secret in production. Either set JWT_SECRET directly or point
+        JWT_SECRET_NAME at a Secrets Manager secret."""
+        if (
+            not self.local_dev
+            and not self.jwt_secret_name
+            and self.jwt_secret == DEFAULT_JWT_SECRET
+        ):
+            raise ValueError(
+                "JWT_SECRET must be set in production (or set JWT_SECRET_NAME to "
+                "source it from Secrets Manager)."
+            )
+        return self
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -106,3 +128,19 @@ def resolve_igdb_credentials(settings: Settings) -> tuple[str, str]:
         )
         return secret["client_id"], secret["client_secret"]
     return settings.igdb_client_id, settings.igdb_client_secret
+
+
+@lru_cache
+def _fetch_secret_string(secret_name: str, region: str) -> str:
+    import boto3
+
+    client = boto3.client("secretsmanager", region_name=region)
+    return client.get_secret_value(SecretId=secret_name)["SecretString"]
+
+
+def resolve_jwt_secret(settings: Settings) -> str:
+    """Return the JWT signing secret, preferring Secrets Manager in AWS. The
+    Secrets Manager value is cached so warm Lambdas don't fetch it per request."""
+    if settings.jwt_secret_name:
+        return _fetch_secret_string(settings.jwt_secret_name, settings.aws_region)
+    return settings.jwt_secret

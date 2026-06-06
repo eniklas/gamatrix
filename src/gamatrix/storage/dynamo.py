@@ -126,10 +126,10 @@ class Repository:
     # user_libraries  (PK user_id, SK release_key)
     # ------------------------------------------------------------------
     def get_user_library(self, user_id: str) -> list[dict]:
-        resp = self._table(self.settings.libraries_table).query(
-            KeyConditionExpression=Key("user_id").eq(str(user_id))
+        return self._query_all(
+            self.settings.libraries_table,
+            KeyConditionExpression=Key("user_id").eq(str(user_id)),
         )
-        return [_from_dynamo(i) for i in resp.get("Items", [])]
 
     def replace_user_library(self, user_id: str, entries: list[dict]) -> None:
         """Delete the user's existing library rows and write the new set."""
@@ -149,11 +149,12 @@ class Repository:
 
     def get_owners_of_release(self, release_key: str) -> list[str]:
         """Return user_ids that own a release, via the release_key GSI."""
-        resp = self._table(self.settings.libraries_table).query(
+        items = self._query_all(
+            self.settings.libraries_table,
             IndexName="release_key-index",
             KeyConditionExpression=Key("release_key").eq(release_key),
         )
-        return [_from_dynamo(i)["user_id"] for i in resp.get("Items", [])]
+        return [i["user_id"] for i in items]
 
     # ------------------------------------------------------------------
     # enrichment_jobs
@@ -237,6 +238,18 @@ class Repository:
         kwargs: dict[str, Any] = {}
         while True:
             resp = table.scan(**kwargs)
+            items.extend(_from_dynamo(i) for i in resp.get("Items", []))
+            if "LastEvaluatedKey" not in resp:
+                return items
+            kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+
+    def _query_all(self, table_name: str, **kwargs: Any) -> list[dict]:
+        """Run a query, following LastEvaluatedKey so a large result set
+        (a single query page caps at 1 MB) is returned in full."""
+        table = self._table(table_name)
+        items: list[dict] = []
+        while True:
+            resp = table.query(**kwargs)
             items.extend(_from_dynamo(i) for i in resp.get("Items", []))
             if "LastEvaluatedKey" not in resp:
                 return items

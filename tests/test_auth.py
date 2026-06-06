@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import parse_qs, urlparse
+
 from gamatrix.auth import service
 
 
@@ -70,3 +72,28 @@ def test_password_reset_unknown_email_is_silent(repo, settings, monkeypatch):
     monkeypatch.setattr(service, "_send_email", lambda *a, **k: None)
     # Should not raise for an unknown account.
     service.begin_password_reset(repo, "ghost@x.com", settings)
+
+
+def test_password_reset_link_url_encodes_plus_email(repo, settings, monkeypatch):
+    """Emails with a '+' must survive the reset link round-trip; an unencoded
+    '+' in a query string decodes to a space and breaks the lookup."""
+    sent = {}
+
+    def fake_send(s, to, subject, body):
+        sent["body"] = body
+
+    monkeypatch.setattr(service, "_send_email", fake_send)
+    repo.put_user(
+        {
+            "email": "user+games@x.com",
+            "username": "User",
+            "password_hash": service.hash_password("old"),
+        }
+    )
+    service.begin_password_reset(repo, "user+games@x.com", settings)
+
+    reset_link = next(
+        line for line in sent["body"].splitlines() if "/auth/reset-password?" in line
+    )
+    query = parse_qs(urlparse(reset_link).query)
+    assert query["email"] == ["user+games@x.com"]

@@ -69,6 +69,17 @@ class GamatrixStack(Stack):
         igdb_secret = secrets.Secret(
             self, "IgdbCredentials", secret_name="gamatrix/igdb"
         )
+        # JWT signing key, generated once and stable across deploys (so existing
+        # sessions survive redeploys). The web Lambda reads it via JWT_SECRET_NAME.
+        jwt_secret = secrets.Secret(
+            self,
+            "JwtSecret",
+            secret_name="gamatrix/jwt-secret",
+            generate_secret_string=secrets.SecretStringGenerator(
+                password_length=64,
+                exclude_punctuation=True,
+            ),
+        )
         self._create_ssm_params()
 
         # Custom domain / SES are wired only when the deployment config supplies
@@ -87,6 +98,7 @@ class GamatrixStack(Stack):
             "UPLOAD_BUCKET": upload_bucket.bucket_name,
             "ENRICHMENT_QUEUE_URL": queue.queue_url,
             "IGDB_SECRET_NAME": igdb_secret.secret_name,
+            "JWT_SECRET_NAME": jwt_secret.secret_name,
             "EMAIL_FROM": cfg.email_from or DEFAULT_EMAIL_FROM,
             "IGDB_STALE_DAYS": "30",
         }
@@ -123,6 +135,7 @@ class GamatrixStack(Stack):
         queue.grant_send_messages(web_fn)
         queue.grant_send_messages(parser_fn)
         igdb_secret.grant_read(enricher_fn)
+        jwt_secret.grant_read(web_fn)
         # SES send for the web Lambda (password-reset email).
         web_fn.add_to_role_policy(self._ses_send_policy())
 

@@ -7,11 +7,12 @@ import smtplib
 import uuid
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
+from urllib.parse import quote
 
 import bcrypt
 from jose import JWTError, jwt
 
-from gamatrix.config import Settings, get_settings
+from gamatrix.config import Settings, get_settings, resolve_jwt_secret
 from gamatrix.helpers import now_iso, parse_iso
 from gamatrix.storage.dynamo import Repository
 
@@ -45,15 +46,15 @@ def create_session_token(email: str, settings: Settings | None = None) -> str:
     settings = settings or get_settings()
     expire = datetime.now(timezone.utc) + timedelta(hours=settings.jwt_ttl_hours)
     payload = {"sub": email.lower(), "exp": expire}
-    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    secret = resolve_jwt_secret(settings)
+    return jwt.encode(payload, secret, algorithm=settings.jwt_algorithm)
 
 
 def decode_session_token(token: str, settings: Settings | None = None) -> str | None:
     settings = settings or get_settings()
+    secret = resolve_jwt_secret(settings)
     try:
-        payload = jwt.decode(
-            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
+        payload = jwt.decode(token, secret, algorithms=[settings.jwt_algorithm])
         return payload.get("sub")
     except JWTError:
         return None
@@ -93,7 +94,10 @@ def begin_password_reset(
         email,
         {"reset_token": token, "reset_token_expires": expires.isoformat()},
     )
-    link = f"{settings.app_base_url}/auth/reset-password?token={token}&email={email}"
+    link = (
+        f"{settings.app_base_url}/auth/reset-password"
+        f"?token={token}&email={quote(email)}"
+    )
     _send_email(
         settings,
         to=email,
