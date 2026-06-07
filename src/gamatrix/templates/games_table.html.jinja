@@ -34,6 +34,7 @@
                 {{ sort_header('Installed', 'installed') }}
                 <th>Comment</th>
             {% endif %}
+            {% if opts.show_keys %}<th>Release Key</th>{% endif %}
         </tr>
     </thead>
     <tbody>
@@ -82,6 +83,7 @@
             </td>
             <td>{{ game.comment }}</td>
             {% endif %}
+            {% if opts.show_keys %}<td>{{ game.release_key }}</td>{% endif %}
         </tr>
     {% endfor %}
     </tbody>

@@ -24,6 +24,7 @@ class CompareOptions:
     exclusive: bool = False
     all_games: bool = False  # grid view: list everything owned, no intersection
     randomize: bool = False
+    show_keys: bool = False  # show each game's GOG release key as an extra column
     sort: str = "title"
     direction: str = "asc"
 
