@@ -12,6 +12,7 @@ from gamatrix.config import Settings, get_settings, resolve_igdb_credentials
 from gamatrix.constants import (
     ENRICHMENT_DONE,
     ENRICHMENT_NOT_FOUND,
+    ENRICHMENT_PENDING,
     JOB_COMPLETED,
     JOB_FAILED,
     JOB_RUNNING,
@@ -42,6 +43,8 @@ async def run_job(
     for rk in release_keys:
         game = games.get(rk)
         if game is None:
+            continue
+        if game.get("enrichment_status") not in (None, ENRICHMENT_PENDING):
             continue
         by_igdb_key.setdefault(game["igdb_key"], []).append(rk)
 
