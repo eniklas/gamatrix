@@ -20,6 +20,10 @@
       hx-include="#filters"
       class="filters">
 
+    {# Marks requests as coming from the filter form so the server treats an
+       unchecked checkbox as "off" rather than falling back to a saved pref. #}
+    <input type="hidden" name="filters_active" value="1">
+
     <fieldset class="filter-group">
         <legend>Users</legend>
         {% for uid, u in users.items() %}
