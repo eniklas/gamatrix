@@ -45,10 +45,22 @@ def load_deploy_config() -> DeployConfig:
     import yaml
 
     data = yaml.safe_load(path.read_text()) or {}
+
+    alias_domains = data.get("alias_domains") or []
+    # YAML happily parses `alias_domains: games.other.com` as a scalar string.
+    # Without this guard it would later be iterated character-by-character,
+    # silently wiring up bogus single-letter "domains". Require a real list.
+    if not isinstance(alias_domains, list):
+        kind = type(alias_domains).__name__
+        raise ValueError(f"alias_domains must be a list of hostnames, got {kind}")
+    alias_hosted_zone = data.get("alias_hosted_zone")
+    if alias_domains and not alias_hosted_zone:
+        raise ValueError("alias_hosted_zone is required when alias_domains is set")
+
     return DeployConfig(
         hosted_zone=data.get("hosted_zone"),
         site_domain=data.get("site_domain"),
         email_from=data.get("email_from"),
-        alias_hosted_zone=data.get("alias_hosted_zone"),
-        alias_domains=data.get("alias_domains") or [],
+        alias_hosted_zone=alias_hosted_zone,
+        alias_domains=alias_domains,
     )
