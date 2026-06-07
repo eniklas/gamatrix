@@ -32,8 +32,9 @@
             {{ sort_header('Rating', 'rating') }}
             {% if not is_grid %}
                 {{ sort_header('Installed', 'installed') }}
-                <th>Comment</th>
             {% endif %}
+            <th>Comment</th>
+            {% if opts.show_keys %}<th>Release Key</th>{% endif %}
         </tr>
     </thead>
     <tbody>
@@ -56,12 +57,12 @@
             {% if is_grid %}
                 {% for uid in selected %}
                 {% if uid in users %}
-                <td style="text-align:center;">
+                <td class="{{ 'owned' if uid in game.owners else 'unowned' }}" style="text-align:center;">
                     {% if uid in game.installed %}
                         {% if users[uid].pic %}
                         <img src="/static/profile_img/{{ users[uid].pic }}" width="18" height="18" title="installed">
                         {% else %}✓{% endif %}
-                    {% elif uid in game.owners %}●{% endif %}
+                    {% endif %}
                 </td>
                 {% endif %}
                 {% endfor %}
@@ -80,8 +81,9 @@
                     {% endfor %}
                 {% endif %}
             </td>
-            <td>{{ game.comment }}</td>
             {% endif %}
+            <td>{{ game.comment }}</td>
+            {% if opts.show_keys %}<td>{{ game.release_key }}</td>{% endif %}
         </tr>
     {% endfor %}
     </tbody>

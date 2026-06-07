@@ -6,6 +6,8 @@
   --row-a: rgb(180, 227, 239);
   --row-b: rgb(201, 235, 243);
   --row-text: #102027;
+  --owned: rgb(182, 215, 168);
+  --unowned: rgb(234, 153, 153);
 }
 
 body {
@@ -81,6 +83,9 @@ table.results thead th:hover { filter: brightness(1.05); }
 table.results tbody tr:nth-child(odd) { background-color: var(--row-a); }
 table.results tbody tr:nth-child(even) { background-color: var(--row-b); }
 table.results tr.subthreshold td { color: grey; }
+/* Grid view: per-user ownership cells (green = owned, red = not owned), v1 scheme. */
+table.results td.owned { background-color: var(--owned); }
+table.results td.unowned { background-color: var(--unowned); }
 .platform-icons { float: right; white-space: nowrap; }
 .platform-icons img { vertical-align: middle; }
 .sort-arrow { font-size: 0.8em; }

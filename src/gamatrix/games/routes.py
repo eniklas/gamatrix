@@ -75,6 +75,7 @@ def _parse_options(request: Request, user: dict) -> CompareOptions:
         exclusive=flag("exclusive", prefs["exclusive"]),
         all_games=view == "grid",
         randomize=flag("randomize", False),
+        show_keys=flag("show_keys", prefs["show_keys"]),
         sort=qp.get("sort", "title"),
         direction=qp.get("dir", "asc"),
     )

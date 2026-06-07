@@ -19,7 +19,7 @@ jobs:
   tag:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Need full history + all tags to find the latest version.
           fetch-depth: 0
