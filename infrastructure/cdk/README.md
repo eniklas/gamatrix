@@ -10,16 +10,22 @@ AWS CDK (Python) stack for gamatrix v2.
 
 ## Install
 
+`cdk.json` runs the app with the project venv (`../../.venv/bin/python`), so the
+`cdk` extra has to be installed there. Sync it together with `dev` so a later
+`uv sync` (e.g. `just install`) doesn't prune it back out:
+
 ```bash
-uv pip install -e ".[cdk]"   # from the repo root
+uv sync --extra dev --extra cdk   # from the repo root
 ```
 
 ## Deploy
 
+`just deploy` runs the sync above before deploying. To run CDK directly:
+
 ```bash
 cd infrastructure/cdk
-cdk bootstrap      # first time in an account/region
-cdk deploy
+npx cdk bootstrap   # first time in an account/region
+npx cdk deploy
 ```
 
 ## What it creates
