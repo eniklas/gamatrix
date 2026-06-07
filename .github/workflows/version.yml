@@ -1,0 +1,75 @@
+name: Version
+
+# On every merge to master, compute the next semantic version from the latest
+# tag and create a new tag on the merge commit. The bump level is patch by
+# default, or minor/major if the merged PR carried the matching label:
+#   - "new minor version" -> bump the minor component
+#   - "new major version" -> bump the major component
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write       # create and push tags
+  pull-requests: read   # read the merged PR's labels
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history + all tags to find the latest version.
+          fetch-depth: 0
+
+      - name: Compute next version and tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # --- Determine the bump level from the merged PR's labels ----------
+          labels="$(gh api "repos/$REPO/commits/$SHA/pulls" \
+            --jq '.[].labels[].name' 2>/dev/null || true)"
+          echo "PR labels for $SHA:"
+          echo "${labels:-<none>}"
+
+          level=patch
+          if grep -qx "new major version" <<< "$labels"; then
+            level=major
+          elif grep -qx "new minor version" <<< "$labels"; then
+            level=minor
+          fi
+          echo "Bump level: $level"
+
+          # --- Find the latest semver tag -----------------------------------
+          latest="$(git tag --list --sort=-v:refname \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)"
+          latest="${latest:-0.0.0}"
+          echo "Latest tag: $latest"
+
+          IFS=. read -r major minor patch <<< "$latest"
+          case "$level" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          next="$major.$minor.$patch"
+          echo "Next version: $next"
+
+          # --- Tag the merge commit (idempotent) ----------------------------
+          if git rev-parse -q --verify "refs/tags/$next" >/dev/null; then
+            echo "Tag $next already exists; nothing to do."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$next" -m "Release $next" "$SHA"
+          git push origin "$next"
+
+          echo "### Tagged \`$next\` (\`$level\` bump from \`$latest\`)" >> "$GITHUB_STEP_SUMMARY"

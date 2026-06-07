@@ -1,36 +1,13 @@
 set dotenv-load
 
-version := `grep "^version =" pyproject.toml |awk -F\" '{print $2}'`
+# Latest release version, taken from the most recent semver git tag. Tags are
+# created automatically on merge to master (see .github/workflows/version.yml).
+version := `git describe --tags --abbrev=0 --match "[0-9]*.[0-9]*.[0-9]*" 2>/dev/null || echo 0.0.0`
 container_name := "gamatrix"
 
 # List recipes
 default:
   just --list
-
-# Increment version; pass in "major" or "minor" to bump those
-bump-version type="patch":
-  #!/usr/bin/env bash
-  set -euo pipefail
-  old_version={{version}}
-  IFS=. components=(${old_version##*-})
-  major=${components[0]}
-  minor=${components[1]}
-  patch=${components[2]}
-  type={{type}}
-  case $type in
-    major|MAJOR)
-      new_version="$((major+1)).0.0";;
-    minor|MINOR)
-      new_version="$major.$((minor+1)).0";;
-    patch|PATCH)
-      new_version="$major.$minor.$((patch+1))";;
-    *)
-      echo "Bad type: $type"
-      echo "Valid types are major, minor, patch"
-      exit 1;;
-  esac
-  echo "Bumping version from $old_version to $new_version"
-  sed -i "s/^version =.*/version = \"$new_version\"/" pyproject.toml
 
 # Install dependencies into a local uv-managed virtualenv
 install:
@@ -75,9 +52,9 @@ format:
 
 # Build the Lambda container images
 build:
-  docker build --target lambda-web -t {{container_name}}-web:{{version}} .
-  docker build --target lambda-enricher -t {{container_name}}-enricher:{{version}} .
-  docker build --target lambda-parser -t {{container_name}}-parser:{{version}} .
+  docker build --build-arg SETUPTOOLS_SCM_PRETEND_VERSION={{version}} --target lambda-web -t {{container_name}}-web:{{version}} .
+  docker build --build-arg SETUPTOOLS_SCM_PRETEND_VERSION={{version}} --target lambda-enricher -t {{container_name}}-enricher:{{version}} .
+  docker build --build-arg SETUPTOOLS_SCM_PRETEND_VERSION={{version}} --target lambda-parser -t {{container_name}}-parser:{{version}} .
 
 # Deploy infrastructure with CDK
 deploy:
@@ -89,13 +66,3 @@ set-igdb-secret client_id client_secret:
     --region ca-central-1 \
     --secret-id gamatrix/igdb \
     --secret-string "{\"client_id\":\"{{client_id}}\",\"client_secret\":\"{{client_secret}}\"}"
-
-# Tag commit with current release version
-git-tag:
-  #!/usr/bin/env bash
-  if [ ! "$(git diff --quiet --exit-code)" ]; then
-    git commit -am "bump version"
-    git tag --annotate --message="bump to version {{version}}" "{{version}}"
-    git push
-    git push --tags
-  fi

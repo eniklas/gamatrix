@@ -1,10 +1,17 @@
 # syntax=docker/dockerfile:1
 
+# Version is normally derived from the git tag by setuptools_scm, but the build
+# context here has no git history, so callers pass it in instead. Defaults to
+# 0.0.0 so ad-hoc builds still succeed.
+ARG SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0
+
 # ---- base: shared layer with uv and the project source ----
 FROM python:3.12-slim AS base
+ARG SETUPTOOLS_SCM_PRETEND_VERSION
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    UV_SYSTEM_PYTHON=1
+    UV_SYSTEM_PYTHON=1 \
+    SETUPTOOLS_SCM_PRETEND_VERSION=${SETUPTOOLS_SCM_PRETEND_VERSION}
 WORKDIR /app
 # Install uv (https://docs.astral.sh/uv/)
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
@@ -19,6 +26,8 @@ CMD ["uvicorn", "gamatrix.app:app", "--host", "0.0.0.0", "--port", "8080", "--re
 
 # ---- lambda-web: image for the API Gateway-backed web Lambda ----
 FROM public.ecr.aws/lambda/python:3.12 AS lambda-web
+ARG SETUPTOOLS_SCM_PRETEND_VERSION
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${SETUPTOOLS_SCM_PRETEND_VERSION}
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 COPY pyproject.toml README.md ./
 COPY src ./src

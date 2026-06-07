@@ -44,10 +44,6 @@ uv run pytest tests/test_gogdb.py
 # Auto-format
 just format           # black .
 
-# Bump version (patch by default; pass "minor" or "major" for others)
-just bump-version
-just bump-version minor
-
 # Build Lambda container images
 just build
 
@@ -109,4 +105,12 @@ DynamoDB tables (all `PAY_PER_REQUEST`, PITR on, name-prefixed with `TABLE_PREFI
 
 ## Version
 
-Version is defined in `pyproject.toml` under `[project]`. Use `just bump-version` to update it. Bump before merging a PR.
+Versioning is automatic — there's nothing to bump by hand. setuptools_scm derives the package version from the latest git tag (`[tool.setuptools_scm]` in `pyproject.toml`; `__version__` in `src/gamatrix/__init__.py` reads it from the installed metadata).
+
+On every merge to `master`, `.github/workflows/version.yml` computes the next semver from the latest tag and tags the merge commit. The bump is **patch** by default; add a label to the PR to change it:
+- `new minor version` → bumps the minor component
+- `new major version` → bumps the major component
+
+(These two labels must exist in the repo for the workflow to pick them up.)
+
+Because the Docker/CDK build context excludes `.git`, image builds receive the version via the `SETUPTOOLS_SCM_PRETEND_VERSION` build arg — `just build` passes it from `git describe`, and the CDK stack (`_project_version()`) passes it at synth time.
