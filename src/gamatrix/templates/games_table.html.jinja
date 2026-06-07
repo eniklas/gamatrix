@@ -32,8 +32,8 @@
             {{ sort_header('Rating', 'rating') }}
             {% if not is_grid %}
                 {{ sort_header('Installed', 'installed') }}
-                <th>Comment</th>
             {% endif %}
+            <th>Comment</th>
         </tr>
     </thead>
     <tbody>
@@ -80,8 +80,8 @@
                     {% endfor %}
                 {% endif %}
             </td>
-            <td>{{ game.comment }}</td>
             {% endif %}
+            <td>{{ game.comment }}</td>
         </tr>
     {% endfor %}
     </tbody>
