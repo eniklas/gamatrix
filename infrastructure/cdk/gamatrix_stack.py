@@ -16,6 +16,7 @@ exposing the default API Gateway URL and skipping SES.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 from aws_cdk import (
@@ -44,6 +45,30 @@ from config import DeployConfig
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TABLE_PREFIX = "gamatrix"
 DEFAULT_EMAIL_FROM = "noreply@example.com"
+
+
+def _project_version() -> str:
+    """Latest semver git tag, passed into the image build as the package version.
+
+    The Docker build context excludes .git, so setuptools_scm can't derive the
+    version itself; we resolve it here at synth time and forward it as a build
+    arg (SETUPTOOLS_SCM_PRETEND_VERSION).
+    """
+    try:
+        return subprocess.check_output(
+            [
+                "git",
+                "describe",
+                "--tags",
+                "--abbrev=0",
+                "--match",
+                "[0-9]*.[0-9]*.[0-9]*",
+            ],
+            cwd=PROJECT_ROOT,
+            text=True,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return "0.0.0"
 
 
 class GamatrixStack(Stack):
@@ -298,6 +323,9 @@ class GamatrixStack(Stack):
                 file="Dockerfile",
                 target=image_target,
                 cmd=[cmd],
+                build_args={
+                    "SETUPTOOLS_SCM_PRETEND_VERSION": _project_version(),
+                },
                 exclude=[
                     ".git",
                     ".venv",

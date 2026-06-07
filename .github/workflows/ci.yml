@@ -21,7 +21,10 @@ jobs:
       PYTHONDEVMODE: 1
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+      with:
+        # Full history + tags so setuptools_scm can derive the version.
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v3
