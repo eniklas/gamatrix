@@ -72,4 +72,10 @@ jobs:
           git tag -a "$next" -m "Release $next" "$SHA"
           git push origin "$next"
 
-          echo "### Tagged \`$next\` (\`$level\` bump from \`$latest\`)" >> "$GITHUB_STEP_SUMMARY"
+          # --- Publish a GitHub release for the tag -------------------------
+          gh release create "$next" \
+            --title "$next" \
+            --target "$SHA" \
+            --generate-notes
+
+          echo "### Released \`$next\` (\`$level\` bump from \`$latest\`)" >> "$GITHUB_STEP_SUMMARY"
