@@ -11,6 +11,7 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
     "default_view": "list",
     "selected_users": "all",
     "exclusive": False,
+    "show_keys": False,
 }
 
 

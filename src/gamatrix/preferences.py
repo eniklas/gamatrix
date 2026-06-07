@@ -51,6 +51,7 @@ async def save_preferences(
         "include_single_player": flag("single_player"),
         "installed_only": flag("installed_only"),
         "exclusive": flag("exclusive"),
+        "show_keys": flag("show_keys"),
         "exclude_platforms": form.getlist("exclude") or qp.getlist("exclude"),
         "default_view": form.get("view", qp.get("view", "list")),
         "selected_users": selected if selected else "all",
