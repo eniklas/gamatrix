@@ -21,7 +21,7 @@ jobs:
       PYTHONDEVMODE: 1
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         # Full history + tags so setuptools_scm can derive the version.
         fetch-depth: 0
