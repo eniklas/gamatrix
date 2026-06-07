@@ -37,6 +37,8 @@
             {% if prefs.installed_only %}checked{% endif %}> Installed only</label>
         <label><input type="checkbox" name="exclusive" value="true"
             {% if prefs.exclusive %}checked{% endif %}> Exclusively owned</label>
+        <label><input type="checkbox" name="show_keys" value="true"
+            {% if prefs.show_keys %}checked{% endif %}> Show product keys</label>
     </fieldset>
 
     <fieldset class="filter-group">
