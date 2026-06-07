@@ -52,6 +52,15 @@ a private config file, by default `../gamatrix-configs/cdk-config.yaml`
 hosted_zone: example.com          # existing Route 53 hosted zone
 site_domain: gamatrix.example.com # public hostname for the app
 email_from: noreply@example.com   # SES sender for password-reset email
+
+# Optional: extra hostnames that should also resolve to the same app.
+# alias_hosted_zone must be a Route 53-managed zone; alias_domains must be
+# subdomains of it. The ACM cert is extended with SANs for all alias_domains,
+# so there are no cert warnings. Primary and alias zones may differ.
+alias_hosted_zone: other.com
+alias_domains:
+  - games.other.com
+  - app.other.com
 ```
 
 If the file is absent (or omits `hosted_zone`/`site_domain`), the stack deploys
