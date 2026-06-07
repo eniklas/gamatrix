@@ -54,3 +54,37 @@ def test_marker_applies_to_all_boolean_flags():
     assert opts.include_single_player is False
     assert opts.installed_only is False
     assert opts.exclusive is False
+
+
+def test_emptied_exclude_list_clears_saved_pref():
+    """Submitting with every platform-exclude box unchecked clears the saved
+    exclude list instead of falling back to it."""
+    prefs = {"exclude_platforms": ["gog", "epic"], "selected_users": ["1"]}
+    opts = _opts("user=1&filters_active=1", prefs)
+    assert opts.exclude_platforms == []
+
+
+def test_partial_exclude_list_wins_over_saved_pref():
+    prefs = {"exclude_platforms": ["gog", "epic"], "selected_users": ["1"]}
+    opts = _opts("user=1&filters_active=1&exclude=gog", prefs)
+    assert opts.exclude_platforms == ["gog"]
+
+
+def test_bare_load_uses_saved_exclude_list():
+    prefs = {"exclude_platforms": ["gog", "epic"], "selected_users": ["1"]}
+    opts = _opts("user=1", prefs)
+    assert opts.exclude_platforms == ["gog", "epic"]
+
+
+def test_deselecting_all_users_shows_none_on_submit():
+    """Submitting with no user boxes checked yields an empty selection rather
+    than falling back to the saved users (and without hitting the repo)."""
+    prefs = {"selected_users": ["1", "2"], "exclude_platforms": []}
+    opts = _opts("filters_active=1", prefs)
+    assert opts.selected_user_ids == []
+
+
+def test_bare_load_uses_saved_user_selection():
+    prefs = {"selected_users": ["1", "2"], "exclude_platforms": []}
+    opts = _opts("", prefs)
+    assert opts.selected_user_ids == ["1", "2"]
