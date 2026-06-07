@@ -58,6 +58,10 @@ build:
 
 # Deploy infrastructure with CDK
 deploy:
+  # cdk.json runs the app via ../../.venv/bin/python, so the cdk extra must be
+  # present in .venv. `uv sync` prunes anything outside the synced set, so sync
+  # dev + cdk together to keep the dev tools too.
+  uv sync --extra dev --extra cdk
   cd infrastructure/cdk && CDK_DEFAULT_REGION=ca-central-1 npx cdk deploy --region ca-central-1
 
 # Store IGDB API credentials in Secrets Manager
