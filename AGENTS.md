@@ -2,6 +2,10 @@
 
 This file is the canonical repository guidance for AI coding agents in this repo. Keep shared guidance here, and keep `CLAUDE.md` and `.github/copilot-instructions.md` as thin wrappers that point back to this file.
 
+## Project Overview
+
+Gamatrix is a Python web application that compares game libraries across multiple users. Users upload their GOG Galaxy SQLite database through the browser; the app parses it, stores ownership data in DynamoDB, and enriches each game with multiplayer metadata from the IGDB API. The web layer runs as a FastAPI app on AWS Lambda (via Mangum); background work (parsing uploads, enriching games) runs as separate Lambda functions triggered by S3 events and SQS messages.
+
 ## Build, test, and lint commands
 
 Prefer the root `just` recipes when they match the task:
@@ -31,7 +35,6 @@ just set-igdb-secret <client_id> <client_secret> # Store IGDB API credentials in
 
 Gamatrix is a FastAPI web app that runs locally under Uvicorn and in AWS Lambda via Mangum. `src/gamatrix/app.py` builds the app, mounts static assets, and registers the auth, games, preferences, and upload routers. `src/gamatrix/lambda_handler.py` is the AWS entry point.
 
-
 **Data flow:**
 The main data flow spans several modules:
 
@@ -48,22 +51,10 @@ Shared infrastructure concerns are centralized:
 - `src/gamatrix/storage/` contains the DynamoDB repository, S3 wrapper, and queue wrapper.
 - `src/gamatrix/templating.py` sets up the shared Jinja environment used by the routers.
 
-## Key conventions
-
-- Route handlers should depend on the storage/auth abstractions instead of constructing clients inline. Use `Repository` via `get_repo()` / `get_repository()`, and reuse `get_s3()` / `get_queue()` for AWS-facing operations.
-- Persisted game data is keyed by `release_key`, but the compare view deliberately merges duplicate titles by `(slug, owners)` so the same game across platforms collapses into one row only when the owner set is identical.
-- Saved user preferences live on the user record in DynamoDB. Always merge stored preferences with `DEFAULT_PREFERENCES`, and keep the request overlay behavior consistent with `_parse_options()` in `games/routes.py` and `merge_preferences()` in `games/preferences.py`.
-- Page routes and HTMX/API routes use different auth dependencies on purpose: `current_user()` redirects unauthenticated browsers to login, while `current_user_api()` returns `401` for fragment/API calls.
-- Local development does not mirror AWS exactly. `/upload/complete` ingests inline only when `LOCAL_DEV=true`, and the local worker polls the jobs table because there is no local SQS event source.
-- The repository layer normalizes DynamoDB types and identifiers for the rest of the app: emails are lowercased on write, `user_id` values are treated as strings, and floats are converted to `Decimal` before writes.
-- Tests are built around the real `Repository` API with moto-backed AWS services (`tests/conftest.py`). Prefer seeding test data through repository methods rather than mocking internal DynamoDB calls.
-- Versioning is automatic through `setuptools_scm` and release tags. Do not hand-edit version constants for normal changes.
-
-
 **Routers:**
 - `auth/routes.py` — login, logout, forgot/reset password (SES email in AWS, SMTP/MailHog locally)
 - `games/routes.py` — `/games` page, `/games/table` HTMX fragment, `/api/jobs/{job_id}` polling endpoint, admin refresh routes
-- `preferences.py` — user preference saves (selected users, view mode, filters)
+- `preferences.py` — ([src/gamatrix/preferences.py](src/gamatrix/preferences.py)) user preference saves (selected users, view mode, filters)
 - `upload.py` — S3 presigned POST generation for browser uploads
 
 **Background Lambdas** (also run as local workers via `scripts/local_worker.py`):
@@ -84,6 +75,17 @@ Shared infrastructure concerns are centralized:
 
 **Templates (`src/gamatrix/templates/`):** Jinja2 + HTMX. `games.html.jinja` renders the main game list; `job_status.html.jinja` is polled via HTMX to show enrichment progress.
 **Tests:** `tests/`, run with `pytest`. `tests/conftest.py` provides fixtures. Coverage configured in `pyproject.toml`.
+
+## Key conventions
+
+- Route handlers should depend on the storage/auth abstractions instead of constructing clients inline. Use `Repository` via `get_repo()` / `get_repository()`, and reuse `get_s3()` / `get_queue()` for AWS-facing operations.
+- Persisted game data is keyed by `release_key`, but the compare view deliberately merges duplicate titles by `(slug, owners)` so the same game across platforms collapses into one row only when the owner set is identical.
+- Saved user preferences live on the user record in DynamoDB. Always merge stored preferences with `DEFAULT_PREFERENCES`, and keep the request overlay behavior consistent with `_parse_options()` in `games/routes.py` and `merge_preferences()` in [`games/preferences.py`](/src/gamatrix/games/preferences.py).
+- Page routes and HTMX/API routes use different auth dependencies on purpose: `current_user()` redirects unauthenticated browsers to login, while `current_user_api()` returns `401` for fragment/API calls.
+- Local development does not mirror AWS exactly. `/upload/complete` ingests inline only when `LOCAL_DEV=true`, and the local worker polls the jobs table because there is no local SQS event source.
+- The repository layer normalizes DynamoDB types and identifiers for the rest of the app: emails are lowercased on write, `user_id` values are treated as strings, and floats are converted to `Decimal` before writes.
+- Tests are built around the real `Repository` API with moto-backed AWS services (`tests/conftest.py`). Prefer seeding test data through repository methods rather than mocking internal DynamoDB calls.
+- Versioning is automatic through `setuptools_scm` and release tags. Do not hand-edit version constants for normal changes.
 
 ## Infrastructure
 
