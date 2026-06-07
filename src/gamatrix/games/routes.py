@@ -47,10 +47,16 @@ def _parse_options(request: Request, user: dict) -> CompareOptions:
         else:
             selected = list(pref_users)
 
+    # When the filter form is submitted it includes a hidden `filters_active`
+    # marker. An unchecked checkbox sends no value, so without this marker we
+    # can't tell "user turned it off" from "not specified". When the form was
+    # submitted, an absent flag means off; on a bare page load, use the pref.
+    form_submitted = "filters_active" in qp
+
     def flag(name: str, default: bool) -> bool:
         if name in qp:
             return qp[name] in ("true", "on", "1")
-        return default
+        return False if form_submitted else default
 
     view = qp.get("view", prefs["default_view"])
     return CompareOptions(
