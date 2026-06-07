@@ -175,7 +175,9 @@ def job_status(
 ):
     job = repo.get_job(job_id)
     done = (
-        job is None or job["status"] in (JOB_COMPLETED, JOB_FAILED) or is_job_stale(job)
+        job is None
+        or job.get("status") in (JOB_COMPLETED, JOB_FAILED)
+        or is_job_stale(job)
     )
     return templates.TemplateResponse(
         request,

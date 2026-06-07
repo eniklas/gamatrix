@@ -34,7 +34,7 @@ async def run_job(
         return
 
     repo.update_job(job_id, {"status": JOB_RUNNING, "updated_at": now_iso()})
-    release_keys: list[str] = job["release_keys"]
+    release_keys: list[str] = job.get("release_keys", [])
 
     # Group release keys by the IGDB key so games shared across platforms
     # (e.g. a Steam and a GOG copy) only cost one set of API calls.

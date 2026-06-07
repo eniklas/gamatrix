@@ -8,13 +8,17 @@ dynamodb-local in development; only the endpoint URL differs.
 from __future__ import annotations
 
 import decimal
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable, cast
 
 import boto3
 from boto3.dynamodb.conditions import Key
 
 from gamatrix.config import Settings, get_settings
 from gamatrix.helpers import now_iso
+
+if TYPE_CHECKING:
+    # Annotation-only; importing at runtime would cycle (jobs imports Repository).
+    from gamatrix.jobs import JobRecord
 
 
 def _to_dynamo(value: Any) -> Any:
@@ -160,10 +164,10 @@ class Repository:
     # ------------------------------------------------------------------
     # enrichment_jobs
     # ------------------------------------------------------------------
-    def put_job(self, job: dict) -> None:
+    def put_job(self, job: JobRecord) -> None:
         self._table(self.settings.jobs_table).put_item(Item=_to_dynamo(job))
 
-    def get_job(self, job_id: str) -> dict | None:
+    def get_job(self, job_id: str) -> JobRecord | None:
         resp = self._table(self.settings.jobs_table).get_item(Key={"job_id": job_id})
         item = resp.get("Item")
         return _from_dynamo(item) if item else None
@@ -198,19 +202,18 @@ class Repository:
             if j.get("status") == JOB_PENDING
         ]
 
-    def get_active_job(self) -> dict | None:
+    def get_active_job(self) -> JobRecord | None:
         """Return the most recently created pending-or-running job, if any.
 
         Stale jobs (presumed-dead enrichers, see `is_job_stale`) are skipped so
         a job that never reached a terminal status can't pin the progress bar
         on every page load, nor block new enrichment from being queued."""
+        # Imported here, not at module scope: gamatrix.jobs imports Repository
+        # from this module, so a top-level import would be circular.
         from gamatrix.jobs import is_job_active, is_job_stale
 
-        active = [
-            j
-            for j in self._scan(self.settings.jobs_table)
-            if is_job_active(j) and not is_job_stale(j)
-        ]
+        jobs = cast("list[JobRecord]", self._scan(self.settings.jobs_table))
+        active = [j for j in jobs if is_job_active(j) and not is_job_stale(j)]
         if not active:
             return None
         return max(active, key=lambda j: j.get("created_at", ""))
