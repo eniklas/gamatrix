@@ -202,18 +202,46 @@ class Repository:
             if j.get("status") == JOB_PENDING
         ]
 
+    def fail_stale_jobs(self, jobs: Iterable[JobRecord] | None = None) -> list[str]:
+        """Mark presumed-dead jobs (see `is_job_stale`) as failed and return
+        their ids.
+
+        Self-heals jobs whose enricher crashed or hit its hard timeout without
+        writing a terminal status: left alone they pin the progress bar and
+        block new enrichment forever. This is the application-side backstop to
+        the queue's redrive-to-DLQ policy, which only caps redeliveries and
+        can't update the job record. Pass `jobs` to reuse an existing scan."""
+        # Imported here, not at module scope: gamatrix.jobs imports Repository
+        # from this module, so a top-level import would be circular.
+        from gamatrix.constants import JOB_FAILED
+        from gamatrix.jobs import is_job_active, is_job_stale
+
+        if jobs is None:
+            jobs = cast("list[JobRecord]", self._scan(self.settings.jobs_table))
+        reaped: list[str] = []
+        for j in jobs:
+            if is_job_active(j) and is_job_stale(j):
+                self.update_job(
+                    j["job_id"],
+                    {"status": JOB_FAILED, "completed_at": now_iso()},
+                )
+                reaped.append(j["job_id"])
+        return reaped
+
     def get_active_job(self) -> JobRecord | None:
         """Return the most recently created pending-or-running job, if any.
 
-        Stale jobs (presumed-dead enrichers, see `is_job_stale`) are skipped so
-        a job that never reached a terminal status can't pin the progress bar
-        on every page load, nor block new enrichment from being queued."""
+        Stale jobs (presumed-dead enrichers, see `is_job_stale`) are reaped in
+        passing so a job that never reached a terminal status can't pin the
+        progress bar on every page load, nor block new enrichment from being
+        queued."""
         # Imported here, not at module scope: gamatrix.jobs imports Repository
         # from this module, so a top-level import would be circular.
-        from gamatrix.jobs import is_job_active, is_job_stale
+        from gamatrix.jobs import is_job_active
 
         jobs = cast("list[JobRecord]", self._scan(self.settings.jobs_table))
-        active = [j for j in jobs if is_job_active(j) and not is_job_stale(j)]
+        reaped = set(self.fail_stale_jobs(jobs))
+        active = [j for j in jobs if is_job_active(j) and j["job_id"] not in reaped]
         if not active:
             return None
         return max(active, key=lambda j: j.get("created_at", ""))

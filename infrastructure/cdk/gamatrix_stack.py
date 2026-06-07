@@ -85,11 +85,25 @@ class GamatrixStack(Stack):
 
         tables = self._create_tables()
         upload_bucket = self._create_bucket()
+        # Dead-letter queue for enrichment jobs the enricher can't process.
+        # Without this, a failing/timing-out job is redelivered for the full
+        # retention period, and each redelivery re-runs the job — historically
+        # inflating progress counts (#131). Capping redeliveries stops the
+        # storm; dead messages are retained longer for inspection/manual redrive.
+        enrichment_dlq = sqs.Queue(
+            self,
+            "EnrichmentDLQ",
+            retention_period=Duration.days(14),
+        )
         queue = sqs.Queue(
             self,
             "EnrichmentQueue",
             visibility_timeout=Duration.minutes(16),  # > enricher timeout
             retention_period=Duration.days(1),
+            dead_letter_queue=sqs.DeadLetterQueue(
+                max_receive_count=3,
+                queue=enrichment_dlq,
+            ),
         )
         igdb_secret = secrets.Secret(
             self, "IgdbCredentials", secret_name="gamatrix/igdb"
