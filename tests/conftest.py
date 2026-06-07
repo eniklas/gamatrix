@@ -71,7 +71,14 @@ def _create_tables(settings: Settings) -> None:
 
 @pytest.fixture
 def settings() -> Settings:
-    return Settings(table_prefix="test", jwt_secret="test-secret")
+    return Settings(
+        table_prefix="test",
+        jwt_secret="test-secret",
+        dynamodb_endpoint_url=None,
+        s3_endpoint_url=None,
+        sqs_endpoint_url=None,
+        public_s3_endpoint_url=None,
+    )
 
 
 @pytest.fixture
