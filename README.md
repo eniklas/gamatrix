@@ -81,7 +81,7 @@ Then seed user accounts by running `scripts/seed_users.py` against the deployed 
 
 ## Contributing
 
-PRs are welcome. If you're making non-trivial changes, please include test output. Before opening a PR, run `just check` and bump the version in `pyproject.toml` with `just bump-version` (bumps patch by default; pass `minor` or `major` for those).
+PRs are welcome. If you're making non-trivial changes, please include test output. Before opening a PR, run `just check`. Versioning is automatic: merging to `master` tags the commit with the next patch version. For a bigger bump, add the `new minor version` or `new major version` label to your PR.
 
 ### Development setup
 
