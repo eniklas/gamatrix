@@ -61,3 +61,9 @@ JOB_PENDING = "pending"
 JOB_RUNNING = "running"
 JOB_COMPLETED = "completed"
 JOB_FAILED = "failed"
+
+# A pending/running job with no progress for this long is presumed dead (the
+# enricher Lambda crashed or hit its hard timeout without recording a terminal
+# status). Past this it stops driving the UI. Kept above the enricher's 15-min
+# Lambda timeout so a slow-but-live job isn't reaped mid-run.
+JOB_TIMEOUT_MINUTES = 20

@@ -14,6 +14,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 from gamatrix.config import Settings, get_settings
+from gamatrix.helpers import now_iso
 
 
 def _to_dynamo(value: Any) -> Any:
@@ -178,11 +179,14 @@ class Repository:
             ExpressionAttributeValues=values,
         )
 
-    def increment_job_progress(self, job_id: str, by: int = 1) -> None:
-        self._table(self.settings.jobs_table).update_item(
-            Key={"job_id": job_id},
-            UpdateExpression="SET completed_count = completed_count + :n",
-            ExpressionAttributeValues={":n": _to_dynamo(by)},
+    def set_job_progress(self, job_id: str, completed_count: int) -> None:
+        """Record absolute progress. Idempotent across SQS redeliveries: a
+        retried or concurrently-running enricher converges on the same value
+        instead of inflating an atomic counter past `total` (see #131). Also
+        stamps `updated_at` so staleness is measured from the last progress,
+        not job creation."""
+        self.update_job(
+            job_id, {"completed_count": completed_count, "updated_at": now_iso()}
         )
 
     def list_pending_jobs(self) -> list[dict]:
@@ -195,13 +199,17 @@ class Repository:
         ]
 
     def get_active_job(self) -> dict | None:
-        """Return the most recently created pending-or-running job, if any."""
-        from gamatrix.constants import JOB_PENDING, JOB_RUNNING
+        """Return the most recently created pending-or-running job, if any.
+
+        Stale jobs (presumed-dead enrichers, see `is_job_stale`) are skipped so
+        a job that never reached a terminal status can't pin the progress bar
+        on every page load, nor block new enrichment from being queued."""
+        from gamatrix.jobs import is_job_active, is_job_stale
 
         active = [
             j
             for j in self._scan(self.settings.jobs_table)
-            if j.get("status") in (JOB_PENDING, JOB_RUNNING)
+            if is_job_active(j) and not is_job_stale(j)
         ]
         if not active:
             return None

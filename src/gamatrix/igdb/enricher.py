@@ -33,7 +33,7 @@ async def run_job(
         log.error("Enrichment job %s not found", job_id)
         return
 
-    repo.update_job(job_id, {"status": JOB_RUNNING})
+    repo.update_job(job_id, {"status": JOB_RUNNING, "updated_at": now_iso()})
     release_keys: list[str] = job["release_keys"]
 
     # Group release keys by the IGDB key so games shared across platforms
@@ -49,6 +49,7 @@ async def run_job(
         by_igdb_key.setdefault(game["igdb_key"], []).append(rk)
 
     client_id, client_secret = resolve_igdb_credentials(settings)
+    completed = 0
     try:
         async with IGDBClient(client_id, client_secret) as client:
             for igdb_key, rks in by_igdb_key.items():
@@ -61,7 +62,11 @@ async def run_job(
                     meta = GameMetadata()
                 for rk in rks:
                     _write_metadata(repo, games[rk], meta)
-                    repo.increment_job_progress(job_id, 1)
+                    completed += 1
+                    # Absolute, not incremental: a redelivered or concurrent
+                    # run converges here instead of pushing the count past
+                    # `total` (see #131).
+                    repo.set_job_progress(job_id, completed)
     except Exception:
         log.exception("Enrichment job %s failed", job_id)
         repo.update_job(job_id, {"status": JOB_FAILED, "completed_at": now_iso()})

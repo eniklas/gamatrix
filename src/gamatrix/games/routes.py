@@ -22,7 +22,7 @@ from gamatrix.games import service
 from gamatrix.games.preferences import merge_preferences
 from gamatrix.games.service import CompareOptions
 from gamatrix.helpers import parse_iso
-from gamatrix.jobs import create_enrichment_job
+from gamatrix.jobs import create_enrichment_job, is_job_stale
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import get_queue
 from gamatrix.templating import templates
@@ -174,7 +174,9 @@ def job_status(
     repo: Repository = Depends(get_repo),
 ):
     job = repo.get_job(job_id)
-    done = job is None or job["status"] in (JOB_COMPLETED, JOB_FAILED)
+    done = (
+        job is None or job["status"] in (JOB_COMPLETED, JOB_FAILED) or is_job_stale(job)
+    )
     return templates.TemplateResponse(
         request,
         "job_status.html.jinja",

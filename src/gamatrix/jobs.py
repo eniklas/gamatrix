@@ -4,13 +4,40 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import datetime, timedelta, timezone
 
-from gamatrix.constants import JOB_PENDING
-from gamatrix.helpers import now_iso
+from gamatrix.constants import (
+    JOB_PENDING,
+    JOB_RUNNING,
+    JOB_TIMEOUT_MINUTES,
+)
+from gamatrix.helpers import now_iso, parse_iso
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import EnrichmentQueue
 
 log = logging.getLogger(__name__)
+
+
+def is_job_active(job: dict) -> bool:
+    """True while a job is still pending or running (not yet terminal)."""
+    return job.get("status") in (JOB_PENDING, JOB_RUNNING)
+
+
+def is_job_stale(job: dict) -> bool:
+    """True for an active job that has made no progress within the timeout.
+
+    Such a job is presumed dead — the enricher Lambda crashed or hit its hard
+    timeout without writing a terminal status — so the UI should treat it as
+    finished rather than poll it forever. Staleness is measured from the last
+    progress (`updated_at`), falling back to `created_at` for a job that never
+    progressed."""
+    if not is_job_active(job):
+        return False
+    last_seen = job.get("updated_at") or job.get("created_at")
+    if not last_seen:
+        return False
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=JOB_TIMEOUT_MINUTES)
+    return parse_iso(last_seen) < cutoff
 
 
 def create_enrichment_job(
