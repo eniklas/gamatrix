@@ -7,7 +7,9 @@ import sqlite3
 
 import pytest
 
+from gamatrix.gogdb.ingest import ingest_db_file
 from gamatrix.gogdb.parser import GogDBParser, is_sqlite3
+from gamatrix.storage.queue import EnrichmentQueue
 
 
 def _build_gog_db(path: str) -> None:
@@ -131,3 +133,59 @@ def test_installed_and_igdb_key(gog_db):
     assert games["steam_1"]["igdb_key"] == "steam_1"
     assert games["gog_2"]["igdb_key"] == "gog_2"
     assert games["steam_1"]["slug"] == "alpha"
+
+
+def _add_duplicate_platform_list_row(path: str, release_key: str) -> None:
+    """Add a second allGameReleases row for one title.
+
+    This mirrors a real production failure mode: the parser's owned-games query
+    groups by platform-list rows, so duplicate allGameReleases rows for the same
+    release can cause the same release_key to appear multiple times in
+    ParsedLibrary.entries, which then breaks DynamoDB batch writes.
+    """
+    conn = sqlite3.connect(path)
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO GamePieces (releaseKey, gamePieceTypeId, value) VALUES (?, ?, ?)",
+        (release_key, 3, json.dumps({"releases": [release_key, "gog_2"]})),
+    )
+    conn.commit()
+    conn.close()
+
+
+def test_parse_dedupes_duplicate_release_keys(gog_db):
+    _add_duplicate_platform_list_row(gog_db, "steam_1")
+
+    parser = GogDBParser(gog_db)
+    try:
+        parsed = parser.parse()
+    finally:
+        parser.close()
+
+    steam_entries = [e for e in parsed.entries if e["release_key"] == "steam_1"]
+    assert steam_entries == [
+        {"release_key": "steam_1", "platform": "steam", "installed": True}
+    ]
+
+
+def test_ingest_same_db_twice_with_duplicate_parser_rows_is_idempotent(
+    gog_db, repo, settings
+):
+    _add_duplicate_platform_list_row(gog_db, "steam_1")
+
+    queue = EnrichmentQueue(settings=settings)
+    first_user_id, first_job_id = ingest_db_file(gog_db, repo, queue)
+    second_user_id, second_job_id = ingest_db_file(gog_db, repo, queue)
+
+    assert first_user_id == "12345"
+    assert second_user_id == "12345"
+    assert first_job_id is not None
+    assert second_job_id is not None
+
+    library = repo.get_user_library("12345")
+    assert {row["release_key"] for row in library} == {
+        "steam_1",
+        "gog_2",
+        "xboxone_200",
+    }
+    assert len(library) == 3

@@ -8,6 +8,8 @@ the parser inline.
 
 from __future__ import annotations
 
+from urllib.parse import urlsplit, urlunsplit
+
 import boto3
 
 from gamatrix.config import Settings, get_settings
@@ -32,12 +34,25 @@ class S3Storage:
 
     def presigned_upload(self, key: str, max_bytes: int) -> dict:
         """Return {url, fields} for a browser to POST the DB file directly."""
-        return self._client.generate_presigned_post(
+        post = self._client.generate_presigned_post(
             Bucket=self.settings.upload_bucket,
             Key=key,
             Conditions=[["content-length-range", 1, max_bytes]],
             ExpiresIn=3600,
         )
+        if self.settings.public_s3_endpoint_url:
+            signed = urlsplit(post["url"])
+            public = urlsplit(self.settings.public_s3_endpoint_url)
+            post["url"] = urlunsplit(
+                (
+                    public.scheme,
+                    public.netloc,
+                    signed.path,
+                    signed.query,
+                    signed.fragment,
+                )
+            )
+        return post
 
     def download(self, key: str, dest_path: str) -> None:
         self._client.download_file(self.settings.upload_bucket, key, dest_path)

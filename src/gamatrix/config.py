@@ -35,6 +35,9 @@ class Settings(BaseSettings):
 
     # --- S3 ---
     upload_bucket: str = "gamatrix-gog-db-uploads"
+    # Browser-facing S3 endpoint. Locally the app container talks to minio on the
+    # Docker network, but the browser must upload to a host-reachable URL.
+    public_s3_endpoint_url: str | None = None
 
     # --- SQS (unset locally; the local_worker polls the jobs table instead) ---
     enrichment_queue_url: str | None = None

@@ -170,7 +170,8 @@ class GogDBParser:
         )
 
         parsed = ParsedLibrary(user_id=user_id)
-        seen: set[str] = set()
+        entries_by_release_key: dict[str, dict] = {}
+        seen_games: set[str] = set()
         for release_keys, title_json in owned:
             for release_key in release_keys.split(","):
                 if release_key in excluded:
@@ -184,17 +185,21 @@ class GogDBParser:
                     log.debug("%s: skipping null title", release_key)
                     continue
 
-                parsed.entries.append(
-                    {
+                existing_entry = entries_by_release_key.get(release_key)
+                if existing_entry is None:
+                    entries_by_release_key[release_key] = {
                         "release_key": release_key,
                         "platform": platform,
                         "installed": release_key in installed,
                     }
-                )
+                else:
+                    existing_entry["installed"] = (
+                        existing_entry["installed"] or release_key in installed
+                    )
 
-                if release_key in seen:
+                if release_key in seen_games:
                     continue
-                seen.add(release_key)
+                seen_games.add(release_key)
 
                 if platform == "steam":
                     igdb_key = release_key
@@ -211,4 +216,5 @@ class GogDBParser:
                     }
                 )
 
+        parsed.entries = list(entries_by_release_key.values())
         return parsed

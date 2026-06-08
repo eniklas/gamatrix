@@ -140,15 +140,31 @@ class Repository:
         """Delete the user's existing library rows and write the new set."""
         table = self._table(self.settings.libraries_table)
         existing = self.get_user_library(user_id)
+        incoming: dict[str, dict] = {}
+        for entry in entries:
+            release_key = entry["release_key"]
+            current = incoming.get(release_key)
+            if current is None:
+                incoming[release_key] = {**entry}
+                continue
+            current["installed"] = current.get("installed", False) or entry.get(
+                "installed", False
+            )
+            for key, value in entry.items():
+                if key not in ("release_key", "installed") and value is not None:
+                    current[key] = value
+
+        existing_keys = {row["release_key"] for row in existing}
+        incoming_keys = set(incoming)
         with table.batch_writer() as batch:
-            for row in existing:
+            for release_key in existing_keys - incoming_keys:
                 batch.delete_item(
                     Key={
                         "user_id": str(user_id),
-                        "release_key": row["release_key"],
+                        "release_key": release_key,
                     }
                 )
-            for entry in entries:
+            for entry in incoming.values():
                 item = {**entry, "user_id": str(user_id)}
                 batch.put_item(Item=_to_dynamo(item))
 
