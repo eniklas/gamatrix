@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
@@ -35,6 +36,25 @@ app.include_router(auth_router)
 app.include_router(games_router)
 app.include_router(preferences_router)
 app.include_router(upload_router)
+
+
+@app.middleware("http")
+async def _canonical_domain(request: Request, call_next):
+    """Keep production WebAuthn ceremonies scoped to one stable hostname."""
+    from gamatrix.config import get_settings
+
+    settings = get_settings()
+    canonical = urlparse(settings.app_base_url)
+    if (
+        not settings.local_dev
+        and canonical.hostname
+        and request.url.hostname != canonical.hostname
+    ):
+        target = f"{settings.app_base_url.rstrip('/')}{request.url.path}"
+        if request.url.query:
+            target = f"{target}?{request.url.query}"
+        return RedirectResponse(url=target, status_code=308)
+    return await call_next(request)
 
 
 @app.exception_handler(RedirectToLogin)

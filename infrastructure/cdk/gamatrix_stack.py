@@ -82,6 +82,10 @@ class GamatrixStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         cfg = deploy_config or DeployConfig()
+        if not cfg.has_custom_domain:
+            raise ValueError(
+                "A stable custom site_domain is required for production passkeys."
+            )
 
         tables = self._create_tables()
         upload_bucket = self._create_bucket()
@@ -121,9 +125,8 @@ class GamatrixStack(Stack):
         )
         self._create_ssm_params()
 
-        # Custom domain / SES are wired only when the deployment config supplies
-        # a hosted zone + site domain. Otherwise the stack still deploys and the
-        # app is reached via the default API Gateway URL.
+        # The custom domain is the stable WebAuthn RP scope. Alias domains are
+        # wired for reachability and redirected by the app to this canonical host.
         hosted_zone = None
         alias_hosted_zone = None
         if cfg.has_custom_domain:
@@ -147,6 +150,10 @@ class GamatrixStack(Stack):
             "JWT_SECRET_NAME": jwt_secret.secret_name,
             "EMAIL_FROM": cfg.email_from or DEFAULT_EMAIL_FROM,
             "IGDB_STALE_DAYS": "30",
+            "WEBAUTHN_RP_ID": cfg.site_domain or "",
+            "WEBAUTHN_ORIGINS": (
+                f'["https://{cfg.site_domain}"]' if cfg.site_domain else "[]"
+            ),
         }
 
         web_fn = self._lambda(
@@ -296,7 +303,9 @@ class GamatrixStack(Stack):
     def _create_tables(self) -> dict[str, dynamodb.Table]:
         tables: dict[str, dynamodb.Table] = {}
 
-        def table(name: str, pk: str, sk: str | None = None) -> dynamodb.Table:
+        def table(
+            name: str, pk: str, sk: str | None = None, ttl: str | None = None
+        ) -> dynamodb.Table:
             t = dynamodb.Table(
                 self,
                 name,
@@ -312,6 +321,7 @@ class GamatrixStack(Stack):
                 billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
                 removal_policy=RemovalPolicy.RETAIN,
                 point_in_time_recovery=True,
+                time_to_live_attribute=ttl,
             )
             tables[name] = t
             return t
@@ -329,6 +339,14 @@ class GamatrixStack(Stack):
         table("metadata_overrides", "slug")
         table("profile_pics", "user_id")
         table("config", "key")
+        passkeys = table("passkeys", "credential_id")
+        passkeys.add_global_secondary_index(
+            index_name="user_handle-index",
+            partition_key=dynamodb.Attribute(
+                name="user_handle", type=dynamodb.AttributeType.STRING
+            ),
+        )
+        table("auth_challenges", "challenge_id", ttl="expires_at")
         return tables
 
     def _create_bucket(self) -> s3.Bucket:

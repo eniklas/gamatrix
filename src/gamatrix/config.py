@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_ttl_hours: int = 24
     reset_token_ttl_minutes: int = 60
+    webauthn_rp_id: str = "localhost"
+    webauthn_rp_name: str = "Gamatrix"
+    webauthn_origins: list[str] = ["http://localhost:8088"]
+    webauthn_challenge_ttl_seconds: int = 300
 
     # --- IGDB / Twitch ---
     igdb_client_id: str = ""
@@ -103,6 +107,14 @@ class Settings(BaseSettings):
         """Small key/value table; locally holds the hidden/single-player lists."""
         return f"{self.table_prefix}_config"
 
+    @property
+    def passkeys_table(self) -> str:
+        return f"{self.table_prefix}_passkeys"
+
+    @property
+    def auth_challenges_table(self) -> str:
+        return f"{self.table_prefix}_auth_challenges"
+
     @model_validator(mode="after")
     def _require_jwt_secret(self) -> "Settings":
         """Fail loudly rather than silently signing sessions with the public
@@ -116,6 +128,18 @@ class Settings(BaseSettings):
             raise ValueError(
                 "JWT_SECRET must be set in production (or set JWT_SECRET_NAME to "
                 "source it from Secrets Manager)."
+            )
+        if not self.local_dev and (
+            not self.webauthn_rp_id
+            or self.webauthn_rp_id == "localhost"
+            or not self.webauthn_origins
+            or any(
+                not origin.startswith("https://") for origin in self.webauthn_origins
+            )
+        ):
+            raise ValueError(
+                "Production passkeys require WEBAUTHN_RP_ID and explicit HTTPS "
+                "WEBAUTHN_ORIGINS for the canonical domain."
             )
         return self
 

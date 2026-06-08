@@ -6,11 +6,16 @@
     {% if error %}<p class="error">{{ error }}</p>{% endif %}
     <form method="post" action="/auth/login">
         <label for="email">Email</label>
-        <input type="email" id="email" name="email" required autofocus>
+        <input type="email" id="email" name="email" required autofocus autocomplete="username webauthn">
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required>
         <button type="submit">Sign in</button>
     </form>
+    <p class="separator">or</p>
+    <button type="button" id="passkey-login" class="secondary">Sign in with a passkey</button>
+    <p id="passkey-error" class="error" hidden></p>
     <p class="muted"><a href="/auth/forgot-password">Forgot your password?</a></p>
 </div>
+<script src="/static/passkeys.js"></script>
+<script>window.gamatrixPasskeys.enableLogin();</script>
 {% endblock %}

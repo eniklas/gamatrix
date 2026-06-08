@@ -114,6 +114,18 @@ class Repository:
         user = {**user, "email": user["email"].lower()}
         self._table(self.settings.users_table).put_item(Item=_to_dynamo(user))
 
+    def ensure_webauthn_user_id(self, email: str, user_handle: str) -> str:
+        """Assign a stable opaque WebAuthn user handle exactly once."""
+        response = self._table(self.settings.users_table).update_item(
+            Key={"email": email.lower()},
+            UpdateExpression=(
+                "SET webauthn_user_id = if_not_exists(webauthn_user_id, :v)"
+            ),
+            ExpressionAttributeValues={":v": user_handle},
+            ReturnValues="ALL_NEW",
+        )
+        return str(response["Attributes"]["webauthn_user_id"])
+
     def update_user(self, email: str, attrs: dict) -> None:
         if not attrs:
             return
@@ -311,6 +323,112 @@ class Repository:
         self._table(self.settings.config_table).put_item(
             Item=_to_dynamo({"key": key, "value": value})
         )
+
+    # ------------------------------------------------------------------
+    # passkeys and one-time WebAuthn challenges
+    # ------------------------------------------------------------------
+    def put_passkey(self, passkey: dict) -> bool:
+        try:
+            self._table(self.settings.passkeys_table).put_item(
+                Item=_to_dynamo(passkey),
+                ConditionExpression="attribute_not_exists(credential_id)",
+            )
+            return True
+        except self._resource.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+
+    def get_passkey(self, credential_id: str) -> dict | None:
+        response = self._table(self.settings.passkeys_table).get_item(
+            Key={"credential_id": credential_id}
+        )
+        item = response.get("Item")
+        return _from_dynamo(item) if item else None
+
+    def list_passkeys(self, user_handle: str) -> list[dict]:
+        return self._query_all(
+            self.settings.passkeys_table,
+            IndexName="user_handle-index",
+            KeyConditionExpression=Key("user_handle").eq(user_handle),
+        )
+
+    def delete_passkey(self, credential_id: str, user_handle: str) -> bool:
+        try:
+            self._table(self.settings.passkeys_table).delete_item(
+                Key={"credential_id": credential_id},
+                ConditionExpression="user_handle = :user_handle",
+                ExpressionAttributeValues={":user_handle": user_handle},
+            )
+            return True
+        except self._resource.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+
+    def update_passkey(self, credential_id: str, attrs: dict) -> None:
+        names = {f"#{key}": key for key in attrs}
+        values = {f":{key}": _to_dynamo(value) for key, value in attrs.items()}
+        expression = "SET " + ", ".join(f"#{key} = :{key}" for key in attrs)
+        self._table(self.settings.passkeys_table).update_item(
+            Key={"credential_id": credential_id},
+            UpdateExpression=expression,
+            ExpressionAttributeNames=names,
+            ExpressionAttributeValues=values,
+        )
+
+    def update_passkey_after_authentication(
+        self,
+        credential_id: str,
+        expected_sign_count: int,
+        new_sign_count: int,
+        backed_up: bool,
+        last_used_at: str,
+    ) -> bool:
+        """Update usage state without accepting a concurrent counter replay."""
+        condition = (
+            "sign_count = :expected"
+            if expected_sign_count or new_sign_count
+            else "attribute_exists(credential_id)"
+        )
+        values = {
+            ":new": new_sign_count,
+            ":backed_up": backed_up,
+            ":last_used": last_used_at,
+        }
+        if expected_sign_count or new_sign_count:
+            values[":expected"] = expected_sign_count
+        try:
+            self._table(self.settings.passkeys_table).update_item(
+                Key={"credential_id": credential_id},
+                UpdateExpression=(
+                    "SET sign_count = :new, backed_up = :backed_up, "
+                    "last_used_at = :last_used"
+                ),
+                ConditionExpression=condition,
+                ExpressionAttributeValues=_to_dynamo(values),
+            )
+            return True
+        except self._resource.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+
+    def put_auth_challenge(self, challenge: dict) -> None:
+        self._table(self.settings.auth_challenges_table).put_item(
+            Item=_to_dynamo(challenge)
+        )
+
+    def get_auth_challenge(self, challenge_id: str) -> dict | None:
+        response = self._table(self.settings.auth_challenges_table).get_item(
+            Key={"challenge_id": challenge_id}
+        )
+        item = response.get("Item")
+        return _from_dynamo(item) if item else None
+
+    def consume_auth_challenge(self, challenge_id: str) -> bool:
+        try:
+            self._table(self.settings.auth_challenges_table).delete_item(
+                Key={"challenge_id": challenge_id},
+                ConditionExpression="attribute_exists(challenge_id)",
+            )
+            return True
+        except self._resource.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
 
     # ------------------------------------------------------------------
     # internal

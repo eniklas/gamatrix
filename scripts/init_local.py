@@ -75,6 +75,28 @@ def _table_defs(s):
             "KeySchema": [{"AttributeName": "key", "KeyType": "HASH"}],
             "AttributeDefinitions": [{"AttributeName": "key", "AttributeType": "S"}],
         },
+        {
+            "TableName": s.passkeys_table,
+            "KeySchema": [{"AttributeName": "credential_id", "KeyType": "HASH"}],
+            "AttributeDefinitions": [
+                {"AttributeName": "credential_id", "AttributeType": "S"},
+                {"AttributeName": "user_handle", "AttributeType": "S"},
+            ],
+            "GlobalSecondaryIndexes": [
+                {
+                    "IndexName": "user_handle-index",
+                    "KeySchema": [{"AttributeName": "user_handle", "KeyType": "HASH"}],
+                    "Projection": {"ProjectionType": "ALL"},
+                }
+            ],
+        },
+        {
+            "TableName": s.auth_challenges_table,
+            "KeySchema": [{"AttributeName": "challenge_id", "KeyType": "HASH"}],
+            "AttributeDefinitions": [
+                {"AttributeName": "challenge_id", "AttributeType": "S"}
+            ],
+        },
     ]
 
 
@@ -91,6 +113,14 @@ def create_tables(settings) -> None:
             log.info("Table %s already exists", name)
             continue
         ddb.create_table(BillingMode="PAY_PER_REQUEST", **defn)
+        if name == settings.auth_challenges_table:
+            ddb.update_time_to_live(
+                TableName=name,
+                TimeToLiveSpecification={
+                    "Enabled": True,
+                    "AttributeName": "expires_at",
+                },
+            )
         log.info("Created table %s", name)
 
 

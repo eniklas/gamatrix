@@ -2,17 +2,32 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from pydantic import BaseModel
 
-from gamatrix.auth import service
-from gamatrix.auth.dependencies import get_repo
+from gamatrix.auth import passkeys, service
+from gamatrix.auth.dependencies import current_user, current_user_api, get_repo
 from gamatrix.auth.service import COOKIE_NAME
 from gamatrix.config import get_settings
 from gamatrix.storage.dynamo import Repository
 from gamatrix.templating import templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class RegistrationOptionsRequest(BaseModel):
+    password: str
+    friendly_name: str
+
+
+class CeremonyVerificationRequest(BaseModel):
+    challenge_id: str
+    credential: dict
+
+
+class DeletePasskeyRequest(BaseModel):
+    password: str
 
 
 def _cookie_kwargs() -> dict:
@@ -56,6 +71,117 @@ def logout():
     response = RedirectResponse(url="/auth/login", status_code=status.HTTP_302_FOUND)
     response.delete_cookie(COOKIE_NAME)
     return response
+
+
+def _passkey_error(exc: passkeys.PasskeyError) -> HTTPException:
+    return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.get("/passkeys", response_class=HTMLResponse)
+def passkey_management(
+    request: Request,
+    user: dict = Depends(current_user),
+    repo: Repository = Depends(get_repo),
+):
+    user_handle = user.get("webauthn_user_id")
+    credentials = repo.list_passkeys(user_handle) if user_handle else []
+    return templates.TemplateResponse(
+        request,
+        "passkeys.html.jinja",
+        {"user": user, "passkeys": credentials},
+    )
+
+
+@router.get("/passkeys/list")
+def list_passkeys(
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    user_handle = user.get("webauthn_user_id")
+    credentials = repo.list_passkeys(user_handle) if user_handle else []
+    return [
+        {
+            key: item.get(key)
+            for key in (
+                "credential_id",
+                "friendly_name",
+                "transports",
+                "backup_eligible",
+                "backed_up",
+                "created_at",
+                "last_used_at",
+            )
+        }
+        for item in credentials
+    ]
+
+
+@router.post("/passkeys/register/options")
+def passkey_registration_options(
+    body: RegistrationOptionsRequest,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    if not service.authenticate(repo, user["email"], body.password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Wrong password."
+        )
+    try:
+        return passkeys.registration_options(repo, user, body.friendly_name)
+    except passkeys.PasskeyError as exc:
+        raise _passkey_error(exc)
+
+
+@router.post("/passkeys/register/verify")
+def passkey_registration_verify(
+    body: CeremonyVerificationRequest,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    try:
+        return passkeys.verify_registration(
+            repo, user, body.challenge_id, body.credential
+        )
+    except passkeys.PasskeyError as exc:
+        raise _passkey_error(exc)
+
+
+@router.post("/passkeys/authenticate/options")
+def passkey_authentication_options(repo: Repository = Depends(get_repo)):
+    return passkeys.authentication_options(repo)
+
+
+@router.post("/passkeys/authenticate/verify")
+def passkey_authentication_verify(
+    body: CeremonyVerificationRequest,
+    repo: Repository = Depends(get_repo),
+):
+    try:
+        user = passkeys.verify_authentication(repo, body.challenge_id, body.credential)
+    except passkeys.PasskeyError as exc:
+        raise _passkey_error(exc)
+    response = JSONResponse({"redirect": "/games"})
+    response.set_cookie(
+        value=service.create_session_token(user["email"]), **_cookie_kwargs()
+    )
+    return response
+
+
+@router.delete("/passkeys/{credential_id}")
+def delete_passkey(
+    credential_id: str,
+    body: DeletePasskeyRequest,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    if not service.authenticate(repo, user["email"], body.password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Wrong password."
+        )
+    user_handle = user.get("webauthn_user_id")
+    if not user_handle or not repo.delete_passkey(credential_id, user_handle):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return {"deleted": True}
 
 
 @router.get("/forgot-password", response_class=HTMLResponse)
