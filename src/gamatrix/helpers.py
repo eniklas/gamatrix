@@ -3,15 +3,31 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import datetime, timezone
 
 
 def get_slug_from_title(title: str) -> str:
-    """Normalize a title to lowercase alphanumeric for fuzzy matching.
+    """Predict IGDB's slug for a title; also used as our internal slug.
 
-    Mirrors v1 behavior so existing config/metadata slugs keep matching.
+    IGDB doesn't document the algorithm, but observed slugs follow a standard
+    "slugify": lowercase, transliterate accents, drop apostrophes entirely
+    (so ``Avallac'h`` -> ``avallach``, not ``avallac-h``), and collapse every
+    other run of non-alphanumerics into a single hyphen.
+
+        "Ground Branch"     -> "ground-branch"
+        "BioShock Infinite" -> "bioshock-infinite"
+        "Pokémon"           -> "pokemon"
     """
-    return re.sub(r"[^a-z0-9]", "", title.lower())
+    # Strip accents: decompose then drop combining marks (é -> e).
+    normalized = unicodedata.normalize("NFKD", title)
+    ascii_title = normalized.encode("ascii", "ignore").decode("ascii")
+    lowered = ascii_title.lower()
+    # Apostrophes vanish rather than becoming separators.
+    lowered = lowered.replace("'", "").replace("’", "")
+    # Any remaining run of non-alphanumerics becomes a single hyphen.
+    slug = re.sub(r"[^a-z0-9]+", "-", lowered)
+    return slug.strip("-")
 
 
 def now_iso() -> str:

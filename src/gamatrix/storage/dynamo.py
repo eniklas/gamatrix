@@ -216,6 +216,15 @@ class Repository:
     def put_metadata(self, override: dict) -> None:
         self._table(self.settings.metadata_table).put_item(Item=_to_dynamo(override))
 
+    def clear_metadata(self) -> int:
+        """Delete every override row. Returns the number removed."""
+        table = self._table(self.settings.metadata_table)
+        rows = self._scan(self.settings.metadata_table)
+        with table.batch_writer() as batch:
+            for row in rows:
+                batch.delete_item(Key={"slug": row["slug"]})
+        return len(rows)
+
     # ------------------------------------------------------------------
     # config  (PK key -> value)  used locally for hidden/single-player lists
     # ------------------------------------------------------------------
