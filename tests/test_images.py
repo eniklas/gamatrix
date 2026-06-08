@@ -34,3 +34,12 @@ def test_process_leaves_small_image_dimensions_alone():
 def test_process_rejects_non_image():
     with pytest.raises(ValueError, match="readable image"):
         process_profile_pic(b"this is not an image")
+
+
+def test_process_rejects_oversized_bitmap(monkeypatch):
+    # Lower the pixel cap so a small test image trips the decompression-bomb
+    # guard cheaply. The guard must reject on declared dimensions, before the
+    # image is fully decoded.
+    monkeypatch.setattr("gamatrix.images.PROFILE_PIC_MAX_INPUT_PIXELS", 100)
+    with pytest.raises(ValueError, match="too large"):
+        process_profile_pic(_png_bytes((50, 50)))  # 2500 px > 100

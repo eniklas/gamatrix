@@ -327,6 +327,7 @@ class GamatrixStack(Stack):
         )
         table("enrichment_jobs", "job_id")
         table("metadata_overrides", "slug")
+        table("profile_pics", "user_id")
         table("config", "key")
         return tables
 

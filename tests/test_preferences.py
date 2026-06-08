@@ -31,8 +31,17 @@ def test_save_profile_persists_username(repo):
 
 
 def test_pic_url_prefers_uploaded_pic_with_cache_buster():
-    user = {"user_id": "7", "pic_key": "profile_img/u@x.com.png", "pic_updated": 123}
+    user = {"user_id": "7", "pic_updated": 123}
     assert pic_url(user) == "/profile_img/7?v=123"
+
+
+def test_profile_pic_round_trips_through_dynamo(repo):
+    repo.put_profile_pic("7", b"\x89PNG-bytes")
+    assert repo.get_profile_pic("7") == b"\x89PNG-bytes"
+
+
+def test_get_profile_pic_missing_returns_none(repo):
+    assert repo.get_profile_pic("nobody") is None
 
 
 def test_pic_url_falls_back_to_static_seeded_pic():

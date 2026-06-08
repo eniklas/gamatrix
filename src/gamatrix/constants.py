@@ -10,6 +10,11 @@ DISPLAY_NAME_MAX_LENGTH = 32
 # Profile pictures: max accepted upload, and the output thumbnail box (px).
 PROFILE_PIC_MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 PROFILE_PIC_SIZE = 128
+# Reject images whose decoded pixel count exceeds this before fully decoding.
+# A small file can decompress to an enormous bitmap (a "decompression bomb")
+# that exhausts a worker's CPU/RAM; the byte cap above does not protect against
+# it. 50 MP comfortably clears legitimate phone/camera uploads.
+PROFILE_PIC_MAX_INPUT_PIXELS = 50_000_000
 
 # Full mapping is at https://api-docs.igdb.com/#external-game-enums, but only
 # Steam and GOG actually work; the other platforms' IDs don't match IGDB.

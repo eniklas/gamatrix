@@ -265,6 +265,25 @@ class Repository:
         return len(rows)
 
     # ------------------------------------------------------------------
+    # profile_pics  (PK user_id -> processed PNG bytes)
+    # ------------------------------------------------------------------
+    def put_profile_pic(self, user_id: str, data: bytes) -> None:
+        self._table(self.settings.profile_pics_table).put_item(
+            Item={"user_id": str(user_id), "data": data}
+        )
+
+    def get_profile_pic(self, user_id: str) -> bytes | None:
+        """Return a user's stored pic bytes via a single keyed read, or None."""
+        resp = self._table(self.settings.profile_pics_table).get_item(
+            Key={"user_id": str(user_id)}
+        )
+        item = resp.get("Item")
+        if not item or "data" not in item:
+            return None
+        # boto3 hands binary attributes back wrapped in a Binary type.
+        return bytes(item["data"])
+
+    # ------------------------------------------------------------------
     # config  (PK key -> value)  used locally for hidden/single-player lists
     # ------------------------------------------------------------------
     def get_config(self, key: str, default: Any = None) -> Any:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from gamatrix.auth.dependencies import current_user, current_user_api, get_repo
@@ -13,7 +13,6 @@ from gamatrix.games.preferences import merge_preferences
 from gamatrix.helpers import pic_url
 from gamatrix.images import process_profile_pic
 from gamatrix.storage.dynamo import Repository
-from gamatrix.storage.s3 import get_s3
 from gamatrix.templating import templates
 
 router = APIRouter(tags=["preferences"])
@@ -98,15 +97,33 @@ async def save_profile(
     return JSONResponse({"username": name})
 
 
+async def _read_body_capped(request: Request, limit: int) -> bytes | None:
+    """Read the raw request body in chunks, aborting as soon as it crosses
+    `limit`. Returns None if oversized, so an attacker can't force the whole
+    body to be buffered to memory/disk before the size is checked."""
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > limit:
+            return None
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @router.post("/profile/pic")
 async def upload_profile_pic(
-    file: UploadFile = File(...),
+    request: Request,
     user: dict = Depends(current_user_api),
     repo: Repository = Depends(get_repo),
 ):
-    """Accept an image upload, resize it, and store it as the user's pic."""
-    raw = await file.read()
-    if len(raw) > PROFILE_PIC_MAX_UPLOAD_SIZE:
+    """Accept a raw image body, resize it, and store it as the user's pic.
+
+    The image is sent as the raw request body (not multipart) so it can be read
+    with an early size cap instead of being buffered in full first.
+    """
+    raw = await _read_body_capped(request, PROFILE_PIC_MAX_UPLOAD_SIZE)
+    if raw is None:
         mb = PROFILE_PIC_MAX_UPLOAD_SIZE // (1024 * 1024)
         return JSONResponse(
             {"error": f"Image must be {mb} MB or smaller."}, status_code=400
@@ -116,11 +133,11 @@ async def upload_profile_pic(
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=400)
 
-    key = f"profile_img/{user['email'].lower()}.png"
-    get_s3().put_bytes(key, png, "image/png")
+    user_id = str(user["user_id"])
+    repo.put_profile_pic(user_id, png)
     updated = int(time.time())
-    repo.update_user(user["email"], {"pic_key": key, "pic_updated": updated})
-    url = pic_url({**user, "pic_key": key, "pic_updated": updated})
+    repo.update_user(user["email"], {"pic_updated": updated})
+    url = pic_url({**user, "pic_updated": updated})
     return JSONResponse({"pic_url": url})
 
 
@@ -130,17 +147,18 @@ def serve_profile_pic(
     _: dict = Depends(current_user),
     repo: Repository = Depends(get_repo),
 ):
-    """Stream a user-uploaded profile pic from S3 (gated to logged-in users)."""
-    target = repo.get_user_by_user_id(user_id)
-    key = target.get("pic_key") if target else None
-    if not key:
-        return Response(status_code=404)
-    data = get_s3().get_bytes(key)
+    """Serve a user-uploaded profile pic (gated to logged-in users).
+
+    A single keyed read from the profile_pics table — no full-table scan.
+    """
+    data = repo.get_profile_pic(user_id)
     if data is None:
         return Response(status_code=404)
-    # Safe to cache hard: the URL carries a ?v= cache-buster on each update.
+    # private (not public): the route is auth-gated, so shared proxy/CDN
+    # caches must not hold it. The ?v= cache-buster keeps the browser cache
+    # fresh across updates.
     return Response(
         content=data,
         media_type="image/png",
-        headers={"Cache-Control": "public, max-age=86400"},
+        headers={"Cache-Control": "private, max-age=86400"},
     )

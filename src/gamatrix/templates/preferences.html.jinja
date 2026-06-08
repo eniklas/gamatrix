@@ -21,20 +21,47 @@
     </fieldset>
 </form>
 
-<form id="profilepic" enctype="multipart/form-data" class="filters"
-      hx-post="/profile/pic" hx-encoding="multipart/form-data" hx-swap="none"
-      hx-on::after-request="if(event.detail.successful){const r=JSON.parse(event.detail.xhr.responseText);if(r.pic_url){this.querySelector('.pic-preview').src=r.pic_url}this.querySelector('.saved').style.display='inline';this.querySelector('.error').style.display='none'}else{const e=this.querySelector('.error');e.textContent=JSON.parse(event.detail.xhr.responseText).error;e.style.display='inline';this.querySelector('.saved').style.display='none'}">
+<div id="profilepic" class="filters">
     <fieldset class="filter-group">
         <legend>Profile picture</legend>
         {% set pu = pic_url(user) %}
         <img class="pic-preview" width="48" height="48"
              src="{{ pu or '/static/profile_img/question_block.jpg' }}">
-        <input type="file" name="file" accept="image/*" required>
-        <button type="submit">Upload</button>
+        <input type="file" id="pic-file" accept="image/*">
+        <button type="button" onclick="uploadProfilePic()">Upload</button>
         <span class="saved muted" style="display:none;">Saved ✓</span>
         <span class="error" style="display:none;color:#c00;"></span>
     </fieldset>
-</form>
+</div>
+<script>
+// Send the file as the raw request body so the server can size-cap it as it
+// streams, rather than receiving a fully-buffered multipart upload.
+async function uploadProfilePic() {
+    const box = document.getElementById('profilepic');
+    const saved = box.querySelector('.saved');
+    const error = box.querySelector('.error');
+    const file = document.getElementById('pic-file').files[0];
+    if (!file) { return; }
+    saved.style.display = 'none';
+    error.style.display = 'none';
+    let data = {};
+    try {
+        const resp = await fetch('/profile/pic', {
+            method: 'POST',
+            headers: {'Content-Type': file.type || 'application/octet-stream'},
+            body: file,
+        });
+        data = await resp.json().catch(() => ({}));
+        if (!resp.ok) { throw new Error(data.error || 'Upload failed.'); }
+    } catch (e) {
+        error.textContent = e.message || 'Upload failed.';
+        error.style.display = 'inline';
+        return;
+    }
+    if (data.pic_url) { box.querySelector('.pic-preview').src = data.pic_url; }
+    saved.style.display = 'inline';
+}
+</script>
 
 <form id="filters" method="post" action="/preferences" class="filters"
       hx-post="/preferences" hx-swap="none"

@@ -45,23 +45,6 @@ class S3Storage:
     def delete(self, key: str) -> None:
         self._client.delete_object(Bucket=self.settings.upload_bucket, Key=key)
 
-    def put_bytes(self, key: str, data: bytes, content_type: str) -> None:
-        """Upload in-memory bytes (e.g. a processed profile pic)."""
-        self._client.put_object(
-            Bucket=self.settings.upload_bucket,
-            Key=key,
-            Body=data,
-            ContentType=content_type,
-        )
-
-    def get_bytes(self, key: str) -> bytes | None:
-        """Return an object's bytes, or None if it doesn't exist."""
-        try:
-            resp = self._client.get_object(Bucket=self.settings.upload_bucket, Key=key)
-        except self._client.exceptions.NoSuchKey:
-            return None
-        return resp["Body"].read()
-
 
 _s3: S3Storage | None = None
 

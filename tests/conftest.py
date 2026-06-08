@@ -59,6 +59,7 @@ def _create_tables(settings: Settings) -> None:
     for name, pk in [
         (settings.jobs_table, "job_id"),
         (settings.metadata_table, "slug"),
+        (settings.profile_pics_table, "user_id"),
         (settings.config_table, "key"),
     ]:
         ddb.create_table(
