@@ -8,12 +8,17 @@ dynamodb-local in development; only the endpoint URL differs.
 from __future__ import annotations
 
 import decimal
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable, cast
 
 import boto3
 from boto3.dynamodb.conditions import Key
 
 from gamatrix.config import Settings, get_settings
+from gamatrix.helpers import now_iso
+
+if TYPE_CHECKING:
+    # Annotation-only; importing at runtime would cycle (jobs imports Repository).
+    from gamatrix.jobs import JobRecord
 
 
 def _to_dynamo(value: Any) -> Any:
@@ -159,10 +164,10 @@ class Repository:
     # ------------------------------------------------------------------
     # enrichment_jobs
     # ------------------------------------------------------------------
-    def put_job(self, job: dict) -> None:
+    def put_job(self, job: JobRecord) -> None:
         self._table(self.settings.jobs_table).put_item(Item=_to_dynamo(job))
 
-    def get_job(self, job_id: str) -> dict | None:
+    def get_job(self, job_id: str) -> JobRecord | None:
         resp = self._table(self.settings.jobs_table).get_item(Key={"job_id": job_id})
         item = resp.get("Item")
         return _from_dynamo(item) if item else None
@@ -178,11 +183,14 @@ class Repository:
             ExpressionAttributeValues=values,
         )
 
-    def increment_job_progress(self, job_id: str, by: int = 1) -> None:
-        self._table(self.settings.jobs_table).update_item(
-            Key={"job_id": job_id},
-            UpdateExpression="SET completed_count = completed_count + :n",
-            ExpressionAttributeValues={":n": _to_dynamo(by)},
+    def set_job_progress(self, job_id: str, completed_count: int) -> None:
+        """Record absolute progress. Idempotent across SQS redeliveries: a
+        retried or concurrently-running enricher converges on the same value
+        instead of inflating an atomic counter past `total` (see #131). Also
+        stamps `updated_at` so staleness is measured from the last progress,
+        not job creation."""
+        self.update_job(
+            job_id, {"completed_count": completed_count, "updated_at": now_iso()}
         )
 
     def list_pending_jobs(self) -> list[dict]:
@@ -194,15 +202,18 @@ class Repository:
             if j.get("status") == JOB_PENDING
         ]
 
-    def get_active_job(self) -> dict | None:
-        """Return the most recently created pending-or-running job, if any."""
-        from gamatrix.constants import JOB_PENDING, JOB_RUNNING
+    def get_active_job(self) -> JobRecord | None:
+        """Return the most recently created pending-or-running job, if any.
 
-        active = [
-            j
-            for j in self._scan(self.settings.jobs_table)
-            if j.get("status") in (JOB_PENDING, JOB_RUNNING)
-        ]
+        Stale jobs (presumed-dead enrichers, see `is_job_stale`) are skipped so
+        a job that never reached a terminal status can't pin the progress bar
+        on every page load, nor block new enrichment from being queued."""
+        # Imported here, not at module scope: gamatrix.jobs imports Repository
+        # from this module, so a top-level import would be circular.
+        from gamatrix.jobs import is_job_active, is_job_stale
+
+        jobs = cast("list[JobRecord]", self._scan(self.settings.jobs_table))
+        active = [j for j in jobs if is_job_active(j) and not is_job_stale(j)]
         if not active:
             return None
         return max(active, key=lambda j: j.get("created_at", ""))
