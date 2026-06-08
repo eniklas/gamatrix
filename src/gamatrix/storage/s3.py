@@ -8,8 +8,9 @@ the parser inline.
 
 from __future__ import annotations
 
-import boto3
 from urllib.parse import urlsplit, urlunsplit
+
+import boto3
 
 from gamatrix.config import Settings, get_settings
 
