@@ -6,6 +6,21 @@
     <div class="right"><a href="/games">Back to games</a></div>
 </div>
 
+<form id="profile" method="post" action="/profile" class="filters"
+      hx-post="/profile" hx-swap="none"
+      hx-on::after-request="if(event.detail.successful){this.querySelector('.saved').style.display='inline';this.querySelector('.error').style.display='none'}else{const e=this.querySelector('.error');e.textContent=JSON.parse(event.detail.xhr.responseText).error;e.style.display='inline';this.querySelector('.saved').style.display='none'}">
+    <fieldset class="filter-group">
+        <legend>Display name</legend>
+        <label>
+            <input type="text" name="username" value="{{ user.username }}"
+                   maxlength="32" required>
+        </label>
+        <button type="submit">Save name</button>
+        <span class="saved muted" style="display:none;">Saved ✓</span>
+        <span class="error" style="display:none;color:#c00;"></span>
+    </fieldset>
+</form>
+
 <form id="filters" method="post" action="/preferences" class="filters"
       hx-post="/preferences" hx-swap="none"
       hx-on::after-request="this.querySelector('.saved').style.display='inline'">

@@ -3,14 +3,31 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from gamatrix.auth.dependencies import current_user, current_user_api, get_repo
+from gamatrix.constants import DISPLAY_NAME_MAX_LENGTH
 from gamatrix.games.preferences import merge_preferences
 from gamatrix.storage.dynamo import Repository
 from gamatrix.templating import templates
 
 router = APIRouter(tags=["preferences"])
+
+
+def clean_display_name(raw: str) -> str:
+    """Validate and normalize a user-supplied display name.
+
+    Collapses surrounding whitespace and enforces non-empty / max-length.
+    Raises ValueError with a user-facing message if it doesn't qualify.
+    """
+    name = " ".join((raw or "").split())
+    if not name:
+        raise ValueError("Display name cannot be empty.")
+    if len(name) > DISPLAY_NAME_MAX_LENGTH:
+        raise ValueError(
+            f"Display name must be {DISPLAY_NAME_MAX_LENGTH} characters or fewer."
+        )
+    return name
 
 
 @router.get("/preferences", response_class=HTMLResponse)
@@ -58,3 +75,19 @@ async def save_preferences(
     }
     repo.update_user(user["email"], {"preferences": prefs})
     return Response(status_code=204)
+
+
+@router.post("/profile")
+async def save_profile(
+    request: Request,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    """Update the signed-in user's display name."""
+    form = await request.form()
+    try:
+        name = clean_display_name(str(form.get("username", "")))
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    repo.update_user(user["email"], {"username": name})
+    return JSONResponse({"username": name})
