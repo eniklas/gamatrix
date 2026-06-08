@@ -33,8 +33,41 @@ jobs:
           set -euo pipefail
 
           # --- Determine the bump level from the merged PR's labels ----------
-          labels="$(gh api "repos/$REPO/commits/$SHA/pulls" \
-            --jq '.[].labels[].name' 2>/dev/null || true)"
+          # Resolve the merged PR number from the commit subject first. The
+          # commits/{sha}/pulls API is eventually consistent and frequently
+          # returns nothing in the seconds after the push event fires, so we
+          # rely on it only as a fallback (with retries) when the subject has
+          # no PR reference (e.g. a rebase merge or a direct push).
+          subject="$(git log -1 --format=%s "$SHA")"
+          echo "Merge commit subject: $subject"
+
+          pr=""
+          # Squash merge: GitHub appends "(#N)" at the very end. Anchor on the
+          # trailing reference so an issue ref earlier in the title (e.g.
+          # "... (#131) (#143)") doesn't get picked up instead of the PR.
+          if [[ "$subject" =~ \(#([0-9]+)\)[[:space:]]*$ ]]; then
+            pr="${BASH_REMATCH[1]}"
+          # Merge commit: "Merge pull request #N from ...".
+          elif [[ "$subject" =~ ^Merge\ pull\ request\ \#([0-9]+) ]]; then
+            pr="${BASH_REMATCH[1]}"
+          fi
+
+          labels=""
+          if [[ -n "$pr" ]]; then
+            echo "Resolved PR #$pr from commit subject"
+            labels="$(gh api "repos/$REPO/pulls/$pr" \
+              --jq '.labels[].name' 2>/dev/null || true)"
+          else
+            echo "No PR number in subject; falling back to commit->PR API"
+            for attempt in 1 2 3 4 5; do
+              labels="$(gh api "repos/$REPO/commits/$SHA/pulls" \
+                --jq '.[].labels[].name' 2>/dev/null || true)"
+              [[ -n "$labels" ]] && break
+              echo "No labels yet (attempt $attempt/5); retrying in 5s..."
+              sleep 5
+            done
+          fi
+
           echo "PR labels for $SHA:"
           echo "${labels:-<none>}"
 
