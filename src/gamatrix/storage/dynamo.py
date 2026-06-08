@@ -382,18 +382,6 @@ class Repository:
         last_used_at: str,
     ) -> bool:
         """Update usage state without accepting a concurrent counter replay."""
-        condition = (
-            "sign_count = :expected"
-            if expected_sign_count or new_sign_count
-            else "attribute_exists(credential_id)"
-        )
-        values = {
-            ":new": new_sign_count,
-            ":backed_up": backed_up,
-            ":last_used": last_used_at,
-        }
-        if expected_sign_count or new_sign_count:
-            values[":expected"] = expected_sign_count
         try:
             self._table(self.settings.passkeys_table).update_item(
                 Key={"credential_id": credential_id},
@@ -401,8 +389,15 @@ class Repository:
                     "SET sign_count = :new, backed_up = :backed_up, "
                     "last_used_at = :last_used"
                 ),
-                ConditionExpression=condition,
-                ExpressionAttributeValues=_to_dynamo(values),
+                ConditionExpression="sign_count = :expected",
+                ExpressionAttributeValues=_to_dynamo(
+                    {
+                        ":new": new_sign_count,
+                        ":backed_up": backed_up,
+                        ":last_used": last_used_at,
+                        ":expected": expected_sign_count,
+                    }
+                ),
             )
             return True
         except self._resource.meta.client.exceptions.ConditionalCheckFailedException:

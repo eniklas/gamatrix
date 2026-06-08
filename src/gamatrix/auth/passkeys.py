@@ -1,4 +1,13 @@
-"""WebAuthn passkey ceremonies and persistence."""
+"""WebAuthn passkey ceremonies and persistence.
+
+Coordinates WebAuthn registration and authentication flows using the
+py_webauthn library. Registration requires password confirmation and
+generates WebAuthn creation options; verification stores the credential
+after validating the attestation. Authentication is passwordless; options
+are generated for any user, and verification returns the authenticated user
+after validating the assertion. Challenge state is stored in DynamoDB with
+TTL to prevent replay attacks.
+"""
 
 from __future__ import annotations
 
@@ -38,6 +47,13 @@ def _new_challenge(
     user_handle: str | None = None,
     friendly_name: str | None = None,
 ) -> tuple[str, bytes]:
+    """Generate and store a new WebAuthn challenge for a ceremony.
+
+    Creates a cryptographically random challenge, stores it in DynamoDB
+    with expiration, and returns both the challenge_id (for client reference)
+    and raw challenge bytes (for option generation). Optional user_handle
+    and friendly_name are stored for validation during verification.
+    """
     challenge_id = secrets.token_urlsafe(32)
     challenge = secrets.token_bytes(32)
     now = int(datetime.now(timezone.utc).timestamp())
@@ -56,6 +72,11 @@ def _new_challenge(
 
 
 def _load_challenge(repo: Repository, challenge_id: str, ceremony: str) -> dict:
+    """Load and validate a WebAuthn challenge from storage.
+
+    Retrieves the challenge and verifies it matches the expected ceremony type
+    and has not expired. Raises PasskeyError if invalid or expired.
+    """
     item = repo.get_auth_challenge(challenge_id)
     now = int(datetime.now(timezone.utc).timestamp())
     if not item or item.get("ceremony") != ceremony or item["expires_at"] < now:
@@ -64,6 +85,12 @@ def _load_challenge(repo: Repository, challenge_id: str, ceremony: str) -> dict:
 
 
 def _user_handle(repo: Repository, user: dict) -> str:
+    """Get or generate a WebAuthn user handle for the user.
+
+    Returns the existing webauthn_user_id if present, otherwise generates
+    a new random identifier, stores it on the user record, and returns it.
+    The user handle is used as the WebAuthn user.id (opaque identifier).
+    """
     existing = user.get("webauthn_user_id")
     if existing:
         return str(existing)
