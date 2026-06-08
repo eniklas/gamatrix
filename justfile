@@ -56,8 +56,33 @@ build:
   docker build --build-arg SETUPTOOLS_SCM_PRETEND_VERSION={{version}} --target lambda-enricher -t {{container_name}}-enricher:{{version}} .
   docker build --build-arg SETUPTOOLS_SCM_PRETEND_VERSION={{version}} --target lambda-parser -t {{container_name}}-parser:{{version}} .
 
+# Fail fast if the private deploy config is missing, warn if it's off master.
+# A missing cdk-config.yaml makes the stack synth WITHOUT a custom domain, which
+# silently tears down the Route53 records and ACM cert on deploy (see config.py).
+_check-deploy-config:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  config_dir="${GAMATRIX_CONFIG_DIR:-{{justfile_directory()}}/../gamatrix-configs}"
+  config_file="$config_dir/cdk-config.yaml"
+  if [[ ! -f "$config_file" ]]; then
+    echo "ERROR: deploy config not found at $config_file" >&2
+    echo "       Deploying without it removes the custom domain, deleting the" >&2
+    echo "       Route53 alias records and ACM cert. Restore the gamatrix-configs" >&2
+    echo "       checkout (or set GAMATRIX_CONFIG_DIR) before deploying." >&2
+    exit 1
+  fi
+  if git -C "$config_dir" rev-parse --git-dir >/dev/null 2>&1; then
+    branch="$(git -C "$config_dir" rev-parse --abbrev-ref HEAD)"
+    if [[ "$branch" != "master" ]]; then
+      where="branch '$branch'"
+      [[ "$branch" == "HEAD" ]] && where="a detached HEAD"
+      echo "WARNING: gamatrix-configs is on $where, not master." >&2
+      echo "         Confirm this is the config you mean to deploy." >&2
+    fi
+  fi
+
 # Deploy infrastructure with CDK
-deploy:
+deploy: _check-deploy-config
   # cdk.json runs the app via ../../.venv/bin/python, so the cdk extra must be
   # present in .venv. `uv sync` prunes anything outside the synced set, so sync
   # dev + cdk together to keep the dev tools too.
