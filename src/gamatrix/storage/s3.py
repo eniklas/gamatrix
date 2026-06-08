@@ -43,7 +43,13 @@ class S3Storage:
             signed = urlsplit(post["url"])
             public = urlsplit(self.settings.public_s3_endpoint_url)
             post["url"] = urlunsplit(
-                (public.scheme, public.netloc, signed.path, signed.query, signed.fragment)
+                (
+                    public.scheme,
+                    public.netloc,
+                    signed.path,
+                    signed.query,
+                    signed.fragment,
+                )
             )
         return post
 

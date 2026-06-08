@@ -183,5 +183,9 @@ def test_ingest_same_db_twice_with_duplicate_parser_rows_is_idempotent(
     assert second_job_id is not None
 
     library = repo.get_user_library("12345")
-    assert {row["release_key"] for row in library} == {"steam_1", "gog_2", "xboxone_200"}
+    assert {row["release_key"] for row in library} == {
+        "steam_1",
+        "gog_2",
+        "xboxone_200",
+    }
     assert len(library) == 3
