@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+import time
+
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from gamatrix.auth.dependencies import current_user, current_user_api, get_repo
-from gamatrix.constants import DISPLAY_NAME_MAX_LENGTH
+from gamatrix.constants import DISPLAY_NAME_MAX_LENGTH, PROFILE_PIC_MAX_UPLOAD_SIZE
 from gamatrix.games.preferences import merge_preferences
+from gamatrix.helpers import pic_url
+from gamatrix.images import process_profile_pic
 from gamatrix.storage.dynamo import Repository
+from gamatrix.storage.s3 import get_s3
 from gamatrix.templating import templates
 
 router = APIRouter(tags=["preferences"])
@@ -91,3 +96,51 @@ async def save_profile(
         return JSONResponse({"error": str(exc)}, status_code=400)
     repo.update_user(user["email"], {"username": name})
     return JSONResponse({"username": name})
+
+
+@router.post("/profile/pic")
+async def upload_profile_pic(
+    file: UploadFile = File(...),
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    """Accept an image upload, resize it, and store it as the user's pic."""
+    raw = await file.read()
+    if len(raw) > PROFILE_PIC_MAX_UPLOAD_SIZE:
+        mb = PROFILE_PIC_MAX_UPLOAD_SIZE // (1024 * 1024)
+        return JSONResponse(
+            {"error": f"Image must be {mb} MB or smaller."}, status_code=400
+        )
+    try:
+        png = process_profile_pic(raw)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+    key = f"profile_img/{user['email'].lower()}.png"
+    get_s3().put_bytes(key, png, "image/png")
+    updated = int(time.time())
+    repo.update_user(user["email"], {"pic_key": key, "pic_updated": updated})
+    url = pic_url({**user, "pic_key": key, "pic_updated": updated})
+    return JSONResponse({"pic_url": url})
+
+
+@router.get("/profile_img/{user_id}")
+def serve_profile_pic(
+    user_id: str,
+    _: dict = Depends(current_user),
+    repo: Repository = Depends(get_repo),
+):
+    """Stream a user-uploaded profile pic from S3 (gated to logged-in users)."""
+    target = repo.get_user_by_user_id(user_id)
+    key = target.get("pic_key") if target else None
+    if not key:
+        return Response(status_code=404)
+    data = get_s3().get_bytes(key)
+    if data is None:
+        return Response(status_code=404)
+    # Safe to cache hard: the URL carries a ?v= cache-buster on each update.
+    return Response(
+        content=data,
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )

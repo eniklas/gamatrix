@@ -7,6 +7,10 @@ UPLOAD_MAX_SIZE = 300 * 1024 * 1024
 # Bounds for a user-chosen display name (the `username` field).
 DISPLAY_NAME_MAX_LENGTH = 32
 
+# Profile pictures: max accepted upload, and the output thumbnail box (px).
+PROFILE_PIC_MAX_UPLOAD_SIZE = 5 * 1024 * 1024
+PROFILE_PIC_SIZE = 128
+
 # Full mapping is at https://api-docs.igdb.com/#external-game-enums, but only
 # Steam and GOG actually work; the other platforms' IDs don't match IGDB.
 IGDB_PLATFORM_ID = {
