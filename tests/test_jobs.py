@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 
 from gamatrix.constants import (
     JOB_COMPLETED,
+    JOB_FAILED,
     JOB_PENDING,
     JOB_RUNNING,
     JOB_TIMEOUT_MINUTES,
@@ -93,6 +94,29 @@ def test_get_active_job_prefers_fresh_over_stale(repo):
     _job(repo, job_id="live", created_at=now_iso(), updated_at=now_iso())
     active = repo.get_active_job()
     assert active["job_id"] == "live"
+
+
+def test_fail_stale_jobs_reaps_only_stale_active(repo):
+    _job(repo, job_id="dead", updated_at=_ago(JOB_TIMEOUT_MINUTES + 5))
+    _job(repo, job_id="live", updated_at=now_iso())
+    _job(repo, job_id="done", status=JOB_COMPLETED, updated_at=_ago(999))
+
+    reaped = repo.fail_stale_jobs()
+
+    assert reaped == ["dead"]
+    assert repo.get_job("dead")["status"] == JOB_FAILED
+    assert repo.get_job("dead")["completed_at"]
+    assert repo.get_job("live")["status"] == JOB_RUNNING
+    assert repo.get_job("done")["status"] == JOB_COMPLETED
+
+
+def test_get_active_job_self_heals_stale(repo):
+    # A presumed-dead job is marked failed in passing, not just skipped, so the
+    # job record reflects reality and stops blocking new enrichment.
+    _job(repo, job_id="dead", updated_at=_ago(JOB_TIMEOUT_MINUTES + 5))
+
+    assert repo.get_active_job() is None
+    assert repo.get_job("dead")["status"] == JOB_FAILED
 
 
 def test_set_job_progress_is_absolute_and_idempotent(repo):
