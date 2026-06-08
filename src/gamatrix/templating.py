@@ -8,9 +8,11 @@ from fastapi.templating import Jinja2Templates
 
 from gamatrix import __version__
 from gamatrix.constants import PLATFORMS
+from gamatrix.helpers import pic_url
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.globals["version"] = __version__
 templates.env.globals["platforms"] = list(PLATFORMS)
+templates.env.globals["pic_url"] = pic_url

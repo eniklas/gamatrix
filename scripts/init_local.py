@@ -64,6 +64,13 @@ def _table_defs(s):
             "AttributeDefinitions": [{"AttributeName": "slug", "AttributeType": "S"}],
         },
         {
+            "TableName": s.profile_pics_table,
+            "KeySchema": [{"AttributeName": "user_id", "KeyType": "HASH"}],
+            "AttributeDefinitions": [
+                {"AttributeName": "user_id", "AttributeType": "S"}
+            ],
+        },
+        {
             "TableName": s.config_table,
             "KeySchema": [{"AttributeName": "key", "KeyType": "HASH"}],
             "AttributeDefinitions": [{"AttributeName": "key", "AttributeType": "S"}],

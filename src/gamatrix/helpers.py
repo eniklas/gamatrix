@@ -30,6 +30,21 @@ def get_slug_from_title(title: str) -> str:
     return slug.strip("-")
 
 
+def pic_url(user: dict) -> str | None:
+    """Resolve a user's profile-picture URL, or None if they have no pic.
+
+    A user-uploaded pic lives in DynamoDB and is served by the /profile_img
+    route (keyed by user_id, with a cache-busting ?v= from the last update).
+    `pic_updated` (an epoch set on upload) doubles as the "has an upload" flag.
+    A seeded pic is a static file committed under static/profile_img/.
+    """
+    if user.get("pic_updated") and user.get("user_id"):
+        return f"/profile_img/{user['user_id']}?v={user['pic_updated']}"
+    if user.get("pic"):
+        return f"/static/profile_img/{user['pic']}"
+    return None
+
+
 def now_iso() -> str:
     """Current UTC time as an ISO 8601 string."""
     return datetime.now(timezone.utc).isoformat()

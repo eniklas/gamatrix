@@ -36,6 +36,7 @@ dependencies = [
     "pydantic-settings==2.7.1",
     "rapidfuzz==3.11.0",
     "itsdangerous==2.2.0",
+    "pillow==11.1.0",
 ]
 
 [project.optional-dependencies]

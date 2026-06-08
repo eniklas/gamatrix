@@ -21,8 +21,9 @@
                 {% for uid in selected %}
                 {% if uid in users %}
                 <th title="{{ users[uid].username }}">
-                    {% if users[uid].pic %}
-                    <img src="/static/profile_img/{{ users[uid].pic }}" width="20" height="20">
+                    {% set pu = pic_url(users[uid]) %}
+                    {% if pu %}
+                    <img src="{{ pu }}" width="20" height="20">
                     {% else %}{{ users[uid].username }}{% endif %}
                 </th>
                 {% endif %}
@@ -59,8 +60,9 @@
                 {% if uid in users %}
                 <td class="{{ 'owned' if uid in game.owners else 'unowned' }}" style="text-align:center;">
                     {% if uid in game.installed %}
-                        {% if users[uid].pic %}
-                        <img src="/static/profile_img/{{ users[uid].pic }}" width="18" height="18" title="installed">
+                        {% set pu = pic_url(users[uid]) %}
+                        {% if pu %}
+                        <img src="{{ pu }}" width="18" height="18" title="installed">
                         {% else %}✓{% endif %}
                     {% endif %}
                 </td>
@@ -74,10 +76,11 @@
                 {% if selected|length == game.installed|length and game.installed %}
                     <b>✓</b>
                 {% else %}
-                    {% for uid in game.installed %}
-                    {% if uid in users and users[uid].pic %}
-                    <img src="/static/profile_img/{{ users[uid].pic }}" width="18" height="18" title="{{ users[uid].username }}">
-                    {% elif uid in users %}{{ users[uid].username }}{% endif %}
+                    {% for uid in game.installed if uid in users %}
+                    {% set pu = pic_url(users[uid]) %}
+                    {% if pu %}
+                    <img src="{{ pu }}" width="18" height="18" title="{{ users[uid].username }}">
+                    {% else %}{{ users[uid].username }}{% endif %}
                     {% endfor %}
                 {% endif %}
             </td>

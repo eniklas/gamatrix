@@ -30,7 +30,8 @@
         <label title="DB updated: {{ u.get('db_updated_at', 'never') }}">
             <input type="checkbox" name="user" value="{{ uid }}"
                    {% if uid in opts.selected_user_ids %}checked{% endif %}>
-            {% if u.pic %}<img src="/static/profile_img/{{ u.pic }}" width="18" height="18">{% endif %}
+            {% set pu = pic_url(u) %}
+            {% if pu %}<img src="{{ pu }}" width="18" height="18">{% endif %}
             {{ u.username }}
         </label>
         {% endfor %}

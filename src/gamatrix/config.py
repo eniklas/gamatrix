@@ -91,6 +91,11 @@ class Settings(BaseSettings):
         return f"{self.table_prefix}_metadata_overrides"
 
     @property
+    def profile_pics_table(self) -> str:
+        """Holds user-uploaded profile-pic bytes, keyed by user_id."""
+        return f"{self.table_prefix}_profile_pics"
+
+    @property
     def config_table(self) -> str:
         """Small key/value table; locally holds the hidden/single-player lists."""
         return f"{self.table_prefix}_config"
