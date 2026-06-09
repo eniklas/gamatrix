@@ -4,7 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}gamatrix{% endblock %}</title>
-    <link rel="stylesheet" href="/static/style.css">
+    {# Version query busts the browser cache on each deploy so CSS changes
+       (e.g. the sticky results header) aren't masked by a stale stylesheet. #}
+    <link rel="stylesheet" href="/static/style.css?v={{ version }}">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
 </head>
 <body>
