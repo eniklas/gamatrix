@@ -62,6 +62,20 @@
     target.hidden = false;
   }
 
+  function clearError() {
+    const target = document.getElementById("passkey-error");
+    if (!target) return;
+    target.hidden = true;
+    target.textContent = "";
+  }
+
+  function setWaiting(visible) {
+    const waiting = document.getElementById("passkey-waiting");
+    if (waiting) waiting.hidden = !visible;
+    const submit = document.querySelector("#passkey-register button[type=submit]");
+    if (submit) submit.disabled = visible;
+  }
+
   async function login(mediation) {
     const ceremony = await json("/auth/passkeys/authenticate/options", { method: "POST" });
     const credential = await navigator.credentials.get({
@@ -79,10 +93,17 @@
 
   function enableLogin() {
     if (!window.PublicKeyCredential) return;
-    document.getElementById("passkey-login").addEventListener("click", () => login("required").catch(showError));
+    document.getElementById("passkey-login").addEventListener("click", () => {
+      clearError();
+      login("required").catch(showError);
+    });
     if (PublicKeyCredential.isConditionalMediationAvailable) {
       PublicKeyCredential.isConditionalMediationAvailable().then((available) => {
-        if (available) login("conditional").catch(showError);
+        if (available) {
+          login("conditional").catch(() => {
+            clearError();
+          });
+        }
       });
     }
   }
@@ -90,6 +111,7 @@
   function enableManagement() {
     document.getElementById("passkey-register").addEventListener("submit", async (event) => {
       event.preventDefault();
+      clearError();
       try {
         const form = new FormData(event.target);
         const ceremony = await json("/auth/passkeys/register/options", {
@@ -97,14 +119,17 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ friendly_name: form.get("friendly_name"), password: form.get("password") }),
         });
+        setWaiting(true);
         const credential = await navigator.credentials.create({ publicKey: creationOptions(ceremony.publicKey) });
         await json("/auth/passkeys/register/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ challenge_id: ceremony.challenge_id, credential: credentialJSON(credential) }),
         });
-        window.location.reload();
+        setWaiting(false);
+        window.location.assign("/auth/passkeys/list");
       } catch (error) {
+        setWaiting(false);
         showError(error);
       }
     });

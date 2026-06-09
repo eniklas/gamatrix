@@ -77,43 +77,35 @@ def _passkey_error(exc: passkeys.PasskeyError) -> HTTPException:
     return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
+def _passkey_credentials(user: dict, repo: Repository) -> list[dict]:
+    user_handle = user.get("webauthn_user_id")
+    return repo.list_passkeys(user_handle) if user_handle else []
+
+
 @router.get("/passkeys", response_class=HTMLResponse)
 def passkey_management(
     request: Request,
     user: dict = Depends(current_user),
     repo: Repository = Depends(get_repo),
 ):
-    user_handle = user.get("webauthn_user_id")
-    credentials = repo.list_passkeys(user_handle) if user_handle else []
     return templates.TemplateResponse(
         request,
         "passkeys.html.jinja",
-        {"user": user, "passkeys": credentials},
+        {"user": user, "passkeys": _passkey_credentials(user, repo)},
     )
 
 
-@router.get("/passkeys/list")
+@router.get("/passkeys/list", response_class=HTMLResponse)
 def list_passkeys(
-    user: dict = Depends(current_user_api),
+    request: Request,
+    user: dict = Depends(current_user),
     repo: Repository = Depends(get_repo),
 ):
-    user_handle = user.get("webauthn_user_id")
-    credentials = repo.list_passkeys(user_handle) if user_handle else []
-    return [
-        {
-            key: item.get(key)
-            for key in (
-                "credential_id",
-                "friendly_name",
-                "transports",
-                "backup_eligible",
-                "backed_up",
-                "created_at",
-                "last_used_at",
-            )
-        }
-        for item in credentials
-    ]
+    return templates.TemplateResponse(
+        request,
+        "passkeys_list.html.jinja",
+        {"passkeys": _passkey_credentials(user, repo)},
+    )
 
 
 @router.post("/passkeys/register/options")

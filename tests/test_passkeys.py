@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
@@ -50,6 +49,34 @@ def test_login_page_offers_explicit_and_conditional_passkeys(repo):
         assert (
             "isConditionalMediationAvailable" in client.get("/static/passkeys.js").text
         )
+
+
+def test_passkey_management_page_prefills_name_and_explains_password(repo):
+    _user(repo)
+    for client in _client(repo):
+        _login(client)
+        response = client.get("/auth/passkeys")
+        assert response.status_code == 200
+        assert 'value="Gamatrix passkey for User"' in response.text
+        assert (
+            "Required to verify your identity before adding a passkey" in response.text
+        )
+        assert "Waiting for passkey creation to complete..." in response.text
+
+
+def test_preferences_page_moves_manage_passkeys_into_page_body(repo):
+    _user(repo)
+    for client in _client(repo):
+        _login(client)
+        response = client.get("/preferences")
+        assert response.status_code == 200
+        assert (
+            '<div class="right"><a href="/games">Back to games</a></div>'
+            in response.text
+        )
+        assert "Manage passkeys</a>" not in response.text
+        assert "Manage passkeys</button>" in response.text
+        assert "Add, review, or remove passkeys for this account." in response.text
 
 
 def test_registration_options_require_password_and_discoverable_uv(repo):
@@ -198,8 +225,12 @@ def test_listing_hides_key_material_and_deletion_requires_password(repo):
         _login(client)
         listed = client.get("/auth/passkeys/list")
         assert listed.status_code == 200
-        assert listed.json()[0]["friendly_name"] == "Laptop"
-        assert "public_key" not in json.dumps(listed.json())
+        assert "Laptop" in listed.text
+        assert "Back to preferences" in listed.text
+        assert "Add a passkey" not in listed.text
+        assert "Current password" not in listed.text
+        assert "public_key" not in listed.text
+        assert "secret-public-key" not in listed.text
 
         assert (
             client.request(

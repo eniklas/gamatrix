@@ -3,7 +3,7 @@
 {% block body %}
 <div class="topbar">
     <h2>Preferences</h2>
-    <div class="right"><a href="/auth/passkeys">Manage passkeys</a><a href="/games">Back to games</a></div>
+    <div class="right"><a href="/games">Back to games</a></div>
 </div>
 
 <form id="profile" method="post" action="/profile" class="filters"
@@ -62,6 +62,14 @@ async function uploadProfilePic() {
     saved.style.display = 'inline';
 }
 </script>
+
+<div class="filters">
+    <fieldset class="filter-group">
+        <legend>Passkeys</legend>
+        <button type="button" onclick="window.location.href='/auth/passkeys'">Manage passkeys</button>
+        <span class="muted">Add, review, or remove passkeys for this account.</span>
+    </fieldset>
+</div>
 
 <form id="filters" method="post" action="/preferences" class="filters"
       hx-post="/preferences" hx-swap="none"
