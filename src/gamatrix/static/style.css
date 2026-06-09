@@ -78,6 +78,15 @@ table.results thead th {
   background-color: var(--accent);
   cursor: pointer;
   user-select: none;
+  /* Keep the heading row visible while scrolling the results. The page itself
+     scrolls (the topbar isn't fixed), so stick to the viewport top. */
+  position: sticky;
+  top: 0;
+  /* Paint above the colored owned/unowned cells that scroll underneath. */
+  z-index: 2;
+  /* border-collapse drops a sticky cell's own borders, so redraw the top and
+     bottom rules as an inset shadow that stays put. */
+  box-shadow: inset 0 1px 0 black, inset 0 -1px 0 black;
 }
 table.results thead th:hover { filter: brightness(1.05); }
 table.results tbody tr:nth-child(odd) { background-color: var(--row-a); }
