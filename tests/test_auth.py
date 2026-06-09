@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from urllib.parse import parse_qs, urlparse
 
+from fastapi.testclient import TestClient
+
+from gamatrix.app import app
 from gamatrix.auth import service
+from gamatrix.config import Settings
 
 
 def test_password_hash_roundtrip():
@@ -97,3 +101,41 @@ def test_password_reset_link_url_encodes_plus_email(repo, settings, monkeypatch)
     )
     query = parse_qs(urlparse(reset_link).query)
     assert query["email"] == ["user+games@x.com"]
+
+
+def test_canonical_domain_redirects_nonlocal_requests(monkeypatch):
+    settings = Settings(
+        local_dev=False,
+        jwt_secret="secret",
+        app_base_url="https://games.example.com",
+        webauthn_rp_id="games.example.com",
+        webauthn_origins=["https://games.example.com"],
+    )
+    monkeypatch.setattr("gamatrix.config.get_settings", lambda: settings)
+
+    client = TestClient(app)
+    response = client.get(
+        "/healthz?probe=1",
+        headers={"host": "execute-api.example.amazonaws.com"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 308
+    assert response.headers["location"] == "https://games.example.com/healthz?probe=1"
+
+
+def test_canonical_domain_allows_requests_on_canonical_host(monkeypatch):
+    settings = Settings(
+        local_dev=False,
+        jwt_secret="secret",
+        app_base_url="https://games.example.com",
+        webauthn_rp_id="games.example.com",
+        webauthn_origins=["https://games.example.com"],
+    )
+    monkeypatch.setattr("gamatrix.config.get_settings", lambda: settings)
+
+    client = TestClient(app)
+    response = client.get("/healthz", headers={"host": "games.example.com"})
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"

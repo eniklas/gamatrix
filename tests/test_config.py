@@ -24,6 +24,11 @@ def test_local_dev_allows_default_jwt_secret():
     assert s.jwt_secret == DEFAULT_JWT_SECRET
 
 
+def test_local_dev_defaults_to_documented_local_base_url():
+    s = Settings(local_dev=True, jwt_secret=DEFAULT_JWT_SECRET, jwt_secret_name=None)
+    assert s.app_base_url == "http://localhost:8088"
+
+
 def test_secret_name_satisfies_production_guard():
     s = Settings(
         local_dev=False,

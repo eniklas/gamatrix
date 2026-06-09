@@ -121,7 +121,7 @@ def passkey_registration_options(
     try:
         return passkeys.registration_options(repo, user, body.friendly_name)
     except passkeys.PasskeyError as exc:
-        raise _passkey_error(exc)
+        raise _passkey_error(exc) from exc
 
 
 @router.post("/passkeys/register/verify")
@@ -135,7 +135,7 @@ def passkey_registration_verify(
             repo, user, body.challenge_id, body.credential
         )
     except passkeys.PasskeyError as exc:
-        raise _passkey_error(exc)
+        raise _passkey_error(exc) from exc
 
 
 @router.post("/passkeys/authenticate/options")
@@ -151,7 +151,7 @@ def passkey_authentication_verify(
     try:
         user = passkeys.verify_authentication(repo, body.challenge_id, body.credential)
     except passkeys.PasskeyError as exc:
-        raise _passkey_error(exc)
+        raise _passkey_error(exc) from exc
     response = JSONResponse({"redirect": "/games"})
     response.set_cookie(
         value=service.create_session_token(user["email"]), **_cookie_kwargs()
@@ -171,8 +171,16 @@ def delete_passkey(
             status_code=status.HTTP_403_FORBIDDEN, detail="Wrong password."
         )
     user_handle = user.get("webauthn_user_id")
-    if not user_handle or not repo.delete_passkey(credential_id, user_handle):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if not user_handle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No passkeys are registered for this account.",
+        )
+    if not repo.delete_passkey(credential_id, user_handle):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Passkey not found for this account.",
+        )
     return {"deleted": True}
 
 

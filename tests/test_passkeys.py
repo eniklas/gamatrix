@@ -5,12 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
+from fastapi import HTTPException
 from webauthn.helpers import bytes_to_base64url
 from webauthn.helpers.structs import CredentialDeviceType
 
 from gamatrix.app import app
-from gamatrix.auth import passkeys, service
+from gamatrix.auth import passkeys, routes, service
 from gamatrix.auth.dependencies import get_repo
 
 
@@ -245,6 +247,53 @@ def test_listing_hides_key_material_and_deletion_requires_password(repo):
             == 200
         )
         assert repo.get_passkey("credential") is None
+
+
+def test_delete_passkey_returns_explicit_404_without_registered_handle(repo):
+    _user(repo)
+    for client in _client(repo):
+        _login(client)
+        response = client.request(
+            "DELETE", "/auth/passkeys/missing", json={"password": "password"}
+        )
+        assert response.status_code == 404
+        assert (
+            response.json()["detail"] == "No passkeys are registered for this account."
+        )
+
+
+def test_delete_passkey_returns_explicit_404_for_missing_credential(repo):
+    user = _user(repo)
+    repo.ensure_webauthn_user_id(user["email"], "opaque-handle")
+    for client in _client(repo):
+        _login(client)
+        response = client.request(
+            "DELETE", "/auth/passkeys/missing", json={"password": "password"}
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Passkey not found for this account."
+
+
+def test_passkey_routes_preserve_original_error_cause(repo, monkeypatch):
+    _user(repo)
+
+    def fail(*args, **kwargs):
+        raise passkeys.PasskeyError("boom")
+
+    monkeypatch.setattr(passkeys, "registration_options", fail)
+
+    with pytest.raises(HTTPException) as exc_info:
+        routes.passkey_registration_options(
+            routes.RegistrationOptionsRequest(
+                password="password", friendly_name="Phone"
+            ),
+            user={"email": "user@example.com"},
+            repo=repo,
+        )
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "boom"
+    assert isinstance(exc_info.value.__cause__, passkeys.PasskeyError)
 
 
 def test_challenge_consumption_is_atomic(repo):

@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     smtp_port: int = 1025
 
     # --- Behavior ---
-    app_base_url: str = "http://localhost:8080"
+    app_base_url: str = "http://localhost:8088"
     igdb_stale_days: int = 30
 
     # SSM parameter names for the title filter lists (AWS only). Locally these

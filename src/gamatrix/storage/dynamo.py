@@ -383,6 +383,8 @@ class Repository:
     ) -> bool:
         """Update usage state without accepting a concurrent counter replay."""
         try:
+            # Some synced authenticators keep reporting a zero counter forever, so
+            # the single-use WebAuthn challenge remains the primary replay guard.
             self._table(self.settings.passkeys_table).update_item(
                 Key={"credential_id": credential_id},
                 UpdateExpression=(
