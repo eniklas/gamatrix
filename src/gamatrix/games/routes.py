@@ -193,11 +193,16 @@ def refresh_missing(
     repo: Repository = Depends(get_repo),
 ):
     """Re-enrich games IGDB didn't find last time."""
-    release_keys = [
-        g["release_key"]
+    missing = [
+        g
         for g in repo.scan_all_games()
         if g.get("enrichment_status") == ENRICHMENT_NOT_FOUND
     ]
+    # The enricher only touches games that are unenriched or pending, so flip
+    # these from not_found to pending or they'd be skipped (see #134).
+    for game in missing:
+        repo.put_game({**game, "enrichment_status": ENRICHMENT_PENDING})
+    release_keys = [g["release_key"] for g in missing]
     job_id = create_enrichment_job(repo, get_queue(), release_keys)
     return templates.TemplateResponse(
         request,
