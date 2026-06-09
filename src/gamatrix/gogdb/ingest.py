@@ -35,6 +35,10 @@ def ingest_db_file(
     entries = [{**e, "db_updated_at": timestamp} for e in parsed.entries]
     repo.replace_user_library(parsed.user_id, entries)
 
+    user = repo.get_user_by_user_id(parsed.user_id)
+    if user:
+        repo.update_user(user["email"], {"db_updated_at": timestamp})
+
     # Upsert game stubs; collect release keys that still need IGDB enrichment.
     to_enrich: list[str] = []
     for stub in parsed.games:
