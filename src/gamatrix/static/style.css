@@ -65,11 +65,18 @@ button.secondary { background: #777; color: white; }
 
 /* Results table */
 table.results {
-  border-collapse: collapse;
+  /* Firefox can't position:sticky a cell inside a border-collapse:collapse
+     table (bugzilla 1488080), so use separate borders and rebuild the 1px grid
+     from one-sided cell borders. The header below then keeps its own borders
+     when pinned, which collapse would have dropped. */
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
+  border-left: 1px solid black;
 }
 table.results th, table.results td {
-  border: 1px solid black;
+  border-right: 1px solid black;
+  border-bottom: 1px solid black;
   padding: 4px 8px;
   color: var(--row-text);
 }
@@ -78,15 +85,13 @@ table.results thead th {
   background-color: var(--accent);
   cursor: pointer;
   user-select: none;
+  border-top: 1px solid black;
   /* Keep the heading row visible while scrolling the results. The page itself
      scrolls (the topbar isn't fixed), so stick to the viewport top. */
   position: sticky;
   top: 0;
   /* Paint above the colored owned/unowned cells that scroll underneath. */
   z-index: 2;
-  /* border-collapse drops a sticky cell's own borders, so redraw the top and
-     bottom rules as an inset shadow that stays put. */
-  box-shadow: inset 0 1px 0 black, inset 0 -1px 0 black;
 }
 table.results thead th:hover { filter: brightness(1.05); }
 table.results tbody tr:nth-child(odd) { background-color: var(--row-a); }
