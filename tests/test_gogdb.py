@@ -189,3 +189,17 @@ def test_ingest_same_db_twice_with_duplicate_parser_rows_is_idempotent(
         "xboxone_200",
     }
     assert len(library) == 3
+
+
+def test_ingest_writes_db_updated_at_to_user_record(gog_db, repo, settings):
+    repo.put_user(
+        {"email": "tester@example.com", "user_id": "12345", "username": "tester"}
+    )
+    queue = EnrichmentQueue(settings=settings)
+
+    ingest_db_file(gog_db, repo, queue)
+
+    user = repo.get_user("tester@example.com")
+    assert user is not None
+    assert user.get("db_updated_at") is not None
+    assert user["db_updated_at"] != "never"
