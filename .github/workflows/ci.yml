@@ -37,7 +37,7 @@ jobs:
     - name: Install dependencies
       # --frozen installs the exact versions in uv.lock and fails if the lock is
       # out of sync with pyproject.toml, so CI matches local and deployed builds.
-      run: uv sync --frozen --extra dev --extra ci
+      run: uv sync --frozen --extra dev --extra ci --extra cdk
 
     - name: Analyze with mypy
       run: uv run mypy

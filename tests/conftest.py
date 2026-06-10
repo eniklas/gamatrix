@@ -10,6 +10,7 @@ import os
 
 os.environ.setdefault("TABLE_PREFIX", "test")
 os.environ.setdefault("JWT_SECRET", "test-secret")
+os.environ.setdefault("LOCAL_DEV", "true")
 os.environ.setdefault("AWS_ACCESS_KEY_ID", "testing")
 os.environ.setdefault("AWS_SECRET_ACCESS_KEY", "testing")
 os.environ.setdefault("AWS_DEFAULT_REGION", "ca-central-1")
@@ -61,6 +62,7 @@ def _create_tables(settings: Settings) -> None:
         (settings.metadata_table, "slug"),
         (settings.profile_pics_table, "user_id"),
         (settings.config_table, "key"),
+        (settings.auth_challenges_table, "challenge_id"),
     ]:
         ddb.create_table(
             TableName=name,
@@ -68,6 +70,22 @@ def _create_tables(settings: Settings) -> None:
             AttributeDefinitions=[{"AttributeName": pk, "AttributeType": "S"}],
             **common,
         )
+    ddb.create_table(
+        TableName=settings.passkeys_table,
+        KeySchema=[{"AttributeName": "credential_id", "KeyType": "HASH"}],
+        AttributeDefinitions=[
+            {"AttributeName": "credential_id", "AttributeType": "S"},
+            {"AttributeName": "user_handle", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "user_handle-index",
+                "KeySchema": [{"AttributeName": "user_handle", "KeyType": "HASH"}],
+                "Projection": {"ProjectionType": "ALL"},
+            }
+        ],
+        **common,
+    )
 
 
 @pytest.fixture
@@ -75,6 +93,7 @@ def settings() -> Settings:
     return Settings(
         table_prefix="test",
         jwt_secret="test-secret",
+        local_dev=True,
         dynamodb_endpoint_url=None,
         s3_endpoint_url=None,
         sqs_endpoint_url=None,

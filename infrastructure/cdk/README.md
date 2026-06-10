@@ -31,14 +31,15 @@ npx cdk deploy
 ## What it creates
 
 - DynamoDB tables: `games`, `users`, `user_libraries` (+ `release_key-index` GSI),
-  `enrichment_jobs`, `metadata_overrides`, `config` (PAY_PER_REQUEST, PITR on)
+  `enrichment_jobs`, `metadata_overrides`, `config`, `passkeys`
+  (+ `user_handle-index` GSI), and TTL-enabled `auth_challenges`
+  (PAY_PER_REQUEST, PITR on)
 - S3 upload bucket (1-day lifecycle expiry, CORS for browser POST)
 - SQS enrichment queue
 - Lambdas: web (HTTP API + Mangum), enricher (SQS-triggered), parser (S3-triggered)
 - HTTP API (API Gateway v2) in front of the web Lambda
-- **If a deployment config supplies a domain** (see below): a custom domain +
-  ACM certificate (DNS-validated via the Route 53 hosted zone) + alias A-record.
-  Without it, the app is served from the default API Gateway URL.
+- Required custom domain, ACM certificate (DNS-validated via Route 53), and
+  alias A-record. The stable custom domain is the WebAuthn RP scope.
 - SES domain identity is **not** managed by this stack — verify the sender
   domain in the SES console once and it persists independently.
 - Secrets Manager secret `gamatrix/igdb` — populate after deploy:
@@ -69,9 +70,13 @@ alias_domains:
   - app.other.com
 ```
 
-If the file is absent (or omits `hosted_zone`/`site_domain`), the stack deploys
-without a custom domain or SES — the app is reached at the default API Gateway
-URL. When a domain *is* configured, the hosted zone is looked up via
+If the file is absent (or omits `hosted_zone`/`site_domain`), stack synthesis
+fails because WebAuthn
+credentials are permanently scoped to the configured RP ID. Enroll passkeys
+only after the canonical domain is stable; passkeys enrolled against an API
+Gateway hostname or an old RP ID do not transfer automatically. Alias domains
+redirect to the canonical `site_domain`. When a domain *is* configured, the
+hosted zone is looked up via
 `HostedZone.from_lookup`, so the stack must be deployed with an explicit
 account/region (set by `app.py` from `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION`).
 

@@ -37,6 +37,7 @@ dependencies = [
     "rapidfuzz==3.11.0",
     "itsdangerous==2.2.0",
     "pillow==11.1.0",
+    "webauthn==2.7.0",
 ]
 
 [project.optional-dependencies]
@@ -78,7 +79,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "gamatrix.templates" = ["*.jinja"]
-"gamatrix.static" = ["*.png", "*.jpg", "*.css"]
+"gamatrix.static" = ["*.png", "*.jpg", "*.css", "*.js"]
 "gamatrix.static.profile_img" = ["*.png", "*.jpg"]
 
 [tool.mypy]
@@ -90,6 +91,7 @@ plugins = ["pydantic.mypy"]
 addopts = "--cov=gamatrix --cov-branch"
 pythonpath = ["src"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 
 [tool.black]
