@@ -89,7 +89,11 @@ def compare(repo: Repository, opts: CompareOptions) -> CompareResult:
         reverse=opts.direction == "desc",
     )
 
-    total = len(games)
+    # Count unique games, not rows: the grid view can list the same title on
+    # more than one row when platform copies have different owners, but those
+    # are still one game. Rows are already grouped by slug, so distinct slugs
+    # is the unique-game count.
+    total = len({g["slug"] for g in games})
     if opts.randomize and games:
         games = [random.choice(games)]
 

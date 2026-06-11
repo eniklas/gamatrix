@@ -132,3 +132,39 @@ def test_merge_cross_platform_duplicates(repo):
     result = compare(repo, CompareOptions(selected_user_ids=["1"]))
     assert len(result.games) == 1
     assert sorted(result.games[0]["platforms"]) == ["gog", "steam"]
+
+
+def test_count_is_unique_games_not_rows(repo):
+    """The header count is unique games, not table rows.
+
+    In the grid view the same title can occupy two rows when platform copies
+    have different owners (so they don't merge); that's still one game.
+    """
+    repo.put_user({"email": "a@x.com", "username": "A", "user_id": "1"})
+    repo.put_user({"email": "b@x.com", "username": "B", "user_id": "2"})
+    for rk, platform in [("steam_40", "steam"), ("gog_41", "gog")]:
+        repo.put_game(
+            {
+                "release_key": rk,
+                "title": "Split Game",
+                "slug": "splitgame",
+                "igdb_key": rk,
+                "platform": platform,
+                "multiplayer": True,
+                "max_players": 4,
+                "rating": 0,
+                "game_modes": [],
+                "enrichment_status": "done",
+            }
+        )
+    # User 1 owns it on Steam, user 2 on GOG: different owner sets keep the two
+    # rows separate rather than merging into one.
+    repo.replace_user_library(
+        "1", [{"release_key": "steam_40", "platform": "steam", "installed": False}]
+    )
+    repo.replace_user_library(
+        "2", [{"release_key": "gog_41", "platform": "gog", "installed": False}]
+    )
+    result = compare(repo, CompareOptions(selected_user_ids=["1", "2"], all_games=True))
+    assert len(result.games) == 2  # two rows
+    assert result.total == 1  # but one unique game
