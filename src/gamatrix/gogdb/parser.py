@@ -61,21 +61,34 @@ class GogDBParser:
         ).fetchone()[0]
 
     def get_subscription_release_keys(self) -> set[str]:
-        """Release keys present only via a subscription (issue #120).
+        """Release keys available via a subscription, not owned (issue #120).
 
         Xbox Game Pass titles stay in ProductPurchaseDates after they leave the
-        subscription, so v1 reported them as owned forever. LicensedReleases
-        flags genuine ownership: isOwned = 0 means the title is only available
-        through a subscription (verified: all such rows are Xbox Game Pass).
+        subscription, so v1 reported them as owned forever. Two GOG tables flag
+        them, and neither is sufficient on its own:
+
+        - LicensedReleases.isOwned = 0 marks most Game Pass titles as not owned.
+        - But GOG leaves isOwned = 1 on many titles that are only available
+          through Game Pass (e.g. Starfield, Sea of Thieves). Those are still
+          listed in SubscriptionReleases, which maps each subscription to its
+          releases, so we exclude anything present there as well.
+
+        A title is dropped if either signal says subscription. Titles that left
+        Game Pass entirely are removed from SubscriptionReleases yet keep
+        isOwned = 1, so they remain indistinguishable from genuine purchases and
+        cannot be filtered here.
         """
         try:
             self.cursor.execute("""SELECT lr.releaseKey
                    FROM LibraryReleases lr
-                   JOIN LicensedReleases lic ON lr.id = lic.libraryId
-                   WHERE lic.isOwned = 0""")
+                   LEFT JOIN LicensedReleases lic ON lr.id = lic.libraryId
+                   LEFT JOIN SubscriptionReleases sr ON lr.id = sr.licenseId
+                   WHERE lic.isOwned = 0 OR sr.licenseId IS NOT NULL""")
         except sqlite3.OperationalError:
             # Older GOG Galaxy schemas may lack these tables; degrade gracefully.
-            log.warning("LicensedReleases/LibraryReleases not found; skipping #120 fix")
+            log.warning(
+                "LicensedReleases/SubscriptionReleases not found; skipping #120 fix"
+            )
             return set()
         return {row[0] for row in self.cursor.fetchall()}
 

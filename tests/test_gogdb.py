@@ -42,6 +42,9 @@ def _build_gog_db(path: str) -> None:
         ("xboxone_100", "GamePassGone", 0, False, ["xboxone_100"]),
         # Genuinely purchased Xbox title: isOwned = 1, must be kept.
         ("xboxone_200", "RealXbox", 1, False, ["xboxone_200"]),
+        # Current Game Pass title GOG wrongly flags isOwned = 1, but it is still
+        # listed in SubscriptionReleases, so the #120 fix must drop it too.
+        ("xboxone_300", "GamePassOwnedFlag", 1, False, ["xboxone_300"]),
     ]
 
     for rk, title, _owned, _installed, releases in games:
@@ -64,9 +67,22 @@ def _build_gog_db(path: str) -> None:
         "(id INTEGER PRIMARY KEY, userId INTEGER, releaseKey TEXT)"
     )
     c.execute("CREATE TABLE LicensedReleases (libraryId INTEGER, isOwned BOOLEAN)")
+    library_ids = {}
     for i, (rk, _t, owned, _inst, _r) in enumerate(games, start=1):
+        library_ids[rk] = i
         c.execute("INSERT INTO LibraryReleases VALUES (?, ?, ?)", (i, 12345, rk))
         c.execute("INSERT INTO LicensedReleases VALUES (?, ?)", (i, 1 if owned else 0))
+
+    # SubscriptionReleases lists titles available through a subscription, keyed
+    # by libraryId. xboxone_300 sits here despite isOwned = 1 (see #120 fix).
+    c.execute(
+        "CREATE TABLE SubscriptionReleases "
+        "(id INTEGER PRIMARY KEY, subscriptionId INTEGER, licenseId INTEGER)"
+    )
+    c.execute(
+        "INSERT INTO SubscriptionReleases (subscriptionId, licenseId) VALUES (?, ?)",
+        (1, library_ids["xboxone_300"]),
+    )
 
     # Installed-games query plumbing: steam_1 is installed.
     c.execute("CREATE TABLE Platforms (id INTEGER, name TEXT)")
@@ -103,8 +119,10 @@ def test_parse_excludes_expired_game_pass(gog_db):
 
     assert parsed.user_id == "12345"
     keys = {e["release_key"] for e in parsed.entries}
-    # Expired Game Pass title dropped; purchased Xbox title kept.
+    # Game Pass titles dropped (isOwned = 0 and the isOwned = 1 / in-subscription
+    # case); purchased Xbox title kept.
     assert "xboxone_100" not in keys
+    assert "xboxone_300" not in keys
     assert "xboxone_200" in keys
     assert {"steam_1", "gog_2", "xboxone_200"} == keys
 
@@ -115,7 +133,7 @@ def test_subscription_release_keys(gog_db):
         excluded = parser.get_subscription_release_keys()
     finally:
         parser.close()
-    assert excluded == {"xboxone_100"}
+    assert excluded == {"xboxone_100", "xboxone_300"}
 
 
 def test_installed_and_igdb_key(gog_db):
