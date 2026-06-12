@@ -13,6 +13,23 @@ default:
 install:
   uv sync --extra dev
 
+# Create a local .env from .env-sample (idempotent). Fill in IGDB creds after.
+env:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  if [[ -f .env ]]; then
+    echo ".env already exists; leaving it untouched."
+    exit 0
+  fi
+  cp .env-sample .env
+  if command -v openssl >/dev/null 2>&1; then
+    secret="$(openssl rand -base64 48 | tr -d '\n/+=')"
+    tmp="$(mktemp)"
+    sed "s|^JWT_SECRET=.*|JWT_SECRET=${secret}|" .env > "$tmp" && mv "$tmp" .env
+    echo "Generated a random JWT_SECRET."
+  fi
+  echo "Created .env. Now set IGDB_CLIENT_ID and IGDB_CLIENT_SECRET in it."
+
 # Bring up the local dev stack (app, DynamoDB, minio, mailhog)
 up:
   docker compose up --build
@@ -24,6 +41,19 @@ down:
 # Create DynamoDB tables and S3 bucket locally, then seed test users
 init-local:
   docker compose run --rm app python scripts/init_local.py
+
+# Seed 3 test users with sample game libraries (committed fixtures)
+seed-local:
+  docker compose run --rm app python scripts/seed_sample_data.py
+
+# One-shot: create tables/bucket AND seed the 3 sample users + libraries
+bootstrap: init-local seed-local
+
+# Regenerate the committed sample fixtures from a real GOG Galaxy DB (maintainer
+# step). Defaults to tmp/dereks-galaxy-2.0.db; pass another with `db=/path`.
+gen-fixtures db="tmp/dereks-galaxy-2.0.db":
+  docker compose run --rm -v "{{justfile_directory()}}/tmp:/data" app \
+    python scripts/sample_data/generate_fixtures.py --source /data/{{file_name(db)}}
 
 # Run the local background job worker (stands in for the enricher Lambda)
 worker:

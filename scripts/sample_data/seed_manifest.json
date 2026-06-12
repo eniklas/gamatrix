@@ -1,0 +1,23 @@
+[
+  {
+    "user_id": "1001",
+    "email": "alice@example.com",
+    "username": "Alice",
+    "admin": true,
+    "fixture": "sample_user1.db"
+  },
+  {
+    "user_id": "1002",
+    "email": "bob@example.com",
+    "username": "Bob",
+    "admin": false,
+    "fixture": "sample_user2.db"
+  },
+  {
+    "user_id": "1003",
+    "email": "carol@example.com",
+    "username": "Carol",
+    "admin": false,
+    "fixture": "sample_user3.db"
+  }
+]

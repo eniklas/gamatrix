@@ -62,6 +62,10 @@ services:
   dynamodb-local:
     image: amazon/dynamodb-local:latest
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /data"
+    # The image runs as uid 1000 (dynamodblocal), but the named volume mounts in
+    # root-owned, so the process can't create its DB file at /data ("unable to
+    # open database file"). Run as root so it can write the persisted DB.
+    user: root
     ports:
       - "8000:8000"
     volumes:
