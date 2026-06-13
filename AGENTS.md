@@ -87,9 +87,12 @@ Notes:
   rewrite the container-side path.
 - `docker-compose.yml` mounts `../gamatrix-configs` (the private deploy config) for
   maintainers; it is optional — the stack and sample seeding work without it.
-- The `dynamodb-local` service runs as `user: root` so it can write its persisted DB
-  to the named volume (the image's default uid 1000 can't). If you see "unable to open
-  database file" after pulling a new image, that's the fix.
+- The `dynamodb-local` service persists its DB inside the image's WORKDIR
+  (`/home/dynamodblocal`) rather than `/data`, so the named volume inherits that dir's
+  unprivileged `dynamodblocal` (uid 1000) ownership and the service runs as a non-root
+  user. If you still see "unable to open database file" (e.g. you have an older root-owned
+  `dynamodb-data` volume from the previous `/data` layout), run `docker compose down -v`
+  once to recreate the volume.
 - Host-side tooling (tests/linters) uses `uv sync --extra dev`; the README has light
   [uv](README.md#uv) and [just](README.md#just) quickstarts.
 

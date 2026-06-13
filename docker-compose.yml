@@ -61,15 +61,18 @@ services:
 
   dynamodb-local:
     image: amazon/dynamodb-local:latest
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /data"
-    # The image runs as uid 1000 (dynamodblocal), but the named volume mounts in
-    # root-owned, so the process can't create its DB file at /data ("unable to
-    # open database file"). Run as root so it can write the persisted DB.
-    user: root
+    # Persist the DB inside the image's WORKDIR (/home/dynamodblocal), which is
+    # owned by the unprivileged "dynamodblocal" user (uid 1000) that the image
+    # runs as by default. A fresh named volume mounted over an existing image
+    # directory inherits that directory's ownership, so the process can write its
+    # DB without elevated privileges. (Mounting at an empty path such as /data
+    # fails: a fresh volume there is created root-owned, which is why this service
+    # previously had to run as `user: root`.)
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ."
     ports:
       - "8000:8000"
     volumes:
-      - dynamodb-data:/data
+      - dynamodb-data:/home/dynamodblocal
 
   minio:
     image: minio/minio:latest
