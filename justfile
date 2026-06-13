@@ -46,14 +46,26 @@ init-local:
 seed-local:
   docker compose run --rm app python scripts/seed_sample_data.py
 
-# One-shot: create tables/bucket AND seed the 3 sample users + libraries
-bootstrap: init-local seed-local
+# One-shot: generate fixtures from your GOG DB, create tables/bucket, then seed.
+#   just bootstrap db="C:/path/to/galaxy-2.0.db"
+bootstrap db: (gen-fixtures db) init-local seed-local
 
-# Regenerate the committed sample fixtures from a real GOG Galaxy DB (maintainer
-# step). Defaults to tmp/dereks-galaxy-2.0.db; pass another with `db=/path`.
-gen-fixtures db="tmp/dereks-galaxy-2.0.db":
-  docker compose run --rm -v "{{justfile_directory()}}/tmp:/data" app \
-    python scripts/sample_data/generate_fixtures.py --source /data/{{file_name(db)}}
+# Generate the sample fixtures from YOUR local GOG Galaxy DB (not committed).
+# `db` is the absolute path to your galaxy-2.0.db (use forward slashes on
+# Windows). The single file is mounted into the container; MSYS_NO_PATHCONV
+# stops Git Bash from rewriting the container-side path. Tune the data shape
+# with the optional args, e.g.:
+#   just gen-fixtures db="C:/path/to/galaxy-2.0.db" users="4" games="25"
+gen-fixtures db users="" games="20" common="5" pair="5" usernames="":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  args=(--source /data/source.db --output scripts/sample_data
+        --games-per-user {{games}} --common {{common}} --pair-overlap {{pair}})
+  [[ -n "{{users}}" ]] && args+=(--num-users {{users}})
+  [[ -n "{{usernames}}" ]] && args+=(--usernames "{{usernames}}")
+  MSYS_NO_PATHCONV=1 docker compose run --rm \
+    -v "{{db}}:/data/source.db:ro" app \
+    python scripts/sample_data/generate_fixtures.py "${args[@]}"
 
 # Run the local background job worker (stands in for the enricher Lambda)
 worker:

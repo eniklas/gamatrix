@@ -15,11 +15,11 @@ uv sync --extra dev          # install dev dependencies into the local uv-manage
 just dev                     # run the FastAPI app locally with reload
 just env                     # create .env from .env-sample (then fill IGDB creds)
 just up                      # start the full local stack with Docker Compose
+just gen-fixtures db=<path>  # generate sample fixtures from YOUR GOG Galaxy DB (not committed)
 just init-local              # create local tables/bucket and seed config/users
-just seed-local              # seed 3 test users + sample game libraries (fixtures)
-just bootstrap               # one-shot: init-local + seed-local
+just seed-local              # seed the generated test users + sample game libraries
+just bootstrap db=<path>     # one-shot: gen-fixtures + init-local + seed-local
 just worker                  # run the local background enrichment worker
-just gen-fixtures            # (maintainer) regenerate sample fixtures from a real DB
 
 just check                   # CI-equivalent checks: lint + typecheck + test
 just lint                    # black --check . && flake8 src tests
@@ -37,43 +37,61 @@ just set-igdb-secret <client_id> <client_secret> # Store IGDB API credentials in
 
 ## Local development with sample data
 
-Get a working app — 3 test users with overlapping game libraries, enriched from
-IGDB — with no production resources and nothing on the host but Docker:
+Get a working app — test users with overlapping, IGDB-enriched game libraries —
+with no production resources and nothing on the host but Docker. Sample data is
+generated from the developer's **own** GOG Galaxy DB; nothing binary is committed,
+so a local GOG Galaxy DB is a hard prerequisite (it's the product's whole input).
 
 ```bash
 just env                 # create .env, then set IGDB_CLIENT_ID / IGDB_CLIENT_SECRET in it
 just up                  # start the stack (app, DynamoDB, minio, mailhog, worker)
-just bootstrap           # create tables/bucket + seed 3 users, libraries, and an enrichment job
+just bootstrap db="C:/path/to/galaxy-2.0.db"   # gen fixtures + create tables/bucket + seed
 # the worker (started by `just up`) enriches the seeded games via IGDB automatically;
 # run `just worker` standalone if you brought the stack up without it.
-# open http://localhost:8088 and log in as alice@example.com / changeme
+# open http://localhost:8088 and log in as user1@example.com / changeme (first user = admin)
 ```
 
-Seeded accounts (password `changeme`; defined in `scripts/sample_data/seed_manifest.json`):
+`gen-fixtures` (run by `bootstrap`, or standalone) derives slim SQLite fixtures from
+the source DB via `scripts/sample_data/generate_fixtures.py`, writing them plus a
+`seed_manifest.json` under `scripts/sample_data/` — all git-ignored. `seed-local` then
+reuses the normal upload/ingest path (`ingest_db_file`) per fixture, so it exercises the
+same code as a browser upload. Re-running `seed-local` is idempotent.
 
-| email | username | admin |
-|-------|----------|:---:|
-| alice@example.com | Alice | yes |
-| bob@example.com   | Bob   | no  |
-| carol@example.com | Carol | no  |
+### Sample-data shape (configurable)
 
-The three users own an **overlapping but distinct** set of 40 real games (20 each)
-so the compare view has something to compare: 5 games owned by all three, 5 shared
-by alice+bob, 5 by alice+carol, and per-user uniques. The libraries come from
-committed slim SQLite fixtures (`scripts/sample_data/sample_user*.db`) derived once
-from a real GOG Galaxy DB by `scripts/sample_data/generate_fixtures.py` — so every
-developer gets identical sample data without a real DB on hand. Seeding reuses the
-normal upload/ingest path (`ingest_db_file`), so it exercises the same code as a
-browser upload. Re-running `just seed-local` is idempotent.
+The default is 3 users with 20 games each. The generator parameters control the
+ownership matrix: with **N** users, **G** games each, **C** common to all, and **P**
+shared by every unique pair,
+
+    uniques_per_user = G - C - P*(N-1)            # must be >= 0
+    total_distinct   = C + P*comb(N, 2) + N*uniques_per_user
+
+so the defaults (N=3, G=20, C=5, P=5) give 5 uniques each and 35 distinct games, with a
+5-game overlap on *every* pair — enough for the compare view to show common and uncommon
+games. Override per run:
+
+```bash
+just gen-fixtures db="C:/path/to/galaxy-2.0.db" users="4" games="25" common="6" pair="4" \
+  usernames="ann@x.com,bob@x.com,cat@x.com,dan@x.com"
+```
+
+`usernames` is optional (auto `user1@example.com`…); the first user is always the admin.
 
 Notes:
 - `.env` is git-ignored and holds your IGDB credentials and JWT secret. `LOCAL_DEV=true`
   relaxes the production JWT check, so the sample secret is fine locally.
+- Without a GOG Galaxy DB, `init-local` still creates the accounts but their libraries are
+  empty, and `seed-local` tells you to run `gen-fixtures` first.
+- Pass the DB path with **forward slashes** (e.g. `C:/Users/...`); `gen-fixtures` mounts
+  that single file into the container and sets `MSYS_NO_PATHCONV=1` so Git Bash doesn't
+  rewrite the container-side path.
 - `docker-compose.yml` mounts `../gamatrix-configs` (the private deploy config) for
   maintainers; it is optional — the stack and sample seeding work without it.
 - The `dynamodb-local` service runs as `user: root` so it can write its persisted DB
   to the named volume (the image's default uid 1000 can't). If you see "unable to open
   database file" after pulling a new image, that's the fix.
+- Host-side tooling (tests/linters) uses `uv sync --extra dev`; the README has light
+  [uv](README.md#uv) and [just](README.md#just) quickstarts.
 
 ## Architecture
 

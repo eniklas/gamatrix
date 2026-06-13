@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Seed the local environment with 3 test users and their game libraries.
+"""Seed the local environment with the test users and their game libraries.
 
-Mirrors the browser upload path (`/upload/complete`): for each committed
+Mirrors the browser upload path (`/upload/complete`): for each locally generated
 fixture, create the account, then ingest the fixture so its library + game stubs
 land in DynamoDB and an enrichment job is queued for the local worker. The
 fixtures encode an overlapping ownership matrix (see
 ``scripts/sample_data/generate_fixtures.py``) so the compare view has real
 common/uncommon games to work with.
+
+The fixtures + manifest are not committed; generate them first from your own GOG
+Galaxy DB with ``just gen-fixtures db=<path>`` (see AGENTS.md / README).
 
 Idempotent: existing users are skipped and libraries are replaced wholesale, so
 re-running resets cleanly.
@@ -32,7 +35,15 @@ SAMPLE_DIR = Path(__file__).resolve().parent / "sample_data"
 
 
 def main() -> None:
-    manifest = json.loads((SAMPLE_DIR / "seed_manifest.json").read_text())
+    manifest_path = SAMPLE_DIR / "seed_manifest.json"
+    if not manifest_path.exists():
+        raise SystemExit(
+            f"No fixtures found at {manifest_path}. Generate them from your own GOG "
+            "Galaxy DB first:\n"
+            "    just gen-fixtures db=<path-to-galaxy-2.0.db>\n"
+            "(or run scripts/sample_data/generate_fixtures.py directly)."
+        )
+    manifest = json.loads(manifest_path.read_text())
     repo = get_repository()
     queue = get_queue()
 

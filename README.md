@@ -36,16 +36,87 @@ Use the **Upload DB** link to upload your GOG Galaxy database. The file is at `C
 
 ## Local development
 
-**Prerequisites:** Docker, [just](https://github.com/casey/just), IGDB credentials (see below).
+Everything runs in Docker — you don't install Python or the app on your host.
+
+**Prerequisites:**
+
+- **Docker** (Desktop or Engine) — the only hard host requirement.
+- **A local GOG Galaxy DB.** Sample data is generated from *your own* library, so you
+  need GOG Galaxy installed with some games. The DB lives at
+  `C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db` (Windows) or
+  `~/Library/Application Support/GOG.com/Galaxy/storage/galaxy-2.0.db` (macOS). Gamatrix
+  is a GOG Galaxy tool, so this is a genuine prerequisite for meaningful local work.
+- **IGDB credentials** for multiplayer metadata (see [below](#igdb-credentials)).
+- **[just](#just)** — optional; every recipe is a thin `docker compose` wrapper you can
+  also run by hand.
 
 ```bash
-cp .env-sample .env          # fill in IGDB_CLIENT_ID and IGDB_CLIENT_SECRET
-just up                      # start app + dynamodb-local + minio + mailhog
-just init-local              # create tables/bucket and seed default users
-just worker                  # start the background enrichment worker
+cp .env-sample .env          # then set IGDB_CLIENT_ID / IGDB_CLIENT_SECRET (and JWT_SECRET)
+just up                      # start app + dynamodb-local + minio + mailhog + worker
+just bootstrap db="C:/path/to/galaxy-2.0.db"   # generate sample users + create tables + seed
 ```
 
-The app is at http://localhost:8088. Default users are seeded by `scripts/seed_users.py` with password `changeme`. Password-reset emails are captured by mailhog at http://localhost:8025.
+`bootstrap` generates git-ignored fixtures from your GOG DB (under `scripts/sample_data/`),
+creates the local DynamoDB tables and S3 bucket, and seeds 3 test users with overlapping
+libraries. The bundled worker then enriches the games from IGDB automatically. Open
+http://localhost:8088 and log in as `user1@example.com` / `changeme` (the first user is the
+admin). Password-reset emails are captured by mailhog at http://localhost:8025.
+
+The sample-data shape is configurable — more users, more games, different overlaps:
+
+```bash
+just gen-fixtures db="C:/path/to/galaxy-2.0.db" users="4" games="25" common="6" pair="4"
+just seed-local              # re-seed from the regenerated fixtures (idempotent)
+```
+
+| flag | meaning | default |
+|------|---------|---------|
+| `users` | number of test users | `3` |
+| `games` | games per user | `20` |
+| `common` | games owned by **all** users | `5` |
+| `pair` | games shared by **each unique pair** | `5` |
+| `usernames` | comma/space emails (first = admin) | `user1@example.com`… |
+
+Without `just`, run the underlying commands directly (use forward slashes; the path after
+`app` is *inside* the Linux container):
+
+```bash
+docker compose up -d
+docker compose run --rm -v "C:/path/to/galaxy-2.0.db:/data/source.db:ro" app \
+  python scripts/sample_data/generate_fixtures.py --source /data/source.db --output scripts/sample_data
+docker compose run --rm app python scripts/init_local.py
+docker compose run --rm app python scripts/seed_sample_data.py
+```
+
+### just
+
+[just](https://github.com/casey/just) runs this repo's task recipes (see the `justfile`).
+It's a small standalone binary, not a Python tool:
+
+```bash
+brew install just            # macOS
+winget install Casey.Just    # Windows
+cargo install just           # anywhere with Rust
+```
+
+`just --list` shows every recipe. Each one just wraps a `docker compose` (or `uv`) command,
+so you can always run the underlying command directly if you'd rather not install it.
+
+### uv
+
+[uv](https://docs.astral.sh/uv/) manages the Python toolchain and dependencies. You only
+need it for **host-side** tooling — running tests, linters, or your editor's language
+server — since the Docker dev loop above doesn't touch your host Python:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS/Linux
+winget install astral-sh.uv                       # Windows
+uv sync --extra dev                               # create .venv with dev deps
+```
+
+(Avoid `pip install -e .[dev]` on a bleeding-edge host Python — some pinned deps have no
+matching wheels and fall back to a source build that fails. `uv` provisions a compatible
+Python for you.)
 
 ### IGDB credentials
 
@@ -85,21 +156,16 @@ PRs are welcome. If you're making non-trivial changes, please include test outpu
 
 ### Development setup
 
+Host-side tooling (tests, linters, editor LSP) uses [uv](#uv):
+
 ```bash
 git clone https://github.com/eniklas/gamatrix
 cd gamatrix
-python3 -m venv .venv
-. .venv/bin/activate          # Linux/macOS
-# .venv\Scripts\Activate.ps1  # Windows
-python -m pip install -U pip
-python -m pip install -e .[dev]
+uv sync --extra dev          # creates .venv with the dev dependencies
 ```
 
-Or, if you have [uv](https://docs.astral.sh/uv/):
-
-```bash
-uv sync --extra dev
-```
+You don't need this just to run the app — that's fully containerized (see
+[Local development](#local-development)).
 
 ### Building a wheel
 
