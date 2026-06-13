@@ -55,7 +55,8 @@ just bootstrap db="C:/path/to/galaxy-2.0.db"   # gen fixtures + create tables/bu
 the source DB via `scripts/sample_data/generate_fixtures.py`, writing them plus a
 `seed_manifest.json` under `scripts/sample_data/` — all git-ignored. `seed-local` then
 reuses the normal upload/ingest path (`ingest_db_file`) per fixture, so it exercises the
-same code as a browser upload. Re-running `seed-local` is idempotent.
+same code as a browser upload. Re-running `seed-local` hard-resets existing local users
+first so the latest manifest replaces the prior sample state cleanly.
 
 ### Sample-data shape (configurable)
 

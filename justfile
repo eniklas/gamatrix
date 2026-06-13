@@ -44,7 +44,7 @@ init-local:
 
 # Seed 3 test users with sample game libraries (committed fixtures)
 seed-local:
-  docker compose run --rm app python scripts/seed_sample_data.py
+  docker compose run --rm app python scripts/seed_sample_data.py --hard-reset-existing-users
 
 # One-shot: generate fixtures from your GOG DB, create tables/bucket, then seed.
 #   just bootstrap db="C:/path/to/galaxy-2.0.db"

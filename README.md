@@ -66,7 +66,7 @@ The sample-data shape is configurable — more users, more games, different over
 
 ```bash
 just gen-fixtures db="C:/path/to/galaxy-2.0.db" users="4" games="25" common="6" pair="4"
-just seed-local              # re-seed from the regenerated fixtures (idempotent)
+just seed-local              # re-seed from the regenerated fixtures (hard-resets existing sample users)
 ```
 
 | flag | meaning | default |
@@ -87,6 +87,10 @@ docker compose run --rm -v "C:/path/to/galaxy-2.0.db:/data/source.db:ro" app \
 docker compose run --rm app python scripts/init_local.py
 docker compose run --rm app python scripts/seed_sample_data.py
 ```
+
+If that local DB already has users, rerun the last command with
+`--hard-reset-existing-users`; the script now refuses to mix an old user set
+with a new manifest unless you request the reset explicitly.
 
 ### just
 

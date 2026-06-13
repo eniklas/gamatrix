@@ -114,6 +114,27 @@ class Repository:
         user = {**user, "email": user["email"].lower()}
         self._table(self.settings.users_table).put_item(Item=_to_dynamo(user))
 
+    def delete_user(self, email: str) -> None:
+        self._table(self.settings.users_table).delete_item(Key={"email": email.lower()})
+
+    def purge_user_account(self, user: dict) -> None:
+        """Remove a user row and its user-owned local artifacts.
+
+        Used by local seed/reset flows so sample-data regeneration starts from a
+        clean slate instead of colliding with pre-existing users, libraries,
+        passkeys, or profile pictures.
+        """
+        user_id = user.get("user_id")
+        if user_id is not None:
+            self.clear_user_library(str(user_id))
+            self.delete_profile_pic(str(user_id))
+
+        user_handle = user.get("webauthn_user_id")
+        if user_handle:
+            self.delete_all_passkeys(str(user_handle))
+
+        self.delete_user(user["email"])
+
     def ensure_webauthn_user_id(self, email: str, user_handle: str) -> str:
         """Assign a stable opaque WebAuthn user handle exactly once."""
         response = self._table(self.settings.users_table).update_item(
@@ -179,6 +200,17 @@ class Repository:
             for entry in incoming.values():
                 item = {**entry, "user_id": str(user_id)}
                 batch.put_item(Item=_to_dynamo(item))
+
+    def clear_user_library(self, user_id: str) -> int:
+        """Delete every library row for a user. Returns the number removed."""
+        table = self._table(self.settings.libraries_table)
+        existing = self.get_user_library(user_id)
+        with table.batch_writer() as batch:
+            for row in existing:
+                batch.delete_item(
+                    Key={"user_id": str(user_id), "release_key": row["release_key"]}
+                )
+        return len(existing)
 
     def get_owners_of_release(self, release_key: str) -> list[str]:
         """Return user_ids that own a release, via the release_key GSI."""
@@ -311,6 +343,11 @@ class Repository:
         # boto3 hands binary attributes back wrapped in a Binary type.
         return bytes(item["data"])
 
+    def delete_profile_pic(self, user_id: str) -> None:
+        self._table(self.settings.profile_pics_table).delete_item(
+            Key={"user_id": str(user_id)}
+        )
+
     # ------------------------------------------------------------------
     # config  (PK key -> value)  used locally for hidden/single-player lists
     # ------------------------------------------------------------------
@@ -361,6 +398,15 @@ class Repository:
             return True
         except self._resource.meta.client.exceptions.ConditionalCheckFailedException:
             return False
+
+    def delete_all_passkeys(self, user_handle: str) -> int:
+        """Delete every passkey for a user handle. Returns the number removed."""
+        table = self._table(self.settings.passkeys_table)
+        passkeys = self.list_passkeys(user_handle)
+        with table.batch_writer() as batch:
+            for passkey in passkeys:
+                batch.delete_item(Key={"credential_id": passkey["credential_id"]})
+        return len(passkeys)
 
     def update_passkey(self, credential_id: str, attrs: dict) -> None:
         names = {f"#{key}": key for key in attrs}
