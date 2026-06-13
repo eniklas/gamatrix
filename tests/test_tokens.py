@@ -106,7 +106,7 @@ def test_create_token_returns_secret_and_setup_snippet(repo):
         # presign-bearing site, and stores the token with locked-down perms.
         assert body["token"] in body["snippet"]
         assert "/upload/presign" not in body["snippet"]  # the script handles that
-        assert "icacls" in body["snippet"]
+        assert "Set-Acl" in body["snippet"]
         assert "upload-gamatrix.ps1" in body["snippet"]
         # The new token shows up on the management page.
         listing = client.get("/auth/tokens/list")

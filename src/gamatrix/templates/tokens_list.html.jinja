@@ -9,6 +9,13 @@
         </span>
         <button type="button" class="secondary delete-token"
                 data-token-id="{{ t.token_id }}">Revoke</button>
+        <form class="revoke-confirm" data-token-id="{{ t.token_id }}" hidden>
+            <input type="password" class="revoke-password" required
+                   autocomplete="current-password"
+                   placeholder="Current password to revoke">
+            <button type="submit" class="secondary">Confirm</button>
+            <button type="button" class="revoke-cancel">Cancel</button>
+        </form>
     </li>
     {% endfor %}
 </ul>

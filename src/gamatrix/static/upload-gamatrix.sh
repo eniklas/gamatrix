@@ -10,7 +10,10 @@
 #   GAMATRIX_BASE_URL  https://gamatrix.example.com
 #   GAMATRIX_DB_PATH   path to galaxy-2.0.db
 #
-# Requires: bash, curl. (macOS/Linux ship both.)
+# Requires: bash, curl, and python3 (for parsing the presign JSON), all on the
+# PATH. curl ships on macOS/Linux; python3 does NOT ship on stock macOS, some
+# Linux distros, or many WSL installs — install it first if `python3 --version`
+# fails. (Written for bash 3.2, the version Apple still ships, so no mapfile.)
 set -euo pipefail
 
 BASE_URL="${GAMATRIX_BASE_URL:-https://gamatrix.example.com}"
@@ -43,13 +46,14 @@ presign="$(curl --fail --silent --show-error \
 url="$(printf '%s' "$presign" | python3 -c 'import sys,json; print(json.load(sys.stdin)["url"])')"
 
 # 2) Build -F args from the presign fields (file LAST; S3 ignores anything after it).
-mapfile -t fields < <(printf '%s' "$presign" | python3 -c '
+# A while-read loop instead of mapfile, so this runs on bash 3.2 (stock macOS).
+args=()
+while IFS= read -r field; do
+  args+=(-F "$field")
+done < <(printf '%s' "$presign" | python3 -c '
 import sys, json
 for k, v in json.load(sys.stdin)["fields"].items():
     print(f"{k}={v}")')
-
-args=()
-for f in "${fields[@]}"; do args+=(-F "$f"); done
 args+=(-F "file=@${tmp}")
 
 # 3) Upload straight to S3.

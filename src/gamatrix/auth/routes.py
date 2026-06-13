@@ -201,11 +201,22 @@ def _token_setup_snippet(token: str) -> str:
     return (
         "# 1) Save your token where only your Windows account can read it.\n"
         '$dir = "$env:USERPROFILE\\.gamatrix"\n'
+        '$tokenPath = "$dir\\token"\n'
         "New-Item -ItemType Directory -Force $dir | Out-Null\n"
-        f"Set-Content \"$dir\\token\" '{token}' -NoNewline\n"
-        "# Strip inherited permissions, then grant read to just you:\n"
-        'icacls "$dir\\token" /inheritance:r /grant:r "$($env:USERNAME):(R)" '
-        "| Out-Null\n\n"
+        f"Set-Content $tokenPath '{token}' -NoNewline\n"
+        "# Replace the file's ACL outright (no inherited perms) and grant just\n"
+        "# you read+write, so you can re-cycle the token later without a fight.\n"
+        "$currentUser = "
+        "[System.Security.Principal.WindowsIdentity]::GetCurrent().Name\n"
+        "$acl = New-Object System.Security.AccessControl.FileSecurity\n"
+        "$acl.SetAccessRuleProtection($true, $false)\n"
+        "$rule = New-Object System.Security.AccessControl.FileSystemAccessRule("
+        "$currentUser, "
+        "([System.Security.AccessControl.FileSystemRights]::Read -bor "
+        "[System.Security.AccessControl.FileSystemRights]::Write), "
+        "[System.Security.AccessControl.AccessControlType]::Allow)\n"
+        "$acl.SetAccessRule($rule)\n"
+        "Set-Acl -Path $tokenPath -AclObject $acl\n\n"
         "# 2) Download the uploader script.\n"
         f'Invoke-WebRequest "{base_url}/static/upload-gamatrix.ps1" '
         '-OutFile "$dir\\upload-gamatrix.ps1"\n\n'

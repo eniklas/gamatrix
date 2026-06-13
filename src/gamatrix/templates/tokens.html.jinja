@@ -44,7 +44,11 @@
     <p class="muted">On macOS or Linux, download
     <a href="{{ base_url }}/static/upload-gamatrix.sh">upload-gamatrix.sh</a>,
     save the token to a file only you can read
-    (<code>chmod 600 ~/.gamatrix-token</code>), and run the script from cron.</p>
+    (<code>chmod 600 ~/.gamatrix-token</code>), and run the script from cron.
+    It needs <code>curl</code> and <code>python3</code> on the
+    <code>PATH</code> — <code>python3</code> is not installed by default on
+    macOS, some Linux distros, or many WSL setups, so install it first if
+    <code>python3 --version</code> fails.</p>
 </div>
 
 <div class="card wide">
@@ -105,13 +109,31 @@
     document.getElementById("copy-snippet").addEventListener("click", (e) =>
         copy(snippetEl.textContent, e.currentTarget));
 
-    // Tokens load asynchronously, so delegate the revoke handler.
-    document.getElementById("token-list").addEventListener("click", async (event) => {
-        const button = event.target.closest(".delete-token");
-        if (!button) return;
-        const password = window.prompt("Confirm your current password to revoke this token:");
+    // Tokens load asynchronously, so delegate revoke handling. The password is
+    // entered in an inline (masked) field rather than a clear-text prompt.
+    const list = document.getElementById("token-list");
+
+    list.addEventListener("click", (event) => {
+        if (event.target.closest(".delete-token")) {
+            const li = event.target.closest("li");
+            li.querySelector(".delete-token").hidden = true;
+            const confirm = li.querySelector(".revoke-confirm");
+            confirm.hidden = false;
+            confirm.querySelector(".revoke-password").focus();
+        } else if (event.target.closest(".revoke-cancel")) {
+            const li = event.target.closest("li");
+            li.querySelector(".revoke-confirm").hidden = true;
+            li.querySelector(".delete-token").hidden = false;
+        }
+    });
+
+    list.addEventListener("submit", async (event) => {
+        const form = event.target.closest(".revoke-confirm");
+        if (!form) return;
+        event.preventDefault();
+        const password = form.querySelector(".revoke-password").value;
         if (!password) return;
-        const response = await fetch(`/auth/tokens/${button.dataset.tokenId}`, {
+        const response = await fetch(`/auth/tokens/${form.dataset.tokenId}`, {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ password: password }),
