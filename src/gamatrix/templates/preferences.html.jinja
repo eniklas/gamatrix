@@ -69,6 +69,12 @@ async function uploadProfilePic() {
         <button type="button" onclick="window.location.href='/auth/passkeys'">Manage passkeys</button>
         <span class="muted">Add, review, or remove passkeys for this account.</span>
     </fieldset>
+
+    <fieldset class="filter-group">
+        <legend>API tokens</legend>
+        <button type="button" onclick="window.location.href='/auth/tokens'">Manage API tokens</button>
+        <span class="muted">Create tokens for unattended, scheduled DB uploads.</span>
+    </fieldset>
 </div>
 
 <form id="filters" method="post" action="/preferences" class="filters"

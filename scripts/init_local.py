@@ -97,6 +97,21 @@ def _table_defs(s):
                 {"AttributeName": "challenge_id", "AttributeType": "S"}
             ],
         },
+        {
+            "TableName": s.api_tokens_table,
+            "KeySchema": [{"AttributeName": "token_id", "KeyType": "HASH"}],
+            "AttributeDefinitions": [
+                {"AttributeName": "token_id", "AttributeType": "S"},
+                {"AttributeName": "email", "AttributeType": "S"},
+            ],
+            "GlobalSecondaryIndexes": [
+                {
+                    "IndexName": "email-index",
+                    "KeySchema": [{"AttributeName": "email", "KeyType": "HASH"}],
+                    "Projection": {"ProjectionType": "ALL"},
+                }
+            ],
+        },
     ]
 
 

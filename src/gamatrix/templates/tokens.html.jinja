@@ -1,0 +1,128 @@
+{% extends "base.html.jinja" %}
+{% block title %}gamatrix — API tokens{% endblock %}
+{% block body %}
+<div class="topbar">
+    <h2>API tokens</h2>
+    <div class="right"><a href="/preferences">Back to preferences</a></div>
+</div>
+
+<div class="card wide">
+    <h3>Unattended uploads</h3>
+    <p class="muted">An API token lets a scheduled task upload your GOG Galaxy
+    database automatically, with no browser login. Treat it like a password:
+    anyone holding it can replace your library. Create one per machine so you can
+    revoke them individually.</p>
+    <form id="token-create">
+        <label for="token_name">Token name</label>
+        <input type="text" id="token_name" name="name" maxlength="64"
+               value="Scheduled upload" required>
+        <label for="token_password">Current password
+            <span class="help-icon"
+                  title="Required to verify your identity before creating a token"
+                  aria-label="Required to verify your identity before creating a token"
+                  tabindex="0">?</span>
+        </label>
+        <input type="password" id="token_password" name="password" required
+               autocomplete="current-password">
+        <button type="submit">Create token</button>
+    </form>
+    <p id="token-error" class="error" hidden></p>
+</div>
+
+<div class="card wide" id="token-reveal" hidden>
+    <h3>Your new token</h3>
+    <p class="error">Copy it now — for your security it is never shown again.</p>
+    <pre id="token-value" class="token-box"></pre>
+    <button type="button" id="copy-token">Copy token</button>
+
+    <h4>Set it up on Windows (PowerShell)</h4>
+    <p class="muted">Paste this into a PowerShell window. It saves the token so
+    only your Windows account can read it, downloads the uploader, and schedules
+    a daily upload.</p>
+    <pre id="token-snippet" class="token-box"></pre>
+    <button type="button" id="copy-snippet">Copy setup script</button>
+    <p class="muted">On macOS or Linux, download
+    <a href="{{ base_url }}/static/upload-gamatrix.sh">upload-gamatrix.sh</a>,
+    save the token to a file only you can read
+    (<code>chmod 600 ~/.gamatrix-token</code>), and run the script from cron.</p>
+</div>
+
+<div class="card wide">
+    <h3>Active tokens</h3>
+    <div id="token-list" hx-get="/auth/tokens/list" hx-trigger="load">…</div>
+</div>
+
+<script>
+(function () {
+    const form = document.getElementById("token-create");
+    const errorEl = document.getElementById("token-error");
+    const reveal = document.getElementById("token-reveal");
+    const tokenEl = document.getElementById("token-value");
+    const snippetEl = document.getElementById("token-snippet");
+
+    function reloadList() {
+        htmx.ajax("GET", "/auth/tokens/list", { target: "#token-list" });
+    }
+
+    async function copy(text, button) {
+        try {
+            await navigator.clipboard.writeText(text);
+            const original = button.textContent;
+            button.textContent = "Copied ✓";
+            setTimeout(() => { button.textContent = original; }, 1500);
+        } catch (e) { /* clipboard blocked; user can select manually */ }
+    }
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        errorEl.hidden = true;
+        const data = new FormData(form);
+        const response = await fetch("/auth/tokens", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: data.get("name"),
+                password: data.get("password"),
+            }),
+        });
+        if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            errorEl.textContent = body.detail || "Could not create token.";
+            errorEl.hidden = false;
+            return;
+        }
+        const body = await response.json();
+        tokenEl.textContent = body.token;
+        snippetEl.textContent = body.snippet;
+        reveal.hidden = false;
+        form.querySelector("#token_password").value = "";
+        reveal.scrollIntoView({ behavior: "smooth" });
+        reloadList();
+    });
+
+    document.getElementById("copy-token").addEventListener("click", (e) =>
+        copy(tokenEl.textContent, e.currentTarget));
+    document.getElementById("copy-snippet").addEventListener("click", (e) =>
+        copy(snippetEl.textContent, e.currentTarget));
+
+    // Tokens load asynchronously, so delegate the revoke handler.
+    document.getElementById("token-list").addEventListener("click", async (event) => {
+        const button = event.target.closest(".delete-token");
+        if (!button) return;
+        const password = window.prompt("Confirm your current password to revoke this token:");
+        if (!password) return;
+        const response = await fetch(`/auth/tokens/${button.dataset.tokenId}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: password }),
+        });
+        if (response.ok) {
+            reloadList();
+        } else {
+            const body = await response.json().catch(() => ({}));
+            alert(body.detail || "Could not revoke token.");
+        }
+    });
+})();
+</script>
+{% endblock %}

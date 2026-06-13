@@ -428,6 +428,47 @@ class Repository:
             return False
 
     # ------------------------------------------------------------------
+    # api_tokens  (PK token_id; GSI email-index) — unattended upload creds
+    # ------------------------------------------------------------------
+    def put_api_token(self, token: dict) -> None:
+        self._table(self.settings.api_tokens_table).put_item(Item=_to_dynamo(token))
+
+    def get_api_token(self, token_id: str) -> dict | None:
+        resp = self._table(self.settings.api_tokens_table).get_item(
+            Key={"token_id": token_id}
+        )
+        item = resp.get("Item")
+        return _from_dynamo(item) if item else None
+
+    def list_api_tokens(self, email: str) -> list[dict]:
+        return self._query_all(
+            self.settings.api_tokens_table,
+            IndexName="email-index",
+            KeyConditionExpression=Key("email").eq(email.lower()),
+        )
+
+    def delete_api_token(self, token_id: str, email: str) -> bool:
+        """Delete a token only if it belongs to `email`. Returns False if the
+        token is missing or owned by someone else."""
+        try:
+            self._table(self.settings.api_tokens_table).delete_item(
+                Key={"token_id": token_id},
+                ConditionExpression="email = :email",
+                ExpressionAttributeValues={":email": email.lower()},
+            )
+            return True
+        except self._resource.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+
+    def touch_api_token(self, token_id: str, when: str) -> None:
+        """Record the most recent use, so stale tokens are easy to spot."""
+        self._table(self.settings.api_tokens_table).update_item(
+            Key={"token_id": token_id},
+            UpdateExpression="SET last_used_at = :t",
+            ExpressionAttributeValues={":t": when},
+        )
+
+    # ------------------------------------------------------------------
     # internal
     # ------------------------------------------------------------------
     def _scan(self, table_name: str) -> list[dict]:

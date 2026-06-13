@@ -98,6 +98,9 @@ DynamoDB tables (all `PAY_PER_REQUEST`, PITR on, name-prefixed with `TABLE_PREFI
 - `enrichment_jobs` (PK: `job_id`)
 - `metadata_overrides` (PK: `slug`)
 - `config` (PK: `key`) — locally holds hidden/single-player lists; in AWS these come from SSM
+- `passkeys` (PK: `credential_id`) + GSI `user_handle-index`
+- `auth_challenges` (PK: `challenge_id`, TTL on `expires_at`)
+- `api_tokens` (PK: `token_id`) + GSI `email-index` — personal tokens for unattended (scripted) DB uploads
 
 ## Version
 

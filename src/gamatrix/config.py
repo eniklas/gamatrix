@@ -115,6 +115,11 @@ class Settings(BaseSettings):
     def auth_challenges_table(self) -> str:
         return f"{self.table_prefix}_auth_challenges"
 
+    @property
+    def api_tokens_table(self) -> str:
+        """Personal API tokens for unattended (scripted) DB uploads."""
+        return f"{self.table_prefix}_api_tokens"
+
     @model_validator(mode="after")
     def _require_jwt_secret(self) -> "Settings":
         """Fail loudly rather than silently signing sessions with the public

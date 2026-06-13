@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 
-from gamatrix.auth import passkeys, service
+from gamatrix.auth import passkeys, service, tokens
 from gamatrix.auth.dependencies import current_user, current_user_api, get_repo
 from gamatrix.auth.service import COOKIE_NAME
 from gamatrix.config import get_settings
+from gamatrix.constants import API_TOKEN_NAME_MAX_LENGTH
 from gamatrix.storage.dynamo import Repository
 from gamatrix.templating import templates
 
@@ -27,6 +28,15 @@ class CeremonyVerificationRequest(BaseModel):
 
 
 class DeletePasskeyRequest(BaseModel):
+    password: str
+
+
+class CreateTokenRequest(BaseModel):
+    password: str
+    name: str
+
+
+class DeleteTokenRequest(BaseModel):
     password: str
 
 
@@ -180,6 +190,95 @@ def delete_passkey(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Passkey not found for this account.",
+        )
+    return {"deleted": True}
+
+
+def _token_setup_snippet(token: str) -> str:
+    """A ready-to-paste PowerShell block: store the token with locked-down
+    permissions, fetch the uploader, and schedule a daily run."""
+    base_url = get_settings().app_base_url.rstrip("/")
+    return (
+        "# 1) Save your token where only your Windows account can read it.\n"
+        '$dir = "$env:USERPROFILE\\.gamatrix"\n'
+        "New-Item -ItemType Directory -Force $dir | Out-Null\n"
+        f"Set-Content \"$dir\\token\" '{token}' -NoNewline\n"
+        "# Strip inherited permissions, then grant read to just you:\n"
+        'icacls "$dir\\token" /inheritance:r /grant:r "$($env:USERNAME):(R)" '
+        "| Out-Null\n\n"
+        "# 2) Download the uploader script.\n"
+        f'Invoke-WebRequest "{base_url}/static/upload-gamatrix.ps1" '
+        '-OutFile "$dir\\upload-gamatrix.ps1"\n\n'
+        "# 3) Schedule a daily upload at 5am (adjust the time as you like).\n"
+        "$action = New-ScheduledTaskAction -Execute powershell.exe -Argument "
+        f'"-ExecutionPolicy Bypass -File `"$dir\\upload-gamatrix.ps1`" '
+        f'-BaseUrl {base_url}"\n'
+        "$trigger = New-ScheduledTaskTrigger -Daily -At 5am\n"
+        "Register-ScheduledTask -TaskName 'Gamatrix DB upload' -Action $action "
+        "-Trigger $trigger\n"
+    )
+
+
+@router.get("/tokens", response_class=HTMLResponse)
+def token_management(
+    request: Request,
+    user: dict = Depends(current_user),
+    repo: Repository = Depends(get_repo),
+):
+    return templates.TemplateResponse(
+        request,
+        "tokens.html.jinja",
+        {
+            "user": user,
+            "tokens": repo.list_api_tokens(user["email"]),
+            "base_url": get_settings().app_base_url.rstrip("/"),
+        },
+    )
+
+
+@router.get("/tokens/list", response_class=HTMLResponse)
+def list_tokens(
+    request: Request,
+    user: dict = Depends(current_user),
+    repo: Repository = Depends(get_repo),
+):
+    return templates.TemplateResponse(
+        request,
+        "tokens_list.html.jinja",
+        {"tokens": repo.list_api_tokens(user["email"])},
+    )
+
+
+@router.post("/tokens")
+def create_token(
+    body: CreateTokenRequest,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    if not service.authenticate(repo, user["email"], body.password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Wrong password."
+        )
+    name = body.name.strip()[:API_TOKEN_NAME_MAX_LENGTH] or "Unnamed token"
+    token = tokens.create_api_token(repo, user["email"], name)
+    return {"token": token, "snippet": _token_setup_snippet(token)}
+
+
+@router.delete("/tokens/{token_id}")
+def delete_token(
+    token_id: str,
+    body: DeleteTokenRequest,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    if not service.authenticate(repo, user["email"], body.password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Wrong password."
+        )
+    if not repo.delete_api_token(token_id, user["email"]):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Token not found for this account.",
         )
     return {"deleted": True}
 

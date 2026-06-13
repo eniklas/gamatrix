@@ -14,7 +14,11 @@ import tempfile
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from gamatrix.auth.dependencies import current_user, current_user_api, get_repo
+from gamatrix.auth.dependencies import (
+    current_user,
+    current_user_upload,
+    get_repo,
+)
 from gamatrix.config import get_settings
 from gamatrix.constants import UPLOAD_MAX_SIZE
 from gamatrix.gogdb.ingest import ingest_db_file
@@ -38,7 +42,7 @@ def upload_page(request: Request, user: dict = Depends(current_user)):
 
 
 @router.get("/upload/presign")
-def presign(user: dict = Depends(current_user_api)):
+def presign(user: dict = Depends(current_user_upload)):
     key = _upload_key(user)
     post = get_s3().presigned_upload(key, UPLOAD_MAX_SIZE)
     return JSONResponse({"key": key, "url": post["url"], "fields": post["fields"]})
@@ -46,7 +50,7 @@ def presign(user: dict = Depends(current_user_api)):
 
 @router.post("/upload/complete")
 def complete(
-    user: dict = Depends(current_user_api),
+    user: dict = Depends(current_user_upload),
     repo: Repository = Depends(get_repo),
 ):
     settings = get_settings()
