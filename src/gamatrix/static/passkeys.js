@@ -133,22 +133,6 @@
         showError(error);
       }
     });
-    document.querySelectorAll(".delete-passkey").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const password = window.prompt("Confirm your current password to delete this passkey:");
-        if (!password) return;
-        try {
-          await json(`/auth/passkeys/${encodeURIComponent(button.dataset.credentialId)}`, {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ password: password }),
-          });
-          window.location.reload();
-        } catch (error) {
-          showError(error);
-        }
-      });
-    });
   }
 
   window.gamatrixPasskeys = { enableLogin, enableManagement };

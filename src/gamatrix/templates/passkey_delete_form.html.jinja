@@ -1,0 +1,16 @@
+<li class="passkey-delete-confirm">
+    <strong>Delete {{ passkey.friendly_name }}?</strong>
+    <form hx-post="/auth/passkeys/{{ passkey.credential_id }}/delete"
+          hx-target="closest li" hx-swap="outerHTML">
+        <label>
+            Current password
+            <input type="password" name="password" required
+                   autocomplete="current-password" autofocus>
+        </label>
+        <button type="submit">Confirm delete</button>
+        <button type="button" class="secondary"
+                hx-get="/auth/passkeys/manage/list"
+                hx-target="#passkey-list" hx-swap="outerHTML">Cancel</button>
+        {% if error %}<span class="error">{{ error }}</span>{% endif %}
+    </form>
+</li>

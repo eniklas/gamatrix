@@ -54,7 +54,17 @@ def test_login_page_offers_explicit_and_conditional_passkeys(repo):
 
 
 def test_passkey_management_page_prefills_name_and_explains_password(repo):
-    _user(repo)
+    user = _user(repo)
+    handle = repo.ensure_webauthn_user_id(user["email"], "opaque-handle")
+    repo.put_passkey(
+        {
+            "credential_id": "credential",
+            "user_handle": handle,
+            "email": user["email"],
+            "sign_count": 0,
+            "friendly_name": "Laptop",
+        }
+    )
     for client in _client(repo):
         _login(client)
         response = client.get("/auth/passkeys")
@@ -64,6 +74,8 @@ def test_passkey_management_page_prefills_name_and_explains_password(repo):
             "Required to verify your identity before adding a passkey" in response.text
         )
         assert "Waiting for passkey creation to complete..." in response.text
+        assert 'hx-get="/auth/passkeys/credential/delete"' in response.text
+        assert "window.prompt" not in client.get("/static/passkeys.js").text
 
 
 def test_preferences_page_moves_manage_passkeys_into_page_body(repo):
@@ -247,6 +259,66 @@ def test_listing_hides_key_material_and_deletion_requires_password(repo):
             == 200
         )
         assert repo.get_passkey("credential") is None
+
+
+def test_inline_passkey_deletion_uses_password_field_and_refreshes_list(repo):
+    user = _user(repo)
+    handle = repo.ensure_webauthn_user_id(user["email"], "opaque-handle")
+    repo.put_passkey(
+        {
+            "credential_id": "credential",
+            "public_key": "secret-public-key",
+            "user_handle": handle,
+            "email": user["email"],
+            "sign_count": 0,
+            "friendly_name": "Laptop",
+        }
+    )
+    for client in _client(repo):
+        _login(client)
+
+        confirmation = client.get("/auth/passkeys/credential/delete")
+        assert confirmation.status_code == 200
+        assert "Delete Laptop?" in confirmation.text
+        assert 'type="password"' in confirmation.text
+        assert 'autocomplete="current-password"' in confirmation.text
+        assert "secret-public-key" not in confirmation.text
+
+        denied = client.post(
+            "/auth/passkeys/credential/delete", data={"password": "wrong"}
+        )
+        assert denied.status_code == 200
+        assert "Wrong password." in denied.text
+        assert 'value="wrong"' not in denied.text
+        assert repo.get_passkey("credential") is not None
+
+        deleted = client.post(
+            "/auth/passkeys/credential/delete", data={"password": "password"}
+        )
+        assert deleted.status_code == 200
+        assert deleted.headers["hx-retarget"] == "#passkey-list"
+        assert "Laptop" not in deleted.text
+        assert "No passkeys registered." in deleted.text
+        assert repo.get_passkey("credential") is None
+
+
+def test_inline_passkey_deletion_does_not_expose_another_accounts_passkey(repo):
+    user = _user(repo)
+    repo.ensure_webauthn_user_id(user["email"], "own-handle")
+    repo.put_passkey(
+        {
+            "credential_id": "other-credential",
+            "user_handle": "other-handle",
+            "email": "other@example.com",
+            "sign_count": 0,
+            "friendly_name": "Other laptop",
+        }
+    )
+    for client in _client(repo):
+        _login(client)
+        confirmation = client.get("/auth/passkeys/other-credential/delete")
+        assert confirmation.status_code == 404
+        assert "Other laptop" not in confirmation.text
 
 
 def test_delete_passkey_returns_explicit_404_without_registered_handle(repo):
