@@ -42,7 +42,7 @@ down:
 init-local:
   docker compose run --rm app python scripts/init_local.py
 
-# Seed 3 test users with sample game libraries (committed fixtures)
+# Seed 3 test users with sample game libraries (generated fixtures)
 seed-local:
   docker compose run --rm app python scripts/seed_sample_data.py --hard-reset-existing-users
 
