@@ -65,9 +65,7 @@ services:
     # owned by the unprivileged "dynamodblocal" user (uid 1000) that the image
     # runs as by default. A fresh named volume mounted over an existing image
     # directory inherits that directory's ownership, so the process can write its
-    # DB without elevated privileges. (Mounting at an empty path such as /data
-    # fails: a fresh volume there is created root-owned, which is why this service
-    # previously had to run as `user: root`.)
+    # DB without elevated privileges.
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ."
     ports:
       - "8000:8000"
