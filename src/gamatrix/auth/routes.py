@@ -99,6 +99,22 @@ def _passkey_credentials(user: dict, repo: Repository) -> list[dict]:
     return repo.list_passkeys(user_handle) if user_handle else []
 
 
+def _owned_passkey(credential_id: str, user: dict, repo: Repository) -> dict:
+    user_handle = user.get("webauthn_user_id")
+    if not user_handle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No passkeys are registered for this account.",
+        )
+    passkey = repo.get_passkey(credential_id)
+    if not passkey or passkey.get("user_handle") != user_handle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Passkey not found for this account.",
+        )
+    return passkey
+
+
 @router.get("/passkeys", response_class=HTMLResponse)
 def passkey_management(
     request: Request,
@@ -122,6 +138,61 @@ def list_passkeys(
         request,
         "passkeys_list.html.jinja",
         {"user": user, "passkeys": _passkey_credentials(user, repo)},
+    )
+
+
+@router.get("/passkeys/manage/list", response_class=HTMLResponse)
+def manage_passkeys_list(
+    request: Request,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    return templates.TemplateResponse(
+        request,
+        "passkeys_manage_list.html.jinja",
+        {"passkeys": _passkey_credentials(user, repo)},
+    )
+
+
+@router.get("/passkeys/{credential_id}/delete", response_class=HTMLResponse)
+def confirm_delete_passkey(
+    credential_id: str,
+    request: Request,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    return templates.TemplateResponse(
+        request,
+        "passkey_delete_form.html.jinja",
+        {"passkey": _owned_passkey(credential_id, user, repo), "error": None},
+    )
+
+
+@router.post("/passkeys/{credential_id}/delete", response_class=HTMLResponse)
+def delete_passkey_inline(
+    credential_id: str,
+    request: Request,
+    password: str = Form(...),
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    passkey = _owned_passkey(credential_id, user, repo)
+    if not service.authenticate(repo, user["email"], password):
+        return templates.TemplateResponse(
+            request,
+            "passkey_delete_form.html.jinja",
+            {"passkey": passkey, "error": "Wrong password."},
+        )
+    if not repo.delete_passkey(credential_id, user["webauthn_user_id"]):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Passkey not found for this account.",
+        )
+    return templates.TemplateResponse(
+        request,
+        "passkeys_manage_list.html.jinja",
+        {"passkeys": _passkey_credentials(user, repo)},
+        headers={"HX-Retarget": "#passkey-list", "HX-Reswap": "outerHTML"},
     )
 
 
