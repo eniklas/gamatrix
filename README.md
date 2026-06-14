@@ -38,6 +38,10 @@ Use the **Upload DB** link to upload your GOG Galaxy database. The file is at `C
 
 Everything runs in Docker — you don't install Python or the app on your host.
 
+⚠️ NOTE: There is breaking local development change after version 2.3 that will _break_
+a pre-existing local dynamodb-data volume mounted at `/home/dynamodblocal`. Re-creating
+these volumes will fix the issue.
+
 **Prerequisites:**
 
 - **Docker** (Desktop or Engine) — the only hard host requirement.
