@@ -47,8 +47,8 @@ Everything runs in Docker — you don't install Python or the app on your host.
   `~/Library/Application Support/GOG.com/Galaxy/storage/galaxy-2.0.db` (macOS). Gamatrix
   is a GOG Galaxy tool, so this is a genuine prerequisite for meaningful local work.
 - **IGDB credentials** for multiplayer metadata (see [below](#igdb-credentials)).
-- **[just](#just)** — optional; every recipe is a thin `docker compose` wrapper you can
-  also run by hand.
+- **[just](#just)** — optional; every recipe is a thin wrapper around the underlying
+  `docker compose` / `uv` commands.
 
 ```bash
 cp .env-sample .env          # then set IGDB_CLIENT_ID / IGDB_CLIENT_SECRET (and JWT_SECRET)
@@ -94,14 +94,9 @@ with a new manifest unless you request the reset explicitly.
 
 ### just
 
-[just](https://github.com/casey/just) runs this repo's task recipes (see the `justfile`).
-It's a small standalone binary, not a Python tool:
-
-```bash
-brew install just            # macOS
-winget install Casey.Just    # Windows
-cargo install just           # anywhere with Rust
-```
+[just](https://github.com/casey/just) runs this repo's task recipes (see the
+`justfile`). Install it using the upstream instructions if you want the
+shortcuts; otherwise you can always run the underlying commands directly.
 
 `just --list` shows every recipe. Each one just wraps a `docker compose` (or `uv`) command,
 so you can always run the underlying command directly if you'd rather not install it.
@@ -110,13 +105,8 @@ so you can always run the underlying command directly if you'd rather not instal
 
 [uv](https://docs.astral.sh/uv/) manages the Python toolchain and dependencies. You only
 need it for **host-side** tooling — running tests, linters, or your editor's language
-server — since the Docker dev loop above doesn't touch your host Python:
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS/Linux
-winget install astral-sh.uv                       # Windows
-uv sync --extra dev                               # create .venv with dev deps
-```
+server — since the Docker dev loop above doesn't touch your host Python. Install
+it using the upstream docs, then use it from the repo root.
 
 (Avoid `pip install -e .[dev]` on a bleeding-edge host Python — some pinned deps have no
 matching wheels and fall back to a source build that fails. `uv` provisions a compatible
@@ -143,8 +133,11 @@ working `node` executable on your `PATH` (the `aws_cdk`/`jsii` runtime shells
 out to Node during test collection/synthesis):
 
 ```bash
+uv venv --python 3.13 .venv
 uv sync --extra dev --extra cdk
 uv run pytest
+uv run black --check .
+uv run mypy
 ```
 
 If `pytest` fails while importing `aws_cdk` / `jsii` with a message like
@@ -171,31 +164,9 @@ Then seed user accounts by running `scripts/seed_users.py` against the deployed 
 
 PRs are welcome. If you're making non-trivial changes, please include test output. Before opening a PR, run `just check`. Versioning is automatic: merging to `master` tags the commit with the next patch version. For a bigger bump, add the `new minor version` or `new major version` label to your PR.
 
-### Development setup
-
-Host-side tooling (tests, linters, editor LSP) uses [uv](#uv):
-
-```bash
-git clone https://github.com/eniklas/gamatrix
-cd gamatrix
-uv sync --extra dev          # creates .venv with the dev dependencies
-```
-
-For the full host-side test suite, include the CDK extra as well:
-
-```bash
-uv sync --extra dev --extra cdk
-```
-
-And ensure `node` is on your shell `PATH`; the CDK tests use `aws_cdk`, which
-invokes Node via `jsii`.
-
-You don't need this just to run the app — that's fully containerized (see
-[Local development](#local-development)).
-
 ### Building a wheel
 
 ```bash
-python -m pip install .[ci]
-python -m build --wheel        # produces dist/gamatrix-*-none-any.whl
+uv sync --extra ci
+uv run python -m build --wheel   # produces dist/gamatrix-*-none-any.whl
 ```

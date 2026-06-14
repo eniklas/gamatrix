@@ -11,7 +11,7 @@ Gamatrix is a Python web application that compares game libraries across multipl
 Prefer the root `just` recipes when they match the task:
 
 ```bash
-uv sync --extra dev          # install dev dependencies into the local uv-managed env
+uv sync --extra dev --extra cdk   # host-side checks/tooling (CDK tests need the extra)
 just dev                     # run the FastAPI app locally with reload
 just env                     # create .env from .env-sample (then fill IGDB creds)
 just up                      # start the full local stack with Docker Compose
@@ -37,67 +37,21 @@ just set-igdb-secret <client_id> <client_secret> # Store IGDB API credentials in
 
 ## Local development with sample data
 
-Get a working app — test users with overlapping, IGDB-enriched game libraries —
-with no production resources and nothing on the host but Docker. Sample data is
-generated from the developer's **own** GOG Galaxy DB; nothing binary is committed,
-so a local GOG Galaxy DB is a hard prerequisite (it's the product's whole input).
+README is the canonical setup doc for local development, sample-data generation,
+host-side tooling, and troubleshooting:
 
-```bash
-just env                 # create .env, then set IGDB_CLIENT_ID / IGDB_CLIENT_SECRET in it
-just up                  # start the stack (app, DynamoDB, minio, mailhog, worker)
-just bootstrap db="C:/path/to/galaxy-2.0.db"   # gen fixtures + create tables/bucket + seed
-# the worker (started by `just up`) enriches the seeded games via IGDB automatically;
-# run `just worker` standalone if you brought the stack up without it.
-# open http://localhost:8088 and log in as user1@example.com / changeme (first user = admin)
-```
+- [README local development](README.md#local-development)
+- [README running checks](README.md#running-checks)
+- [CDK README](infrastructure/cdk/README.md) for deploy-specific prerequisites
 
-`gen-fixtures` (run by `bootstrap`, or standalone) derives slim SQLite fixtures from
-the source DB via `scripts/sample_data/generate_fixtures.py`, writing them plus a
-`seed_manifest.json` under `scripts/sample_data/` — all git-ignored. `seed-local` then
-reuses the normal upload/ingest path (`ingest_db_file`) per fixture, so it exercises the
-same code as a browser upload. Re-running `seed-local` hard-resets existing local users
-first so the latest manifest replaces the prior sample state cleanly.
+Agent-specific reminders:
 
-### Sample-data shape (configurable)
-
-The default is 3 users with 20 games each. The generator parameters control the
-ownership matrix: with **N** users, **G** games each, **C** common to all, and **P**
-shared by every unique pair,
-
-    uniques_per_user = G - C - P*(N-1)            # must be >= 0
-    total_distinct   = C + P*comb(N, 2) + N*uniques_per_user
-
-so the defaults (N=3, G=20, C=5, P=5) give 5 uniques each and 35 distinct games, with a
-5-game overlap on *every* pair — enough for the compare view to show common and uncommon
-games. Override per run:
-
-```bash
-just gen-fixtures db="C:/path/to/galaxy-2.0.db" users="4" games="25" common="6" pair="4" \
-  usernames="ann@x.com,bob@x.com,cat@x.com,dan@x.com"
-```
-
-`usernames` is optional (auto `user1@example.com`…); the first user is always the admin.
-
-Notes:
-- `.env` is git-ignored and holds your IGDB credentials and JWT secret. `LOCAL_DEV=true`
-  relaxes the production JWT check, so the sample secret is fine locally.
-- Without a GOG Galaxy DB, `init-local` still creates the accounts but their libraries are
-  empty, and `seed-local` tells you to run `gen-fixtures` first.
-- Pass the DB path with **forward slashes** (e.g. `C:/Users/...`); `gen-fixtures` mounts
-  that single file into the container and sets `MSYS_NO_PATHCONV=1` so Git Bash doesn't
-  rewrite the container-side path.
-- `docker-compose.yml` mounts `../gamatrix-configs` (the private deploy config) for
-  maintainers; it is optional — the stack and sample seeding work without it.
-- The `dynamodb-local` service persists its DB inside the image's WORKDIR
-  (`/home/dynamodblocal`) rather than `/data`, so the named volume inherits that dir's
-  unprivileged `dynamodblocal` (uid 1000) ownership and the service runs as a non-root
-  user. If you still see "unable to open database file" (e.g. you have an older root-owned
-  `dynamodb-data` volume from the previous `/data` layout), run `docker compose down -v`
-  once to recreate the volume.
-- Host-side tooling (tests/linters) uses `uv sync --extra dev`; the README has light
-  [uv](README.md#uv) and [just](README.md#just) quickstarts. For the full host-side
-  pytest suite, also install the `cdk` extra and ensure `node` is on PATH, because
-  the CDK tests import `aws_cdk`/`jsii`, which shells out to Node.
+- Sample fixtures are derived from the developer's own GOG Galaxy DB and remain
+  git-ignored under `scripts/sample_data/`.
+- `seed-local` intentionally hard-resets existing local users so regenerated
+  sample data replaces the prior local state cleanly.
+- For host-side pytest coverage, install the `cdk` extra and ensure `node` is on
+  PATH; the CDK tests import `aws_cdk`/`jsii`, which shells out to Node.
 
 ## Architecture
 
