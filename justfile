@@ -56,12 +56,14 @@ bootstrap db: (gen-fixtures db) init-local seed-local
 # stops Git Bash from rewriting the container-side path. Tune the data shape
 # with the optional args, e.g.:
 #   just gen-fixtures db="C:/path/to/galaxy-2.0.db" users="4" games="25"
-gen-fixtures db users="" games="20" common="5" pair="5" usernames="":
+gen-fixtures db users="" games="" common="" pair="" usernames="":
   #!/usr/bin/env bash
   set -euo pipefail
-  args=(--source /data/source.db --output scripts/sample_data
-        --games-per-user {{games}} --common {{common}} --pair-overlap {{pair}})
+  args=(--source /data/source.db --output scripts/sample_data)
   [[ -n "{{users}}" ]] && args+=(--num-users {{users}})
+  [[ -n "{{games}}" ]] && args+=(--games-per-user {{games}})
+  [[ -n "{{common}}" ]] && args+=(--common {{common}})
+  [[ -n "{{pair}}" ]] && args+=(--pair-overlap {{pair}})
   [[ -n "{{usernames}}" ]] && args+=(--usernames "{{usernames}}")
   MSYS_NO_PATHCONV=1 docker compose run --rm \
     -v "{{db}}:/data/source.db:ro" app \
