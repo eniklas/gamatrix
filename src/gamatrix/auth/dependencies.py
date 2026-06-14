@@ -37,6 +37,27 @@ def current_user_api(request: Request, repo: Repository = Depends(get_repo)) -> 
     return user
 
 
+def current_user_upload(request: Request, repo: Repository = Depends(get_repo)) -> dict:
+    """Authenticate an upload either by session cookie (browser) or by a personal
+    API token (unattended scripts). Returns 401 if neither identifies a user.
+
+    The token path is what restores v1's scriptable `curl` uploads (issue #129);
+    it is attached only to the upload routes, so a token can't substitute for a
+    session cookie elsewhere in the app."""
+    # Imported here, not at module scope: gamatrix.auth.tokens imports the
+    # Repository from storage, and pulling it in at import time would widen this
+    # module's import surface for a path most requests never take.
+    from gamatrix.auth.tokens import resolve_token
+
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        user = resolve_token(repo, auth_header[len("Bearer ") :].strip())
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+        return user
+    return current_user_api(request, repo)
+
+
 def require_admin(user: dict = Depends(current_user_api)) -> dict:
     if not user.get("is_admin"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")

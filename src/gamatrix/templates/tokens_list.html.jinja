@@ -1,0 +1,24 @@
+{% if tokens %}
+<ul class="token-list">
+    {% for t in tokens %}
+    <li>
+        <strong>{{ t.name }}</strong>
+        <span class="muted">
+            {% if t.created_at %}added {{ t.created_at[:10] }}{% endif %}
+            {% if t.last_used_at %}· last used {{ t.last_used_at[:10] }}{% else %}· never used{% endif %}
+        </span>
+        <button type="button" class="secondary delete-token"
+                data-token-id="{{ t.token_id }}">Revoke</button>
+        <form class="revoke-confirm" data-token-id="{{ t.token_id }}" hidden>
+            <input type="password" class="revoke-password" required
+                   autocomplete="current-password"
+                   placeholder="Current password to revoke">
+            <button type="submit" class="secondary">Confirm</button>
+            <button type="button" class="revoke-cancel">Cancel</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="muted">No tokens yet.</p>
+{% endif %}

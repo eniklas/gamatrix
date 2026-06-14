@@ -7,6 +7,9 @@ UPLOAD_MAX_SIZE = 300 * 1024 * 1024
 # Bounds for a user-chosen display name (the `username` field).
 DISPLAY_NAME_MAX_LENGTH = 32
 
+# Bound for a user-chosen API token label (helps tell tokens apart when revoking).
+API_TOKEN_NAME_MAX_LENGTH = 64
+
 # Profile pictures: max accepted upload, and the output thumbnail box (px).
 PROFILE_PIC_MAX_UPLOAD_SIZE = 5 * 1024 * 1024
 PROFILE_PIC_SIZE = 128

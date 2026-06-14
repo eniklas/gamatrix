@@ -347,6 +347,13 @@ class GamatrixStack(Stack):
             ),
         )
         table("auth_challenges", "challenge_id", ttl="expires_at")
+        api_tokens = table("api_tokens", "token_id")
+        api_tokens.add_global_secondary_index(
+            index_name="email-index",
+            partition_key=dynamodb.Attribute(
+                name="email", type=dynamodb.AttributeType.STRING
+            ),
+        )
         return tables
 
     def _create_bucket(self) -> s3.Bucket:

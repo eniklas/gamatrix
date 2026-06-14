@@ -86,6 +86,22 @@ def _create_tables(settings: Settings) -> None:
         ],
         **common,
     )
+    ddb.create_table(
+        TableName=settings.api_tokens_table,
+        KeySchema=[{"AttributeName": "token_id", "KeyType": "HASH"}],
+        AttributeDefinitions=[
+            {"AttributeName": "token_id", "AttributeType": "S"},
+            {"AttributeName": "email", "AttributeType": "S"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "email-index",
+                "KeySchema": [{"AttributeName": "email", "KeyType": "HASH"}],
+                "Projection": {"ProjectionType": "ALL"},
+            }
+        ],
+        **common,
+    )
 
 
 @pytest.fixture
