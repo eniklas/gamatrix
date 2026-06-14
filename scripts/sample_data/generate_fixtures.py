@@ -54,11 +54,6 @@ DEFAULT_PAIR_OVERLAP = 5
 # Users table and the account's user_id at seed time. User index u -> 1001 + u.
 BASE_USER_ID = 1001
 
-# Column counts for the tables we copy rows into.
-GamePieceTypes_COLS = 2
-GamePieces_COLS = 5
-ProductPurchaseDates_COLS = 4
-
 # The parser's _installed_games() query (parser.py) joins these tables with no
 # graceful fallback, so they must exist. We create them empty: nothing shows as
 # installed, which is fine for sample data. (The LibraryReleases/LicensedReleases
@@ -171,6 +166,42 @@ def _copy_schema(src: sqlite3.Connection, dst: sqlite3.Connection, table: str) -
     dst.execute(row[0])
 
 
+def _quote_ident(identifier: str) -> str:
+    """Return a SQLite-safe quoted identifier."""
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def _copy_table_rows(
+    src: sqlite3.Connection,
+    dst: sqlite3.Connection,
+    table: str,
+    where_clause: str = "",
+    params: tuple | list = (),
+) -> None:
+    """Copy rows from one SQLite table to another using runtime column metadata.
+
+    The destination table is assumed to already exist with a compatible schema.
+    Column names and placeholder counts come from the source query itself, so
+    upstream tables can add columns without requiring this script to be updated.
+    """
+    query = f"SELECT * FROM {_quote_ident(table)}"
+    if where_clause:
+        query += f" WHERE {where_clause}"
+
+    cursor = src.execute(query, params)
+    rows = cursor.fetchall()
+    columns = [column[0] for column in cursor.description or ()]
+    if not rows or not columns:
+        return
+
+    column_sql = ", ".join(_quote_ident(column) for column in columns)
+    placeholders = ", ".join("?" for _ in columns)
+    dst.executemany(
+        f"INSERT INTO {_quote_ident(table)} ({column_sql}) VALUES ({placeholders})",
+        rows,
+    )
+
+
 def build_fixture(
     src: sqlite3.Connection, user_id: str, release_keys: list[str], out_path: Path
 ) -> None:
@@ -189,30 +220,22 @@ def build_fixture(
             _copy_schema(src, dst, table)
 
         # GamePieceTypes is tiny and id-stable; copy it whole.
-        types = src.execute("SELECT * FROM GamePieceTypes").fetchall()
-        dst.executemany(
-            f"INSERT INTO GamePieceTypes VALUES ({','.join('?' * GamePieceTypes_COLS)})",
-            types,
-        )
+        _copy_table_rows(src, dst, "GamePieceTypes")
 
         placeholders = ",".join("?" * len(release_keys))
-        pieces = src.execute(
-            f"SELECT * FROM GamePieces WHERE releaseKey IN ({placeholders})",
+        _copy_table_rows(
+            src,
+            dst,
+            "GamePieces",
+            f"releaseKey IN ({placeholders})",
             release_keys,
-        ).fetchall()
-        dst.executemany(
-            f"INSERT INTO GamePieces VALUES ({','.join('?' * GamePieces_COLS)})",
-            pieces,
         )
-
-        purchases = src.execute(
-            f"SELECT * FROM ProductPurchaseDates WHERE gameReleaseKey IN ({placeholders})",
+        _copy_table_rows(
+            src,
+            dst,
+            "ProductPurchaseDates",
+            f"gameReleaseKey IN ({placeholders})",
             release_keys,
-        ).fetchall()
-        dst.executemany(
-            "INSERT INTO ProductPurchaseDates VALUES "
-            f"({','.join('?' * ProductPurchaseDates_COLS)})",
-            purchases,
         )
         dst.commit()
     finally:
@@ -296,7 +319,10 @@ def main() -> None:
         "--pair-overlap",
         type=int,
         default=DEFAULT_PAIR_OVERLAP,
-        help=f"Games shared by each unique pair of users (default {DEFAULT_PAIR_OVERLAP}).",
+        help=(
+            "Games shared by each unique pair of users "
+            f"(default {DEFAULT_PAIR_OVERLAP})."
+        ),
     )
     ap.add_argument(
         "--usernames",
