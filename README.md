@@ -138,6 +138,19 @@ In AWS, credentials are stored in Secrets Manager (see [deployment](#deployment)
 just check     # black + flake8 + mypy + pytest
 ```
 
+Host-side full checks include the CDK tests, so they need the `cdk` extra and a
+working `node` executable on your `PATH` (the `aws_cdk`/`jsii` runtime shells
+out to Node during test collection/synthesis):
+
+```bash
+uv sync --extra dev --extra cdk
+uv run pytest
+```
+
+If `pytest` fails while importing `aws_cdk` / `jsii` with a message like
+`FileNotFoundError: [WinError 2]`, your Python env is fine but `node.exe` is
+not on `PATH` for that shell.
+
 ## Deployment
 
 Infrastructure is managed with AWS CDK. See [`infrastructure/cdk/README.md`](infrastructure/cdk/README.md) for full instructions.
@@ -167,6 +180,15 @@ git clone https://github.com/eniklas/gamatrix
 cd gamatrix
 uv sync --extra dev          # creates .venv with the dev dependencies
 ```
+
+For the full host-side test suite, include the CDK extra as well:
+
+```bash
+uv sync --extra dev --extra cdk
+```
+
+And ensure `node` is on your shell `PATH`; the CDK tests use `aws_cdk`, which
+invokes Node via `jsii`.
 
 You don't need this just to run the app — that's fully containerized (see
 [Local development](#local-development)).

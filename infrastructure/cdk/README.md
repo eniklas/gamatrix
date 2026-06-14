@@ -8,6 +8,10 @@ AWS CDK (Python) stack for gamatrix v2.
 - Docker (the Lambdas are built as container images)
 - AWS credentials configured
 
+`aws_cdk` uses `jsii`, which launches `node` as a subprocess. If `node` is not
+on your shell `PATH`, CDK commands and the host-side CDK pytest coverage will
+fail early, often with a low-signal `FileNotFoundError` during import/synth.
+
 ## Install
 
 `cdk.json` runs the app with the project venv (`../../.venv/bin/python`), so the

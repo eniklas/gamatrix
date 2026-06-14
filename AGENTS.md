@@ -95,7 +95,9 @@ Notes:
   `dynamodb-data` volume from the previous `/data` layout), run `docker compose down -v`
   once to recreate the volume.
 - Host-side tooling (tests/linters) uses `uv sync --extra dev`; the README has light
-  [uv](README.md#uv) and [just](README.md#just) quickstarts.
+  [uv](README.md#uv) and [just](README.md#just) quickstarts. For the full host-side
+  pytest suite, also install the `cdk` extra and ensure `node` is on PATH, because
+  the CDK tests import `aws_cdk`/`jsii`, which shells out to Node.
 
 ## Architecture
 
