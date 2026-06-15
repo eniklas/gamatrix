@@ -107,10 +107,26 @@ def test_create_token_returns_secret_and_setup_snippet(repo):
         assert body["token"] in body["snippet"]
         assert "/upload/presign" not in body["snippet"]  # the script handles that
         assert "Set-Acl" in body["snippet"]
-        assert "upload-gamatrix.ps1" in body["snippet"]
+        assert "/auth/upload-gamatrix.ps1" in body["snippet"]
+        # A v2-specific task name, so it can't collide with a leftover v1 task.
+        assert "gamatrix v2 DB upload" in body["snippet"]
         # The new token shows up on the management page.
         listing = client.get("/auth/tokens/list")
         assert "laptop" in listing.text
+
+
+def test_uploader_scripts_point_at_the_configured_site(repo):
+    # The scripts ship with a placeholder host; serving them swaps in this
+    # deployment's real base URL so the download works without hand-editing.
+    from gamatrix.config import get_settings
+
+    base_url = get_settings().app_base_url.rstrip("/")
+    for client in _client(repo):
+        for name in ("upload-gamatrix.ps1", "upload-gamatrix.sh"):
+            resp = client.get(f"/auth/{name}")
+            assert resp.status_code == 200
+            assert "gamatrix.example.com" not in resp.text
+            assert base_url in resp.text
 
 
 def test_revoke_token_removes_it(repo):
