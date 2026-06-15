@@ -68,6 +68,23 @@
         htmx.ajax("GET", "/auth/tokens/list", { target: "#token-list" });
     }
 
+    // Last-used times are stored as UTC. Rewrite each one in the viewer's local
+    // time zone; toLocaleString() picks up the browser's locale and zone
+    // automatically. The list is fetched and re-fetched via HTMX, so run this
+    // after every swap into #token-list.
+    function localizeLastUsed() {
+        for (const el of document.querySelectorAll(".token-last-used[data-last-used]")) {
+            const iso = el.dataset.lastUsed;
+            if (!iso) { continue; }
+            const when = new Date(iso);
+            if (isNaN(when)) { continue; }
+            el.textContent = when.toLocaleString();
+        }
+    }
+    document.body.addEventListener("htmx:afterSwap", (event) => {
+        if (event.target.id === "token-list") { localizeLastUsed(); }
+    });
+
     async function copy(text, button) {
         try {
             await navigator.clipboard.writeText(text);
