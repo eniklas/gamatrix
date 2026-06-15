@@ -11,10 +11,14 @@ Gamatrix is a Python web application that compares game libraries across multipl
 Prefer the root `just` recipes when they match the task:
 
 ```bash
-uv sync --extra dev          # install dev dependencies into the local uv-managed env
+uv sync --extra dev --extra cdk   # host-side checks/tooling (CDK tests need the extra)
 just dev                     # run the FastAPI app locally with reload
+just env                     # create .env from .env-sample (then fill IGDB creds)
 just up                      # start the full local stack with Docker Compose
-just init-local              # create local tables/bucket and seed users
+just gen-fixtures db=<path>  # generate sample fixtures from YOUR GOG Galaxy DB (not committed)
+just init-local              # create local tables/bucket and seed config/users
+just seed-local              # seed the generated test users + sample game libraries
+just bootstrap db=<path>     # one-shot: gen-fixtures + init-local + seed-local
 just worker                  # run the local background enrichment worker
 
 just check                   # CI-equivalent checks: lint + typecheck + test
@@ -30,6 +34,26 @@ just deploy                  # deploy CDK infrastructure
 
 just set-igdb-secret <client_id> <client_secret> # Store IGDB API credentials in Secrets Manager (post-deploy)
 ```
+
+## Local development with sample data
+
+README is the canonical setup doc for local development, sample-data generation,
+host-side tooling, and troubleshooting:
+
+- [README local development](README.md#local-development)
+- [README running checks](README.md#running-checks)
+- [CDK README](infrastructure/cdk/README.md) for deploy-specific prerequisites
+
+Agent-specific reminders:
+
+- Sample fixtures are derived from the developer's own GOG Galaxy DB and remain
+  git-ignored under `scripts/sample_data/`.
+- `seed-local` intentionally hard-resets existing local users so regenerated
+  sample data replaces the prior local state cleanly.
+- `bootstrap` uses `init_local.py --skip-default-users` so the generated sample
+  users are the only seeded user set on that path.
+- For host-side pytest coverage, install the `cdk` extra and ensure `node` is on
+  PATH; the CDK tests import `aws_cdk`/`jsii`, which shells out to Node.
 
 ## Architecture
 

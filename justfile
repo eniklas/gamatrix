@@ -13,6 +13,23 @@ default:
 install:
   uv sync --extra dev
 
+# Create a local .env from .env-sample (idempotent). Fill in IGDB creds after.
+env:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  if [[ -f .env ]]; then
+    echo ".env already exists; leaving it untouched."
+    exit 0
+  fi
+  cp .env-sample .env
+  if command -v openssl >/dev/null 2>&1; then
+    secret="$(openssl rand -base64 48 | tr -d '\n/+=')"
+    tmp="$(mktemp)"
+    sed "s|^JWT_SECRET=.*|JWT_SECRET=${secret}|" .env > "$tmp" && mv "$tmp" .env
+    echo "Generated a random JWT_SECRET."
+  fi
+  echo "Created .env. Now set IGDB_CLIENT_ID and IGDB_CLIENT_SECRET in it."
+
 # Bring up the local dev stack (app, DynamoDB, minio, mailhog)
 up:
   docker compose up --build
@@ -24,6 +41,37 @@ down:
 # Create DynamoDB tables and S3 bucket locally, then seed test users
 init-local:
   docker compose run --rm app python scripts/init_local.py
+
+# Create DynamoDB tables and S3 bucket locally without seeding default users
+init-local-empty:
+  docker compose run --rm app python scripts/init_local.py --skip-default-users
+
+# Seed 3 test users with sample game libraries (generated fixtures)
+seed-local:
+  docker compose run --rm app python scripts/seed_sample_data.py --hard-reset-existing-users
+
+# One-shot: generate fixtures from your GOG DB, create tables/bucket, then seed.
+#   just bootstrap db="C:/path/to/galaxy-2.0.db"
+bootstrap db: (gen-fixtures db) init-local-empty seed-local
+
+# Generate the sample fixtures from YOUR local GOG Galaxy DB (not committed).
+# `db` is the absolute path to your galaxy-2.0.db (use forward slashes on
+# Windows). The single file is mounted into the container; MSYS_NO_PATHCONV
+# stops Git Bash from rewriting the container-side path. Tune the data shape
+# with the optional args, e.g.:
+#   just gen-fixtures db="C:/path/to/galaxy-2.0.db" users="4" games="25"
+gen-fixtures db users="" games="" common="" pair="" usernames="":
+  #!/usr/bin/env bash
+  set -euo pipefail
+  args=(--source /data/source.db --output scripts/sample_data)
+  [[ -n "{{users}}" ]] && args+=(--num-users {{users}})
+  [[ -n "{{games}}" ]] && args+=(--games-per-user {{games}})
+  [[ -n "{{common}}" ]] && args+=(--common {{common}})
+  [[ -n "{{pair}}" ]] && args+=(--pair-overlap {{pair}})
+  [[ -n "{{usernames}}" ]] && args+=(--usernames "{{usernames}}")
+  MSYS_NO_PATHCONV=1 docker compose run --rm \
+    -v "{{db}}:/data/source.db:ro" app \
+    python scripts/sample_data/generate_fixtures.py "${args[@]}"
 
 # Run the local background job worker (stands in for the enricher Lambda)
 worker:

@@ -152,3 +152,8 @@ cdk.out/
 infrastructure/cdk/cdk.out/
 
 tmp/
+
+# Locally generated sample-data fixtures (regenerate with `just gen-fixtures`).
+# The generator script is committed; its binary outputs are not.
+scripts/sample_data/*.db
+scripts/sample_data/seed_manifest.json
