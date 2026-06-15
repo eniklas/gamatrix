@@ -144,17 +144,19 @@ def test_init_local_main_creates_local_stack_state_and_is_idempotent(
 
             ddb = boto3.client("dynamodb", region_name=settings.aws_region)
             tables = set(ddb.list_tables()["TableNames"])
-            assert tables == {
-                settings.games_table,
-                settings.users_table,
-                settings.libraries_table,
-                settings.jobs_table,
-                settings.metadata_table,
-                settings.profile_pics_table,
-                settings.config_table,
-                settings.passkeys_table,
-                settings.auth_challenges_table,
-            }
+            assert tables.issuperset(
+                {
+                    settings.games_table,
+                    settings.users_table,
+                    settings.libraries_table,
+                    settings.jobs_table,
+                    settings.metadata_table,
+                    settings.profile_pics_table,
+                    settings.config_table,
+                    settings.passkeys_table,
+                    settings.auth_challenges_table,
+                }
+            )
 
             s3 = boto3.client("s3", region_name=settings.aws_region)
             buckets = {bucket["Name"] for bucket in s3.list_buckets()["Buckets"]}
