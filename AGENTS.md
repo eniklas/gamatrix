@@ -50,6 +50,8 @@ Agent-specific reminders:
   git-ignored under `scripts/sample_data/`.
 - `seed-local` intentionally hard-resets existing local users so regenerated
   sample data replaces the prior local state cleanly.
+- `bootstrap` uses `init_local.py --skip-default-users` so the generated sample
+  users are the only seeded user set on that path.
 - For host-side pytest coverage, install the `cdk` extra and ensure `node` is on
   PATH; the CDK tests import `aws_cdk`/`jsii`, which shells out to Node.
 

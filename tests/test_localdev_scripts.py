@@ -131,6 +131,7 @@ def test_init_local_main_creates_local_stack_state_and_is_idempotent(
     settings = _local_settings("localdev")
     monkeypatch.setenv("GAMATRIX_CONFIG_DIR", str(config_dir))
     monkeypatch.setattr(init_local, "get_settings", lambda: settings)
+    monkeypatch.setattr(sys, "argv", ["init_local.py"])
 
     with mock_aws():
         import gamatrix.storage.dynamo as dynamo
@@ -165,6 +166,44 @@ def test_init_local_main_creates_local_stack_state_and_is_idempotent(
 
             users = repo.scan_users()
             assert [user["email"] for user in users] == ["local1@example.com"]
+        finally:
+            dynamo._repo = original_repo
+
+
+def test_init_local_main_can_skip_default_user_seeding(monkeypatch, tmp_path):
+    init_local = _load_script(monkeypatch, "init_local")
+    config_dir = tmp_path / "configs"
+    config_dir.mkdir()
+    (config_dir / "seed_users.json").write_text(
+        json.dumps(
+            [
+                {
+                    "email": "local1@example.com",
+                    "username": "local1",
+                    "user_id": "1001",
+                    "admin": True,
+                }
+            ]
+        )
+    )
+
+    settings = _local_settings("localdev-skip-users")
+    monkeypatch.setenv("GAMATRIX_CONFIG_DIR", str(config_dir))
+    monkeypatch.setattr(init_local, "get_settings", lambda: settings)
+    monkeypatch.setattr(sys, "argv", ["init_local.py", "--skip-default-users"])
+
+    with mock_aws():
+        import gamatrix.storage.dynamo as dynamo
+
+        original_repo = dynamo._repo
+        dynamo._repo = Repository(settings=settings)
+        try:
+            init_local.main()
+
+            repo = dynamo._repo
+            assert repo.get_config("hidden") == []
+            assert repo.get_config("single_player") == []
+            assert repo.scan_users() == []
         finally:
             dynamo._repo = original_repo
 

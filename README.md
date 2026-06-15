@@ -66,6 +66,10 @@ libraries. The bundled worker then enriches the games from IGDB automatically. O
 http://localhost:8088 and log in as `user1@example.com` / `changeme` (the first user is the
 admin). Password-reset emails are captured by mailhog at http://localhost:8025.
 
+`bootstrap` intentionally skips `init-local`'s default-user seed and goes
+straight to the generated sample users, so the bootstrap path and the manual
+`gen-fixtures` + `seed-local` path stay aligned.
+
 The sample-data shape is configurable — more users, more games, different overlaps:
 
 ```bash
@@ -88,7 +92,7 @@ Without `just`, run the underlying commands directly (use forward slashes; the p
 docker compose up -d
 docker compose run --rm -v "C:/path/to/galaxy-2.0.db:/data/source.db:ro" app \
   python scripts/sample_data/generate_fixtures.py --source /data/source.db --output scripts/sample_data
-docker compose run --rm app python scripts/init_local.py
+docker compose run --rm app python scripts/init_local.py --skip-default-users
 docker compose run --rm app python scripts/seed_sample_data.py
 ```
 

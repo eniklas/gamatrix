@@ -5,11 +5,14 @@ Run once after starting the local stack:
 
     just init-local      # or: python scripts/init_local.py
 
-Idempotent: existing tables/buckets are left alone.
+Idempotent: existing tables/buckets are left alone. Pass
+``--skip-default-users`` when another step (for example sample-data seeding)
+will replace the user set immediately afterward.
 """
 
 from __future__ import annotations
 
+import argparse
 import logging
 
 import boto3
@@ -138,7 +141,21 @@ def create_bucket(settings) -> None:
         log.info("Created bucket %s", settings.upload_bucket)
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse CLI flags for local environment initialization."""
+    parser = argparse.ArgumentParser(
+        description="Create local tables/bucket and optionally seed default users."
+    )
+    parser.add_argument(
+        "--skip-default-users",
+        action="store_true",
+        help="Initialize local infrastructure and config, but do not seed users.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     settings = get_settings()
     create_tables(settings)
     create_bucket(settings)
@@ -151,6 +168,11 @@ def main() -> None:
         repo.put_config("hidden", [])
     if repo.get_config("single_player") is None:
         repo.put_config("single_player", [])
+
+    if args.skip_default_users:
+        log.info("Skipped default user seeding.")
+        log.info("Local environment ready.")
+        return
 
     from seed_users import seed_default_users
 

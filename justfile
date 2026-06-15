@@ -42,13 +42,17 @@ down:
 init-local:
   docker compose run --rm app python scripts/init_local.py
 
+# Create DynamoDB tables and S3 bucket locally without seeding default users
+init-local-empty:
+  docker compose run --rm app python scripts/init_local.py --skip-default-users
+
 # Seed 3 test users with sample game libraries (generated fixtures)
 seed-local:
   docker compose run --rm app python scripts/seed_sample_data.py --hard-reset-existing-users
 
 # One-shot: generate fixtures from your GOG DB, create tables/bucket, then seed.
 #   just bootstrap db="C:/path/to/galaxy-2.0.db"
-bootstrap db: (gen-fixtures db) init-local seed-local
+bootstrap db: (gen-fixtures db) init-local-empty seed-local
 
 # Generate the sample fixtures from YOUR local GOG Galaxy DB (not committed).
 # `db` is the absolute path to your galaxy-2.0.db (use forward slashes on
