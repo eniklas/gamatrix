@@ -5,7 +5,11 @@
         <strong>{{ t.name }}</strong>
         <span class="muted">
             {% if t.created_at %}added {{ t.created_at[:10] }}{% endif %}
-            {% if t.last_used_at %}· last used {{ t.last_used_at[:10] }}{% else %}· never used{% endif %}
+            {# Server stores last_used_at as UTC; the text here is a no-JS
+               fallback that the script in tokens.html.jinja rewrites in the
+               viewer's local time. #}
+            {% if t.last_used_at %}· last used <span class="token-last-used"
+                  data-last-used="{{ t.last_used_at }}">{{ t.last_used_at[:10] }}</span>{% else %}· never used{% endif %}
         </span>
         <button type="button" class="secondary delete-token"
                 data-token-id="{{ t.token_id }}">Revoke</button>
