@@ -113,6 +113,21 @@ def test_create_token_returns_secret_and_setup_snippet(repo):
         assert "laptop" in listing.text
 
 
+def test_token_list_exposes_last_used_for_client_localization(repo):
+    # The server can't know the viewer's time zone, so it renders the raw UTC
+    # timestamp into a data attribute the browser localizes (mirrors the DB
+    # upload time). A used token carries that attribute; an unused one doesn't.
+    _seed_user(repo)
+    token = tokens.create_api_token(repo, "user@example.com", "laptop")
+    for client in _client(repo):
+        _login(client)
+        assert "data-last-used" not in client.get("/auth/tokens/list").text
+        tokens.resolve_token(repo, token)
+        stored = repo.list_api_tokens("user@example.com")[0]["last_used_at"]
+        listing = client.get("/auth/tokens/list").text
+        assert f'data-last-used="{stored}"' in listing
+
+
 def test_revoke_token_removes_it(repo):
     _seed_user(repo)
     token = tokens.create_api_token(repo, "user@example.com", "laptop")
