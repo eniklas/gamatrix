@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
 from pydantic import BaseModel
 
 from gamatrix.auth import passkeys, service, tokens
@@ -218,16 +225,40 @@ def _token_setup_snippet(token: str) -> str:
         "$acl.SetAccessRule($rule)\n"
         "Set-Acl -Path $tokenPath -AclObject $acl\n\n"
         "# 2) Download the uploader script.\n"
-        f'Invoke-WebRequest "{base_url}/static/upload-gamatrix.ps1" '
+        f'Invoke-WebRequest "{base_url}/auth/upload-gamatrix.ps1" '
         '-OutFile "$dir\\upload-gamatrix.ps1"\n\n'
         "# 3) Schedule a daily upload at 5am (adjust the time as you like).\n"
         "$action = New-ScheduledTaskAction -Execute powershell.exe -Argument "
         f'"-ExecutionPolicy Bypass -File `"$dir\\upload-gamatrix.ps1`" '
         f'-BaseUrl {base_url}"\n'
         "$trigger = New-ScheduledTaskTrigger -Daily -At 5am\n"
-        "Register-ScheduledTask -TaskName 'Gamatrix DB upload' -Action $action "
-        "-Trigger $trigger\n"
+        # A v2-specific task name so it doesn't collide with a leftover v1 task.
+        "Register-ScheduledTask -TaskName 'gamatrix v2 DB upload' "
+        "-Action $action -Trigger $trigger\n"
     )
+
+
+# The uploader scripts ship with a generic placeholder host; we swap it for this
+# deployment's real base URL when serving so the copy a user downloads points at
+# the right site out of the box (rather than the example in the source).
+_STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+_PLACEHOLDER_BASE_URL = "https://gamatrix.example.com"
+
+
+def _personalized_uploader(filename: str) -> str:
+    base_url = get_settings().app_base_url.rstrip("/")
+    text = (_STATIC_DIR / filename).read_text(encoding="utf-8")
+    return text.replace(_PLACEHOLDER_BASE_URL, base_url)
+
+
+@router.get("/upload-gamatrix.ps1", response_class=PlainTextResponse)
+def uploader_script_ps1() -> str:
+    return _personalized_uploader("upload-gamatrix.ps1")
+
+
+@router.get("/upload-gamatrix.sh", response_class=PlainTextResponse)
+def uploader_script_sh() -> str:
+    return _personalized_uploader("upload-gamatrix.sh")
 
 
 @router.get("/tokens", response_class=HTMLResponse)
