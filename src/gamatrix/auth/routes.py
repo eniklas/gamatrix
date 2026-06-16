@@ -19,7 +19,7 @@ from gamatrix.auth.service import COOKIE_NAME
 from gamatrix.config import get_settings
 from gamatrix.constants import API_TOKEN_NAME_MAX_LENGTH
 from gamatrix.storage.dynamo import Repository
-from gamatrix.templating import templates
+from gamatrix.templating import authenticated_template, templates
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -105,7 +105,7 @@ def passkey_management(
     user: dict = Depends(current_user),
     repo: Repository = Depends(get_repo),
 ):
-    return templates.TemplateResponse(
+    return authenticated_template(
         request,
         "passkeys.html.jinja",
         {"user": user, "passkeys": _passkey_credentials(user, repo)},
@@ -118,10 +118,10 @@ def list_passkeys(
     user: dict = Depends(current_user),
     repo: Repository = Depends(get_repo),
 ):
-    return templates.TemplateResponse(
+    return authenticated_template(
         request,
         "passkeys_list.html.jinja",
-        {"passkeys": _passkey_credentials(user, repo)},
+        {"user": user, "passkeys": _passkey_credentials(user, repo)},
     )
 
 

@@ -1,0 +1,98 @@
+{% extends "base.html.jinja" %}
+{% block title %}gamatrix{% endblock %}
+{% block body %}
+<div class="topbar">
+    <h2>gamatrix</h2>
+    <div class="right">
+        <span class="muted">{{ user.email }}</span>
+        <a href="/upload">Upload DB</a>
+        <a href="/preferences">Preferences</a>
+        <form method="post" action="/auth/logout" style="display:inline;">
+            <button class="secondary" type="submit">Sign out</button>
+        </form>
+    </div>
+</div>
+
+<form id="filters"
+      hx-get="/games/table"
+      hx-target="#games-container"
+      hx-trigger="change"
+      hx-include="#filters"
+      class="filters">
+
+    {# Marks requests as coming from the filter form so the server treats an
+       unchecked checkbox as "off" rather than falling back to a saved pref. #}
+    <input type="hidden" name="filters_active" value="1">
+
+    <fieldset class="filter-group">
+        <legend>Users</legend>
+        {% for uid, u in users.items() %}
+        <label title="DB updated: {{ u.get('db_updated_at', 'never') }}">
+            <input type="checkbox" name="user" value="{{ uid }}"
+                   {% if uid in opts.selected_user_ids %}checked{% endif %}>
+            {% set pu = pic_url(u) %}
+            {% if pu %}<img src="{{ pu }}" width="18" height="18">{% endif %}
+            {{ u.username }}
+        </label>
+        {% endfor %}
+    </fieldset>
+
+    <fieldset class="filter-group">
+        <legend>View</legend>
+        <label><input type="radio" name="view" value="list"
+            {% if not is_grid %}checked{% endif %}> Game list</label>
+        <label><input type="radio" name="view" value="grid"
+            {% if is_grid %}checked{% endif %}> Game grid</label>
+    </fieldset>
+
+    <fieldset class="filter-group">
+        <legend>Options</legend>
+        <label><input type="checkbox" name="single_player" value="true"
+            {% if opts.include_single_player %}checked{% endif %}> Include single-player</label>
+        <label><input type="checkbox" name="installed_only" value="true"
+            {% if opts.installed_only %}checked{% endif %}> Installed only</label>
+        <label><input type="checkbox" name="exclusive" value="true"
+            {% if opts.exclusive %}checked{% endif %}> Exclusively owned</label>
+        <label><input type="checkbox" name="randomize" value="true"
+            {% if opts.randomize %}checked{% endif %}> Pick a random game</label>
+        <label><input type="checkbox" name="show_keys" value="true"
+            {% if opts.show_keys %}checked{% endif %}> Show product keys</label>
+    </fieldset>
+
+    <fieldset class="filter-group">
+        <legend>Exclude platforms</legend>
+        <div class="platform-grid">
+            {% for p in platforms %}
+            <label><input type="checkbox" name="exclude" value="{{ p }}"
+                {% if p in opts.exclude_platforms %}checked{% endif %}>
+                <img src="/static/{{ p }}.png" width="18" height="18"> {{ p|capitalize }}</label>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <fieldset class="filter-group">
+        <legend>&nbsp;</legend>
+        <button type="button"
+                hx-post="/preferences"
+                hx-include="#filters"
+                hx-swap="none">Save as defaults</button>
+        {% if user.is_admin %}
+        <button type="button" class="secondary"
+                hx-post="/games/refresh-igdb"
+                hx-target="#job-status">Refresh missing IGDB</button>
+        <button type="button" class="secondary"
+                hx-post="/games/refresh-igdb-all"
+                hx-target="#job-status"
+                hx-confirm="Re-fetch IGDB data for ALL games?">Refresh all IGDB</button>
+        {% endif %}
+    </fieldset>
+</form>
+
+<div id="job-status">
+    {% if job_id %}{% include "job_status.html.jinja" %}{% endif %}
+</div>
+
+<div id="games-container">
+    {% include "games_table.html.jinja" %}
+</div>
+{% endblock %}

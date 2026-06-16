@@ -9,11 +9,11 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from gamatrix.auth.dependencies import current_user, current_user_api, get_repo
 from gamatrix.constants import DISPLAY_NAME_MAX_LENGTH, PROFILE_PIC_MAX_UPLOAD_SIZE
-from gamatrix.games.preferences import merge_preferences
+from gamatrix.games.preferences import DISPLAY_MODES, merge_preferences
 from gamatrix.helpers import pic_url
 from gamatrix.images import process_profile_pic
 from gamatrix.storage.dynamo import Repository
-from gamatrix.templating import templates
+from gamatrix.templating import authenticated_template
 
 router = APIRouter(tags=["preferences"])
 
@@ -41,7 +41,7 @@ def preferences_form(
     repo: Repository = Depends(get_repo),
 ):
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
-    return templates.TemplateResponse(
+    return authenticated_template(
         request,
         "preferences.html.jinja",
         {
@@ -68,6 +68,14 @@ async def save_preferences(
         return source.get(name) in ("true", "on", "1")
 
     selected = form.getlist("user") or qp.getlist("user")
+    current = merge_preferences(user.get("preferences", {}))
+    requested_mode = form.get("display_mode")
+    if requested_mode == "system":
+        display_mode = None
+    elif requested_mode in DISPLAY_MODES:
+        display_mode = requested_mode
+    else:
+        display_mode = current["display_mode"]
     prefs = {
         "include_single_player": flag("single_player"),
         "installed_only": flag("installed_only"),
@@ -76,6 +84,7 @@ async def save_preferences(
         "exclude_platforms": form.getlist("exclude") or qp.getlist("exclude"),
         "default_view": form.get("view", qp.get("view", "list")),
         "selected_users": selected if selected else "all",
+        "display_mode": display_mode,
     }
     repo.update_user(user["email"], {"preferences": prefs})
     return Response(status_code=204)

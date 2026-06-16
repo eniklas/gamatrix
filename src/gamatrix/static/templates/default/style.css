@@ -1,0 +1,195 @@
+/* gamatrix v2 — dark theme carried over from v1 */
+:root {
+  --bg: rgb(50, 50, 50);
+  --fg: lightgray;
+  --accent: rgb(124, 207, 228);
+  --row-a: rgb(180, 227, 239);
+  --row-b: rgb(201, 235, 243);
+  --row-text: #102027;
+  --owned: rgb(182, 215, 168);
+  --unowned: rgb(234, 153, 153);
+}
+
+/* The default UX intentionally renders every mode exactly like the original. */
+:root,
+body[data-mode="light"],
+body[data-mode="dark"],
+body[data-mode="high-contrast"],
+body[data-mode="color-blind"] {
+  --bg: rgb(50, 50, 50);
+  --fg: lightgray;
+  --accent: rgb(124, 207, 228);
+  --row-a: rgb(180, 227, 239);
+  --row-b: rgb(201, 235, 243);
+  --row-text: #102027;
+  --owned: rgb(182, 215, 168);
+  --unowned: rgb(234, 153, 153);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: sans-serif;
+  margin: 0;
+  padding: 1rem 1.5rem;
+}
+
+a { color: var(--accent); }
+a:visited { color: lightseagreen; }
+
+h1, h2 { font-weight: 600; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #666;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+.topbar .right { display: flex; gap: 1rem; align-items: center; }
+
+/* Filter bar */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+.filters fieldset { border: none; margin: 0; padding: 0; }
+.filters legend { font-weight: 600; margin-bottom: 0.25rem; }
+.filters label { display: inline-flex; align-items: center; gap: 4px; }
+.filter-group { display: flex; flex-direction: column; gap: 2px; }
+.platform-grid { display: grid; grid-template-columns: repeat(2, auto); gap: 2px 12px; }
+
+button, .btn {
+  background: var(--accent);
+  color: var(--row-text);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+button:hover, .btn:hover { filter: brightness(1.1); }
+button.secondary { background: #777; color: white; }
+
+/* Results table */
+table.results {
+  /* Firefox can't position:sticky a cell inside a border-collapse:collapse
+     table (bugzilla 1488080), so use separate borders and rebuild the 1px grid
+     from one-sided cell borders. The header below then keeps its own borders
+     when pinned, which collapse would have dropped. */
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  border-left: 1px solid black;
+}
+table.results th, table.results td {
+  border-right: 1px solid black;
+  border-bottom: 1px solid black;
+  padding: 4px 8px;
+  color: var(--row-text);
+}
+table.results caption { color: var(--fg); text-align: left; margin-bottom: 0.5rem; }
+table.results thead th {
+  background-color: var(--accent);
+  cursor: pointer;
+  user-select: none;
+  border-top: 1px solid black;
+  /* Keep the heading row visible while scrolling the results. The page itself
+     scrolls (the topbar isn't fixed), so stick to the viewport top. */
+  position: sticky;
+  top: 0;
+  /* Paint above the colored owned/unowned cells that scroll underneath. */
+  z-index: 2;
+}
+table.results thead th:hover { filter: brightness(1.05); }
+table.results tbody tr:nth-child(odd) { background-color: var(--row-a); }
+table.results tbody tr:nth-child(even) { background-color: var(--row-b); }
+table.results tr.subthreshold td { color: grey; }
+/* Grid view: per-user ownership cells (green = owned, red = not owned), v1 scheme. */
+table.results td.owned { background-color: var(--owned); }
+table.results td.unowned { background-color: var(--unowned); }
+.platform-icons { float: right; white-space: nowrap; }
+.platform-icons img { vertical-align: middle; }
+.sort-arrow { font-size: 0.8em; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Job progress */
+.job-progress {
+  background: rgba(124, 207, 228, 0.15);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+.bar { background: #333; border-radius: 4px; height: 10px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); }
+
+/* Auth forms */
+.card {
+  max-width: 360px;
+  margin: 3rem auto;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+.card h2 { margin-top: 0; }
+.card input[type=email], .card input[type=password], .card input[type=text] {
+  width: 100%;
+  padding: 8px;
+  margin: 6px 0 12px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1px solid #888;
+}
+.card.wide { max-width: 720px; margin: 1rem auto; }
+.separator { color: #aaa; text-align: center; }
+.passkey-list, .token-list { list-style: none; padding: 0; }
+.passkey-list li, .token-list li {
+  display: flex; gap: 1rem; align-items: center; margin: 0.75rem 0;
+}
+.passkey-list li .muted, .token-list li .muted { flex: 1; }
+.token-box {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: #1b1b1b;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 0.75rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #888;
+  border-radius: 50%;
+  color: #bbb;
+  cursor: help;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+.help-icon:focus { outline: 1px solid var(--accent); outline-offset: 2px; }
+.error { color: #ff8a80; }
+.muted { color: #aaa; font-size: 0.9rem; }

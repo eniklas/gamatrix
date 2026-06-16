@@ -1,0 +1,95 @@
+{# Renders the results table. Swapped in by HTMX on filter/sort changes. #}
+{% macro sort_header(label, col) %}
+    {% set next_dir = 'desc' if (opts.sort == col and opts.direction == 'asc') else 'asc' %}
+    <th hx-get="/games/table?sort={{ col }}&dir={{ next_dir }}"
+        hx-include="#filters"
+        hx-target="#games-container">
+        {{ label }}
+        {% if opts.sort == col %}
+        <span class="sort-arrow">{{ '▲' if opts.direction == 'asc' else '▼' }}</span>
+        {% endif %}
+    </th>
+{% endmacro %}
+
+{% set selected = opts.selected_user_ids %}
+<table class="results">
+    <caption>{{ caption }}</caption>
+    <thead>
+        <tr>
+            {{ sort_header('Title', 'title') }}
+            {% if is_grid %}
+                {% for uid in selected %}
+                {% if uid in users %}
+                <th title="{{ users[uid].username }}">
+                    {% set pu = pic_url(users[uid]) %}
+                    {% if pu %}
+                    <img src="{{ pu }}" width="20" height="20">
+                    {% else %}{{ users[uid].username }}{% endif %}
+                </th>
+                {% endif %}
+                {% endfor %}
+            {% endif %}
+            {{ sort_header('Players', 'players') }}
+            {{ sort_header('Rating', 'rating') }}
+            {% if not is_grid %}
+                {{ sort_header('Installed', 'installed') }}
+            {% endif %}
+            <th>Comment</th>
+            {% if opts.show_keys %}<th>Release Key</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for game in games %}
+        {% set mp = game.max_players|default(0)|int %}
+        <tr class="{{ 'subthreshold' if (mp > 0 and mp < selected|length) else '' }}">
+            <td>
+                {% if game.url %}<a href="{{ game.url }}">{{ game.title }}</a>
+                {% else %}{{ game.title }}{% endif %}
+                <span class="platform-icons">
+                    {% for p in game.platforms %}
+                    {% if p in platforms %}
+                    <img src="/static/{{ p }}.png" width="20" height="20" title="{{ p }}">
+                    {% else %}
+                    <img src="/static/profile_img/question_block.jpg" width="20" height="20" title="{{ p }}">
+                    {% endif %}
+                    {% endfor %}
+                </span>
+            </td>
+            {% if is_grid %}
+                {% for uid in selected %}
+                {% if uid in users %}
+                <td class="{{ 'owned' if uid in game.owners else 'unowned' }}" style="text-align:center;">
+                    <span class="visually-hidden">{{ 'Owned' if uid in game.owners else 'Not owned' }}</span>
+                    {% if uid in game.installed %}
+                        {% set pu = pic_url(users[uid]) %}
+                        {% if pu %}
+                        <img src="{{ pu }}" width="18" height="18" title="installed">
+                        {% else %}✓{% endif %}
+                    {% endif %}
+                </td>
+                {% endif %}
+                {% endfor %}
+            {% endif %}
+            <td>{% if mp > 0 %}{{ mp }}{% endif %}</td>
+            <td>{% if game.rating %}{{ game.rating }}{% endif %}</td>
+            {% if not is_grid %}
+            <td style="text-align:center;">
+                {% if selected|length == game.installed|length and game.installed %}
+                    <b>✓</b>
+                {% else %}
+                    {% for uid in game.installed if uid in users %}
+                    {% set pu = pic_url(users[uid]) %}
+                    {% if pu %}
+                    <img src="{{ pu }}" width="18" height="18" title="{{ users[uid].username }}">
+                    {% else %}{{ users[uid].username }}{% endif %}
+                    {% endfor %}
+                {% endif %}
+            </td>
+            {% endif %}
+            <td>{{ game.comment }}</td>
+            {% if opts.show_keys %}<td>{{ game.release_key }}</td>{% endif %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% if not games %}<p class="muted">No games match the current filters.</p>{% endif %}
