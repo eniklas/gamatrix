@@ -57,12 +57,17 @@ npx cdk deploy
 
 Domain and sender values are **not** stored in this public repo. They come from
 a private config file, by default `../gamatrix-configs/cdk-config.yaml`
-(override the directory with `GAMATRIX_CONFIG_DIR`):
+(override the directory with `GAMATRIX_CONFIG_DIR`).
+
+Set `ux_template: default` or `ux_template: modern` in that file to select the
+authenticated UX for the deployment. Users can change display mode, but cannot
+change the deployment-selected template:
 
 ```yaml
 hosted_zone: example.com          # existing Route 53 hosted zone
 site_domain: gamatrix.example.com # public hostname for the app
 email_from: noreply@example.com   # SES sender for password-reset email
+ux_template: modern               # default or modern authenticated UX
 
 # Optional: extra hostnames that should also resolve to the same app.
 # alias_hosted_zone must be a Route 53-managed zone; alias_domains must be

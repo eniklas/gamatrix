@@ -1,4 +1,4 @@
-"""Stable public and default authenticated Jinja environments."""
+"""Stable public and deployment-selected authenticated Jinja environments."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from starlette.background import BackgroundTask
 from starlette.responses import Response
 
 from gamatrix import __version__
+from gamatrix.config import get_settings
 from gamatrix.constants import PLATFORMS
 from gamatrix.games.preferences import merge_preferences
 from gamatrix.helpers import pic_url
@@ -26,6 +27,7 @@ AUTHENTICATED_TEMPLATE_NAMES = (
     "tokens_list.html.jinja",
     "upload.html.jinja",
 )
+UX_TEMPLATES = ("default", "modern")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
@@ -37,9 +39,16 @@ def _configure(environment: Jinja2Templates) -> Jinja2Templates:
 
 
 _configure(templates)
-authenticated_templates = _configure(
-    Jinja2Templates(directory=str(TEMPLATES_DIR / "default"))
-)
+
+
+def build_authenticated_templates(template_name: str) -> Jinja2Templates:
+    """Build an environment for a validated deployment-selected UX template."""
+    if template_name not in UX_TEMPLATES:
+        raise ValueError(f"Unknown UX template: {template_name}")
+    return _configure(Jinja2Templates(directory=str(TEMPLATES_DIR / template_name)))
+
+
+authenticated_templates = build_authenticated_templates(get_settings().ux_template)
 
 
 def authenticated_template(

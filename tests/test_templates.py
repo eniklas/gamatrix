@@ -5,13 +5,15 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from gamatrix.games.preferences import DISPLAY_MODES, merge_preferences
 from gamatrix.templating import (
     AUTHENTICATED_TEMPLATE_NAMES,
     TEMPLATES_DIR,
-    authenticated_templates,
+    UX_TEMPLATES,
+    build_authenticated_templates,
     templates,
 )
+from gamatrix.games.preferences import DISPLAY_MODES
+from gamatrix.games.preferences import merge_preferences
 
 
 def test_stylesheet_link_is_cache_busted():
@@ -21,28 +23,36 @@ def test_stylesheet_link_is_cache_busted():
     assert re.search(r'href="/static/style\.css\?v=[^"]+"', html)
 
 
-def test_default_authenticated_ux_has_the_complete_template_contract():
-    for name in AUTHENTICATED_TEMPLATE_NAMES:
-        authenticated_templates.env.get_template(name)
+def test_each_authenticated_ux_has_the_complete_template_contract():
+    for ux_template in UX_TEMPLATES:
+        environment = build_authenticated_templates(ux_template)
+        for name in AUTHENTICATED_TEMPLATE_NAMES:
+            environment.env.get_template(name)
 
 
-def test_default_authenticated_base_uses_cache_busted_stylesheet():
-    html = authenticated_templates.env.get_template("base.html.jinja").render()
-    assert "/static/templates/default/style.css?v=" in html
+def test_authenticated_bases_use_their_own_cache_busted_stylesheet():
+    for ux_template in UX_TEMPLATES:
+        environment = build_authenticated_templates(ux_template)
+        html = environment.env.get_template("base.html.jinja").render()
+        expected = f"/static/templates/{ux_template}/style.css?v="
+        assert expected in html
 
 
 def test_authenticated_templates_apply_only_valid_explicit_modes():
-    template = authenticated_templates.env.get_template("base.html.jinja")
+    environment = build_authenticated_templates("modern")
+    template = environment.env.get_template("base.html.jinja")
     assert 'data-mode="dark"' in template.render(display_mode="dark")
     assert "data-mode" not in template.render(display_mode=None)
 
 
-def test_default_stylesheet_defines_every_required_mode_and_stays_small():
-    path = Path(TEMPLATES_DIR.parent / "static" / "templates" / "default" / "style.css")
-    css = path.read_text()
-    assert path.stat().st_size < 20_000
-    for mode in DISPLAY_MODES:
-        assert f'data-mode="{mode}"' in css
+def test_each_stylesheet_defines_every_required_mode_and_stays_small():
+    static_root = TEMPLATES_DIR.parent / "static" / "templates"
+    for ux_template in UX_TEMPLATES:
+        path = Path(static_root / ux_template / "style.css")
+        css = path.read_text()
+        assert path.stat().st_size < 20_000
+        for mode in DISPLAY_MODES:
+            assert f'data-mode="{mode}"' in css
 
 
 def test_default_preferences_template_includes_apply_preview_controls():

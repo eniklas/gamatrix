@@ -74,6 +74,7 @@ def test_stack_creates_passkey_tables_ttl_gsi_and_rp_environment(monkeypatch):
                     {
                         "WEBAUTHN_RP_ID": "games.example.com",
                         "WEBAUTHN_ORIGINS": '["https://games.example.com"]',
+                        "UX_TEMPLATE": "default",
                     }
                 )
             }

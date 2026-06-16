@@ -1,0 +1,23 @@
+{# Enrichment progress. Polls itself every 3s; when done, reloads the table. #}
+{% if done %}
+    {# Job finished: pull in fresh data, then this element clears itself out. #}
+    <div hx-get="/games/table"
+         hx-include="#filters"
+         hx-target="#games-container"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+    </div>
+{% else %}
+    {% set total = job.total|default(1) %}
+    {# Clamp: progress should never exceed total, but guard the display in case
+       a job's count was inflated by a retry before it settled (see #131). #}
+    {% set done_count = [job.completed_count|default(0), total]|min %}
+    {% set pct = (done_count * 100 // total) if total else 0 %}
+    <div class="job-progress"
+         hx-get="/api/jobs/{{ job_id }}"
+         hx-trigger="every 3s"
+         hx-swap="outerHTML">
+        Updating game data from IGDB… {{ done_count }} / {{ total }}
+        <div class="bar"><span style="width: {{ pct }}%;"></span></div>
+    </div>
+{% endif %}

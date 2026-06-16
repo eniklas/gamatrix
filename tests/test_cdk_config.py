@@ -74,3 +74,26 @@ def test_load_deploy_config_requires_alias_hosted_zone(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="alias_hosted_zone"):
         config.load_deploy_config()
+
+
+def test_load_deploy_config_reads_ux_template(tmp_path, monkeypatch):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "cdk-config.yaml").write_text("ux_template: modern")
+    monkeypatch.setenv("GAMATRIX_CONFIG_DIR", str(config_dir))
+
+    config = _load_cdk_config_module()
+
+    assert config.load_deploy_config().ux_template == "modern"
+
+
+def test_load_deploy_config_rejects_unknown_ux_template(tmp_path, monkeypatch):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "cdk-config.yaml").write_text("ux_template: ../../outside")
+    monkeypatch.setenv("GAMATRIX_CONFIG_DIR", str(config_dir))
+
+    config = _load_cdk_config_module()
+
+    with pytest.raises(ValueError, match="ux_template"):
+        config.load_deploy_config()

@@ -1,0 +1,50 @@
+{% extends "base.html.jinja" %}
+{% block title %}gamatrix — passkeys{% endblock %}
+{% block body %}
+<div class="topbar">
+    <h2>Passkeys</h2>
+    <div class="right"><a href="/preferences">Back to preferences</a></div>
+</div>
+
+<div class="card wide">
+    <h3>Add a passkey</h3>
+    <p class="muted">Passkeys can use this device, a synced provider, a phone, or a compatible security key.</p>
+    <form id="passkey-register">
+        <label for="friendly_name">Passkey name</label>
+        <input type="text" id="friendly_name" name="friendly_name" maxlength="100"
+               value="Gamatrix passkey for {{ user.username }}" required>
+        <label for="current_password">Current password
+            <span class="help-icon" title="Required to verify your identity before adding a passkey"
+                  aria-label="Required to verify your identity before adding a passkey" tabindex="0">?</span>
+        </label>
+        <input type="password" id="current_password" name="password" required autocomplete="current-password">
+        <button type="submit">Add passkey</button>
+    </form>
+    <p id="passkey-waiting" class="muted" hidden>Waiting for passkey creation to complete...</p>
+    <p id="passkey-error" class="error" hidden></p>
+</div>
+
+<div class="card wide">
+    <h3>Registered passkeys</h3>
+    {% if passkeys %}
+    <ul class="passkey-list">
+        {% for passkey in passkeys %}
+        <li>
+            <strong>{{ passkey.friendly_name }}</strong>
+            <span class="muted">
+                {% if passkey.backup_eligible %}sync-capable{% else %}device-bound{% endif %}
+                {% if passkey.backed_up %}, backed up{% endif %}
+                {% if passkey.created_at %} - added {{ passkey.created_at[:10] }}{% endif %}
+            </span>
+            <button type="button" class="secondary delete-passkey"
+                    data-credential-id="{{ passkey.credential_id }}">Delete</button>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No passkeys registered.</p>
+    {% endif %}
+</div>
+<script src="/static/passkeys.js"></script>
+<script>window.gamatrixPasskeys.enableManagement();</script>
+{% endblock %}

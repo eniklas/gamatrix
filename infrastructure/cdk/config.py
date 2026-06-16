@@ -18,6 +18,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_DIR = PROJECT_ROOT.parent / "gamatrix-configs"
+UX_TEMPLATES = ("default", "modern")
 
 
 @dataclass
@@ -30,6 +31,7 @@ class DeployConfig:
     # is extended with SANs for all alias_domains so there are no cert warnings.
     alias_hosted_zone: str | None = None
     alias_domains: list[str] = field(default_factory=list)
+    ux_template: str = "default"
 
     @property
     def has_custom_domain(self) -> bool:
@@ -56,6 +58,9 @@ def load_deploy_config() -> DeployConfig:
     alias_hosted_zone = data.get("alias_hosted_zone")
     if alias_domains and not alias_hosted_zone:
         raise ValueError("alias_hosted_zone is required when alias_domains is set")
+    ux_template = data.get("ux_template", "default")
+    if ux_template not in UX_TEMPLATES:
+        raise ValueError(f"ux_template must be one of: {', '.join(UX_TEMPLATES)}")
 
     return DeployConfig(
         hosted_zone=data.get("hosted_zone"),
@@ -63,4 +68,5 @@ def load_deploy_config() -> DeployConfig:
         email_from=data.get("email_from"),
         alias_hosted_zone=alias_hosted_zone,
         alias_domains=alias_domains,
+        ux_template=ux_template,
     )

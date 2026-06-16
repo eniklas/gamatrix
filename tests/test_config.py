@@ -29,6 +29,22 @@ def test_local_dev_defaults_to_documented_local_base_url():
     assert s.app_base_url == "http://localhost:8088"
 
 
+def test_ux_template_defaults_to_default(monkeypatch):
+    monkeypatch.delenv("UX_TEMPLATE", raising=False)
+    s = Settings(
+        local_dev=True,
+        jwt_secret=DEFAULT_JWT_SECRET,
+        jwt_secret_name=None,
+        _env_file=None,
+    )
+    assert s.ux_template == "default"
+
+
+def test_unknown_ux_template_is_rejected():
+    with pytest.raises(ValueError, match="ux_template"):
+        Settings(local_dev=True, ux_template="unknown")
+
+
 def test_secret_name_satisfies_production_guard():
     s = Settings(
         local_dev=False,

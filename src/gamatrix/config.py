@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -70,6 +71,7 @@ class Settings(BaseSettings):
     # --- Behavior ---
     app_base_url: str = "http://localhost:8088"
     igdb_stale_days: int = 30
+    ux_template: Literal["default", "modern"] = "default"
 
     # SSM parameter names for the title filter lists (AWS only). Locally these
     # are seeded into DynamoDB config and read from there.
