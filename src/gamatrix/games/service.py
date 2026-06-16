@@ -100,7 +100,6 @@ class RefreshAdvice:
 
 def compare(repo: ComparisonRepository, query: ComparisonQuery) -> ComparisonDataset:
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
-
     selected = [str(u) for u in query.selected_user_ids if str(u) in users]
 
     # For exclusive mode we need to know who else owns each game.
