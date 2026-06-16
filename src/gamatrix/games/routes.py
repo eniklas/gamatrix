@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
+from fastapi.responses import JSONResponse
 
 from gamatrix.auth.dependencies import (
     current_user,
@@ -11,108 +12,41 @@ from gamatrix.auth.dependencies import (
     get_repo,
     require_admin,
 )
-from gamatrix.config import get_settings
 from gamatrix.constants import (
     ENRICHMENT_NOT_FOUND,
     ENRICHMENT_PENDING,
     JOB_COMPLETED,
     JOB_FAILED,
 )
-from gamatrix.games import service
+from gamatrix.games import api, service, web
 from gamatrix.games.preferences import merge_preferences
-from gamatrix.games.service import CompareOptions
-from gamatrix.helpers import parse_iso
+from gamatrix.games.web import WebCompareOptions
 from gamatrix.jobs import create_enrichment_job, is_job_stale
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import get_queue
 from gamatrix.templating import templates
-from datetime import datetime, timedelta, timezone
 
 router = APIRouter(tags=["games"])
 
 
-def _parse_options(request: Request, user: dict) -> CompareOptions:
-    """Build CompareOptions from saved preferences overlaid with query params."""
-    prefs = merge_preferences(user.get("preferences", {}))
-    qp = request.query_params
-
-    # When the filter form is submitted it includes a hidden `filters_active`
-    # marker. An off checkbox — or a list filter with everything deselected —
-    # sends no value, so without this marker we can't tell "user cleared it"
-    # from "not specified". When the form was submitted, an absent value means
-    # empty/off; on a bare page load, fall back to the saved preference.
-    form_submitted = "filters_active" in qp
-
-    def flag(name: str, default: bool) -> bool:
-        if name in qp:
-            return qp[name] in ("true", "on", "1")
-        return False if form_submitted else default
-
-    def multi(name: str, default: list[str]) -> list[str]:
-        values = qp.getlist(name)
-        if values or form_submitted:
-            return values
-        return default
-
-    # User selection: checked `user` boxes win. On a bare load fall back to the
-    # saved preference, expanding the "all" sentinel to every known user.
-    selected: list[str] = qp.getlist("user")
-    if not selected and not form_submitted:
-        pref_users = prefs["selected_users"]
-        if pref_users == "all":
-            selected = [
-                str(u["user_id"]) for u in get_repo().scan_users() if u.get("user_id")
-            ]
-        else:
-            selected = list(pref_users)
-
-    view = qp.get("view", prefs["default_view"])
-    return CompareOptions(
-        selected_user_ids=selected,
-        include_single_player=flag("single_player", prefs["include_single_player"]),
-        installed_only=flag("installed_only", prefs["installed_only"]),
-        exclude_platforms=multi("exclude", prefs["exclude_platforms"]),
-        exclusive=flag("exclusive", prefs["exclusive"]),
-        all_games=view == "grid",
-        randomize=flag("randomize", False),
-        show_keys=flag("show_keys", prefs["show_keys"]),
-        sort=qp.get("sort", "title"),
-        direction=qp.get("dir", "asc"),
-    )
+def _parse_options(
+    request: Request,
+    user: dict,
+    repo: Repository | None = None,
+) -> WebCompareOptions:
+    """Build web options from saved preferences overlaid with query params."""
+    return web.parse_options(request, user, repo or get_repo())
 
 
-def _maybe_enrich(repo: Repository, opts: CompareOptions) -> str | None:
+def _maybe_enrich(repo: Repository, opts: WebCompareOptions) -> str | None:
     """Find stale/pending games among the selected libraries and enqueue a job.
 
     If a job is already pending or running, return its id rather than
     creating a duplicate — each /games page load would otherwise queue a
     new batch of the same games, exhausting Lambda concurrency.
     """
-    active = repo.get_active_job()
-    if active:
-        return active["job_id"]
-
-    settings = get_settings()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.igdb_stale_days)
-
-    release_keys: set[str] = set()
-    for user_id in opts.selected_user_ids:
-        for entry in repo.get_user_library(user_id):
-            release_keys.add(entry["release_key"])
-
-    stale: list[str] = []
-    for rk, game in repo.batch_get_games(release_keys).items():
-        status = game.get("enrichment_status")
-        if status in (ENRICHMENT_PENDING, None):
-            stale.append(rk)
-            continue
-        enriched_at = game.get("enriched_at")
-        if enriched_at and parse_iso(enriched_at) < cutoff:
-            stale.append(rk)
-
-    if not stale:
-        return None
-    return create_enrichment_job(repo, get_queue(), stale)
+    advice = service.ensure_enrichment_job(repo, get_queue(), opts.to_query())
+    return advice.job_id
 
 
 @router.get("/games", response_class=HTMLResponse)
@@ -121,18 +55,18 @@ def games_page(
     user: dict = Depends(current_user),
     repo: Repository = Depends(get_repo),
 ):
-    opts = _parse_options(request, user)
+    opts = _parse_options(request, user, repo)
     job_id = _maybe_enrich(repo, opts)
-    result = service.compare(repo, opts)
-    caption = service.build_caption(repo, opts, result)
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
+    result = service.compare(repo, opts.to_query())
+    caption = web.build_caption(users, opts, result)
     return templates.TemplateResponse(
         request,
         "games.html.jinja",
         {
             "user": user,
             "users": users,
-            "games": result.games,
+            "games": web.present_games(result, opts),
             "caption": caption,
             "opts": opts,
             "prefs": merge_preferences(user.get("preferences", {})),
@@ -149,21 +83,34 @@ def games_table(
     user: dict = Depends(current_user_api),
     repo: Repository = Depends(get_repo),
 ):
-    opts = _parse_options(request, user)
-    result = service.compare(repo, opts)
-    caption = service.build_caption(repo, opts, result)
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
+    opts = _parse_options(request, user, repo)
+    result = service.compare(repo, opts.to_query())
+    caption = web.build_caption(users, opts, result)
     return templates.TemplateResponse(
         request,
         "games_table.html.jinja",
         {
             "users": users,
-            "games": result.games,
+            "games": web.present_games(result, opts),
             "caption": caption,
             "opts": opts,
             "is_grid": opts.all_games,
         },
     )
+
+
+@router.get("/api/games")
+def games_api(
+    request: Request,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    """Return the comparison dataset as JSON for headless consumers."""
+    opts = _parse_options(request, user, repo)
+    query = opts.to_query()
+    result = service.compare(repo, query)
+    return JSONResponse(api.serialize_comparison(query, result))
 
 
 @router.get("/api/jobs/{job_id}", response_class=HTMLResponse)
