@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from gamatrix.auth.dependencies import (
     current_user,
@@ -29,15 +28,6 @@ from gamatrix.templating import templates
 router = APIRouter(tags=["games"])
 
 
-def _parse_options(
-    request: Request,
-    user: dict,
-    repo: Repository | None = None,
-) -> WebCompareOptions:
-    """Build web options from saved preferences overlaid with query params."""
-    return web.parse_options(request, user, repo or get_repo())
-
-
 def _maybe_enrich(repo: Repository, opts: WebCompareOptions) -> str | None:
     """Find stale/pending games among the selected libraries and enqueue a job.
 
@@ -55,7 +45,7 @@ def games_page(
     user: dict = Depends(current_user),
     repo: Repository = Depends(get_repo),
 ):
-    opts = _parse_options(request, user, repo)
+    opts = web.parse_options(request, user, repo)
     job_id = _maybe_enrich(repo, opts)
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
     result = service.compare(repo, opts.to_query())
@@ -84,7 +74,7 @@ def games_table(
     repo: Repository = Depends(get_repo),
 ):
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
-    opts = _parse_options(request, user, repo)
+    opts = web.parse_options(request, user, repo)
     result = service.compare(repo, opts.to_query())
     caption = web.build_caption(users, opts, result)
     return templates.TemplateResponse(
@@ -107,7 +97,7 @@ def games_api(
     repo: Repository = Depends(get_repo),
 ):
     """Return the comparison dataset as JSON for headless consumers."""
-    opts = _parse_options(request, user, repo)
+    opts = web.parse_options(request, user, repo)
     query = opts.to_query()
     result = service.compare(repo, query)
     return JSONResponse(api.serialize_comparison(query, result))

@@ -1,6 +1,6 @@
 """Tests for request-option parsing in the games routes.
 
-Focus on how `_parse_options` resolves boolean filter checkboxes. An unchecked
+Focus on how `web.parse_options` resolves boolean filter checkboxes. An unchecked
 HTML checkbox submits no value, so the filter form sends a hidden
 `filters_active` marker; when present, an absent flag means "off" rather than
 falling back to the user's saved preference.
@@ -21,7 +21,7 @@ from gamatrix.games import routes, web
 def _opts(query_string: str, preferences: dict):
     request = types.SimpleNamespace(query_params=QueryParams(query_string))
     repo = types.SimpleNamespace(scan_users=lambda: [])
-    return routes._parse_options(request, {"preferences": preferences}, repo)
+    return web.parse_options(request, {"preferences": preferences}, repo)
 
 
 def test_unchecked_box_overrides_saved_on_preference():

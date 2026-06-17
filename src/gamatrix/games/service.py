@@ -8,7 +8,7 @@ core service so the same data contract can drive multiple UX layers.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Literal, Protocol
 
@@ -100,6 +100,7 @@ class RefreshAdvice:
 
 def compare(repo: ComparisonRepository, query: ComparisonQuery) -> ComparisonDataset:
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
+
     selected = [str(u) for u in query.selected_user_ids if str(u) in users]
 
     # For exclusive mode we need to know who else owns each game.
@@ -200,9 +201,7 @@ def _merge_duplicates(games: list[ComparisonItem]) -> list[ComparisonItem]:
     for game in games:
         key = (game.slug, frozenset(game.owners))
         if key not in grouped:
-            grouped[key] = ComparisonItem(
-                **{**game.to_dict(), "platforms": list(game.platforms)}
-            )
+            grouped[key] = replace(game, platforms=list(game.platforms))
             continue
         existing = grouped[key]
         for platform in game.platforms:
