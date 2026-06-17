@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from gamatrix.games.service import CompareOptions, compare
+from gamatrix.games.service import ComparisonQuery, SortSpec, compare
 from gamatrix.helpers import now_iso
 
 
@@ -53,45 +53,48 @@ def populated(repo):
 
 
 def test_common_multiplayer_games(populated):
-    result = compare(populated, CompareOptions(selected_user_ids=["1", "2"]))
-    titles = {g["title"] for g in result.games}
+    result = compare(populated, ComparisonQuery(selected_user_ids=["1", "2"]))
+    titles = {g.title for g in result.items}
     assert titles == {"Coop Game", "Shared MP"}
 
 
 def test_include_single_player_single_user(populated):
     result = compare(
         populated,
-        CompareOptions(selected_user_ids=["1"], include_single_player=True),
+        ComparisonQuery(selected_user_ids=["1"], include_single_player=True),
     )
-    titles = {g["title"] for g in result.games}
+    titles = {g.title for g in result.items}
     assert titles == {"Coop Game", "Solo Game", "Shared MP"}
 
 
 def test_installed_only(populated):
     result = compare(
         populated,
-        CompareOptions(selected_user_ids=["1"], installed_only=True),
+        ComparisonQuery(selected_user_ids=["1"], installed_only=True),
     )
     # Only steam_10 is installed by user 1 (and it's multiplayer).
-    titles = {g["title"] for g in result.games}
+    titles = {g.title for g in result.items}
     assert titles == {"Coop Game"}
 
 
 def test_exclude_platform(populated):
     result = compare(
         populated,
-        CompareOptions(selected_user_ids=["1", "2"], exclude_platforms=["gog"]),
+        ComparisonQuery(selected_user_ids=["1", "2"], exclude_platforms=["gog"]),
     )
-    titles = {g["title"] for g in result.games}
+    titles = {g.title for g in result.items}
     assert titles == {"Coop Game"}
 
 
 def test_sort_by_rating_desc(populated):
     result = compare(
         populated,
-        CompareOptions(selected_user_ids=["1", "2"], sort="rating", direction="desc"),
+        ComparisonQuery(
+            selected_user_ids=["1", "2"],
+            sort=SortSpec(field="rating", direction="desc"),
+        ),
     )
-    ratings = [g["rating"] for g in result.games]
+    ratings = [g.rating for g in result.items]
     assert ratings == sorted(ratings, reverse=True)
 
 
@@ -99,10 +102,10 @@ def test_metadata_override_applied(populated):
     populated.put_metadata(
         {"slug": "coopgame", "max_players": 2, "comment": "Use Hamachi"}
     )
-    result = compare(populated, CompareOptions(selected_user_ids=["1", "2"]))
-    coop = next(g for g in result.games if g["slug"] == "coopgame")
-    assert coop["max_players"] == 2
-    assert coop["comment"] == "Use Hamachi"
+    result = compare(populated, ComparisonQuery(selected_user_ids=["1", "2"]))
+    coop = next(g for g in result.items if g.slug == "coopgame")
+    assert coop.max_players == 2
+    assert coop.comment == "Use Hamachi"
 
 
 def test_merge_cross_platform_duplicates(repo):
@@ -129,9 +132,105 @@ def test_merge_cross_platform_duplicates(repo):
             {"release_key": "gog_31", "platform": "gog", "installed": False},
         ],
     )
-    result = compare(repo, CompareOptions(selected_user_ids=["1"]))
-    assert len(result.games) == 1
-    assert sorted(result.games[0]["platforms"]) == ["gog", "steam"]
+    result = compare(repo, ComparisonQuery(selected_user_ids=["1"]))
+    assert len(result.items) == 1
+    assert result.items[0].platforms == ["steam", "gog"]
+
+
+def test_merge_cross_platform_duplicates_union_installed_and_keep_best_metadata(repo):
+    repo.put_user({"email": "a@x.com", "username": "A", "user_id": "1"})
+    repo.put_user({"email": "b@x.com", "username": "B", "user_id": "2"})
+    for rk, platform, multiplayer, max_players, rating in [
+        ("epic_50", "epic", False, 1, 40),
+        ("steam_51", "steam", True, 4, 90),
+        ("gog_52", "gog", True, 8, 75),
+    ]:
+        repo.put_game(
+            {
+                "release_key": rk,
+                "title": "Merged Game",
+                "slug": "mergedgame",
+                "igdb_key": rk,
+                "platform": platform,
+                "multiplayer": multiplayer,
+                "max_players": max_players,
+                "rating": rating,
+                "game_modes": [],
+                "enrichment_status": "done",
+            }
+        )
+    repo.replace_user_library(
+        "1",
+        [
+            {"release_key": "epic_50", "platform": "epic", "installed": False},
+            {"release_key": "steam_51", "platform": "steam", "installed": True},
+            {"release_key": "gog_52", "platform": "gog", "installed": False},
+        ],
+    )
+    repo.replace_user_library(
+        "2",
+        [
+            {"release_key": "epic_50", "platform": "epic", "installed": False},
+            {"release_key": "steam_51", "platform": "steam", "installed": False},
+            {"release_key": "gog_52", "platform": "gog", "installed": True},
+        ],
+    )
+
+    result = compare(repo, ComparisonQuery(selected_user_ids=["1", "2"]))
+
+    assert len(result.items) == 1
+    merged = result.items[0]
+    assert merged.platforms == ["steam", "gog", "epic"]
+    assert merged.installed == ["1", "2"]
+    assert merged.max_players == 8
+    assert merged.multiplayer is True
+    assert merged.rating == 90
+
+
+def test_same_slug_merges_only_within_matching_owner_groups(repo):
+    repo.put_user({"email": "a@x.com", "username": "A", "user_id": "1"})
+    repo.put_user({"email": "b@x.com", "username": "B", "user_id": "2"})
+    for rk, platform in [
+        ("steam_60", "steam"),
+        ("gog_61", "gog"),
+        ("epic_62", "epic"),
+    ]:
+        repo.put_game(
+            {
+                "release_key": rk,
+                "title": "Grouped Game",
+                "slug": "groupedgame",
+                "igdb_key": rk,
+                "platform": platform,
+                "multiplayer": True,
+                "max_players": 4,
+                "rating": 0,
+                "game_modes": [],
+                "enrichment_status": "done",
+            }
+        )
+    repo.replace_user_library(
+        "1",
+        [
+            {"release_key": "steam_60", "platform": "steam", "installed": False},
+            {"release_key": "gog_61", "platform": "gog", "installed": False},
+        ],
+    )
+    repo.replace_user_library(
+        "2", [{"release_key": "epic_62", "platform": "epic", "installed": False}]
+    )
+
+    result = compare(
+        repo,
+        ComparisonQuery(selected_user_ids=["1", "2"], scope="owned"),
+    )
+
+    assert result.total == 1
+    rows = {(tuple(game.owners), tuple(game.platforms)) for game in result.items}
+    assert rows == {
+        (("1",), ("steam", "gog")),
+        (("2",), ("epic",)),
+    }
 
 
 def test_count_is_unique_games_not_rows(repo):
@@ -165,6 +264,22 @@ def test_count_is_unique_games_not_rows(repo):
     repo.replace_user_library(
         "2", [{"release_key": "gog_41", "platform": "gog", "installed": False}]
     )
-    result = compare(repo, CompareOptions(selected_user_ids=["1", "2"], all_games=True))
-    assert len(result.games) == 2  # two rows
+    result = compare(
+        repo,
+        ComparisonQuery(selected_user_ids=["1", "2"], scope="owned"),
+    )
+    assert len(result.items) == 2  # two rows
     assert result.total == 1  # but one unique game
+
+
+def test_owned_scope_lists_all_selected_users_games(populated):
+    result = compare(
+        populated,
+        ComparisonQuery(
+            selected_user_ids=["1", "2"],
+            scope="owned",
+            include_single_player=True,
+        ),
+    )
+    titles = {g.title for g in result.items}
+    assert titles == {"Coop Game", "Solo Game", "Shared MP"}

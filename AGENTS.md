@@ -104,7 +104,7 @@ Shared infrastructure concerns are centralized:
 
 - Route handlers should depend on the storage/auth abstractions instead of constructing clients inline. Use `Repository` via `get_repo()` / `get_repository()`, and reuse `get_s3()` / `get_queue()` for AWS-facing operations.
 - Persisted game data is keyed by `release_key`, but the compare view deliberately merges duplicate titles by `(slug, owners)` so the same game across platforms collapses into one row only when the owner set is identical.
-- Saved user preferences live on the user record in DynamoDB. Always merge stored preferences with `DEFAULT_PREFERENCES`, and keep the request overlay behavior consistent with `_parse_options()` in `games/routes.py` and `merge_preferences()` in [`games/preferences.py`](/src/gamatrix/games/preferences.py).
+- Saved user preferences live on the user record in DynamoDB. Always merge stored preferences with `DEFAULT_PREFERENCES`, and keep the request overlay behavior consistent with `parse_options()` in `games/web.py` and `merge_preferences()` in [`games/preferences.py`](/src/gamatrix/games/preferences.py).
 - Page routes and HTMX/API routes use different auth dependencies on purpose: `current_user()` redirects unauthenticated browsers to login, while `current_user_api()` returns `401` for fragment/API calls.
 - Local development does not mirror AWS exactly. `/upload/complete` ingests inline only when `LOCAL_DEV=true`, and the local worker polls the jobs table because there is no local SQS event source.
 - The repository layer normalizes DynamoDB types and identifiers for the rest of the app: emails are lowercased on write, `user_id` values are treated as strings, and floats are converted to `Decimal` before writes.

@@ -1,6 +1,6 @@
 """Tests for request-option parsing in the games routes.
 
-Focus on how `_parse_options` resolves boolean filter checkboxes. An unchecked
+Focus on how `web.parse_options` resolves boolean filter checkboxes. An unchecked
 HTML checkbox submits no value, so the filter form sends a hidden
 `filters_active` marker; when present, an absent flag means "off" rather than
 falling back to the user's saved preference.
@@ -10,14 +10,18 @@ from __future__ import annotations
 
 import types
 
+from fastapi.testclient import TestClient
 from starlette.datastructures import QueryParams
 
-from gamatrix.games import routes
+from gamatrix.app import app
+from gamatrix.auth.dependencies import current_user_api, get_repo
+from gamatrix.games import routes, web
 
 
 def _opts(query_string: str, preferences: dict):
     request = types.SimpleNamespace(query_params=QueryParams(query_string))
-    return routes._parse_options(request, {"preferences": preferences})
+    repo = types.SimpleNamespace(scan_users=lambda: [])
+    return web.parse_options(request, {"preferences": preferences}, repo)
 
 
 def test_unchecked_box_overrides_saved_on_preference():
@@ -88,3 +92,85 @@ def test_bare_load_uses_saved_user_selection():
     prefs = {"selected_users": ["1", "2"], "exclude_platforms": []}
     opts = _opts("", prefs)
     assert opts.selected_user_ids == ["1", "2"]
+
+
+def test_invalid_presentation_options_fall_back_to_safe_values():
+    opts = _opts("view=unknown&dir=sideways", {})
+    assert opts.view == "list"
+    assert opts.direction == "asc"
+
+
+def test_present_games_randomizes_only_in_web_layer():
+    dataset = types.SimpleNamespace(
+        items=[
+            types.SimpleNamespace(to_dict=lambda: {"title": "A"}),
+            types.SimpleNamespace(to_dict=lambda: {"title": "B"}),
+        ]
+    )
+    opts = web.WebCompareOptions(randomize=True)
+    games = web.present_games(dataset, opts)
+    assert len(games) == 1
+    assert games[0]["title"] in {"A", "B"}
+
+
+def test_api_games_returns_headless_dataset(repo):
+    repo.put_user({"email": "viewer@x.com", "username": "Viewer", "user_id": "99"})
+    repo.put_user({"email": "a@x.com", "username": "A", "user_id": "1"})
+    repo.put_user({"email": "b@x.com", "username": "B", "user_id": "2"})
+    repo.put_game(
+        {
+            "release_key": "steam_10",
+            "title": "Coop Game",
+            "slug": "coopgame",
+            "igdb_key": "steam_10",
+            "platform": "steam",
+            "multiplayer": True,
+            "max_players": 4,
+            "rating": 90,
+            "game_modes": [],
+            "enrichment_status": "done",
+        }
+    )
+    repo.replace_user_library(
+        "1",
+        [{"release_key": "steam_10", "platform": "steam", "installed": True}],
+    )
+    repo.replace_user_library(
+        "2",
+        [{"release_key": "steam_10", "platform": "steam", "installed": False}],
+    )
+
+    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[current_user_api] = lambda: {
+        "email": "viewer@x.com",
+        "username": "Viewer",
+    }
+    try:
+        client = TestClient(app)
+        response = client.get("/api/games?user=1&user=2")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["query"]["scope"] == "shared"
+    assert payload["total"] == 1
+    assert payload["games"][0]["title"] == "Coop Game"
+
+
+def test_authenticated_ux_routes_remain_auth_gated(repo):
+    app.dependency_overrides[get_repo] = lambda: repo
+    try:
+        client = TestClient(app)
+        for path in ("/games", "/preferences", "/upload", "/auth/passkeys"):
+            response = client.get(path, follow_redirects=False)
+            assert response.status_code == 302
+            assert response.headers["location"] == "/auth/login"
+
+        for path in ("/games/table", "/api/games", "/api/jobs/not-found"):
+            assert client.get(path).status_code == 401
+
+        for path in ("/games/refresh-igdb", "/games/refresh-igdb-all"):
+            assert client.post(path).status_code == 401
+    finally:
+        app.dependency_overrides.clear()
