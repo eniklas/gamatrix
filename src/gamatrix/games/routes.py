@@ -27,6 +27,7 @@ from gamatrix.templating import authenticated_template
 
 router = APIRouter(tags=["games"])
 
+
 def _maybe_enrich(repo: Repository, opts: WebCompareOptions) -> str | None:
     """Find stale/pending games among the selected libraries and enqueue a job.
 
