@@ -143,7 +143,10 @@ def test_preferences_form_selects_system_setting_for_none(repo):
     assert response.status_code == 200
     assert '<select name="display_mode">' in response.text
     assert '<option value="system" selected>System Setting</option>' in response.text
-    assert '<button type="button" onclick="applyDisplayMode()">Apply</button>' in response.text
+    assert (
+        '<button type="button" onclick="applyDisplayMode()">Apply</button>'
+        in response.text
+    )
     assert "function applyDisplayMode()" in response.text
     assert "Save preferences to keep change" in response.text
     assert "s.textContent='Saved ✓'" in response.text

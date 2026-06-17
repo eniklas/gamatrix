@@ -28,7 +28,7 @@ def test_default_authenticated_ux_has_the_complete_template_contract():
 
 def test_default_authenticated_base_uses_cache_busted_stylesheet():
     html = authenticated_templates.env.get_template("base.html.jinja").render()
-    assert '/static/templates/default/style.css?v=' in html
+    assert "/static/templates/default/style.css?v=" in html
 
 
 def test_authenticated_templates_apply_only_valid_explicit_modes():
