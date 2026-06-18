@@ -55,3 +55,16 @@ def test_default_preferences_template_includes_apply_preview_controls():
     assert "function applyDisplayMode()" in html
     assert "Save preferences to keep change" in html
     assert "s.textContent='Saved ✓'" in html
+
+
+def test_default_token_templates_preserve_management_ui():
+    html = authenticated_templates.env.get_template("tokens.html.jinja").render(
+        base_url="https://games.example.com"
+    )
+    fragment = authenticated_templates.env.get_template(
+        "tokens_list.html.jinja"
+    ).render(tokens=[])
+    assert 'id="token-create"' in html
+    assert "/auth/tokens/list" in html
+    assert "/auth/upload-gamatrix.sh" in html
+    assert "No tokens yet." in fragment

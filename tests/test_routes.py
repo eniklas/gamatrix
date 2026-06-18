@@ -162,7 +162,13 @@ def test_authenticated_ux_routes_remain_auth_gated(repo):
     app.dependency_overrides[get_repo] = lambda: repo
     try:
         client = TestClient(app)
-        for path in ("/games", "/preferences", "/upload", "/auth/passkeys"):
+        for path in (
+            "/games",
+            "/preferences",
+            "/upload",
+            "/auth/passkeys",
+            "/auth/tokens",
+        ):
             response = client.get(path, follow_redirects=False)
             assert response.status_code == 302
             assert response.headers["location"] == "/auth/login"

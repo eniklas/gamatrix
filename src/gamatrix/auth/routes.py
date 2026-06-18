@@ -267,7 +267,7 @@ def token_management(
     user: dict = Depends(current_user),
     repo: Repository = Depends(get_repo),
 ):
-    return templates.TemplateResponse(
+    return authenticated_template(
         request,
         "tokens.html.jinja",
         {
@@ -284,10 +284,10 @@ def list_tokens(
     user: dict = Depends(current_user),
     repo: Repository = Depends(get_repo),
 ):
-    return templates.TemplateResponse(
+    return authenticated_template(
         request,
         "tokens_list.html.jinja",
-        {"tokens": repo.list_api_tokens(user["email"])},
+        {"user": user, "tokens": repo.list_api_tokens(user["email"])},
     )
 
 

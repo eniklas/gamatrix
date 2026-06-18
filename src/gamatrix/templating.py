@@ -22,6 +22,8 @@ AUTHENTICATED_TEMPLATE_NAMES = (
     "passkeys.html.jinja",
     "passkeys_list.html.jinja",
     "preferences.html.jinja",
+    "tokens.html.jinja",
+    "tokens_list.html.jinja",
     "upload.html.jinja",
 )
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
