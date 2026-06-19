@@ -59,6 +59,7 @@
                 {% for uid in selected %}
                 {% if uid in users %}
                 <td class="{{ 'owned' if uid in game.owners else 'unowned' }}" style="text-align:center;">
+                    <span class="visually-hidden">{{ 'Owned' if uid in game.owners else 'Not owned' }}</span>
                     {% if uid in game.installed %}
                         {% set pu = pic_url(users[uid]) %}
                         {% if pu %}

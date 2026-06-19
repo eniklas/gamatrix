@@ -27,10 +27,7 @@
     <fieldset class="filter-group">
         <legend>Users</legend>
         {% for uid, u in users.items() %}
-        {# Server stores db_updated_at as UTC; the title here is a no-JS
-           fallback that the script below rewrites in the viewer's local time. #}
-        <label class="db-updated" data-db-updated="{{ u.get('db_updated_at', '') }}"
-               title="DB updated: {{ u.get('db_updated_at', 'never') }}">
+        <label title="DB updated: {{ u.get('db_updated_at', 'never') }}">
             <input type="checkbox" name="user" value="{{ uid }}"
                    {% if uid in opts.selected_user_ids %}checked{% endif %}>
             {% set pu = pic_url(u) %}
@@ -98,19 +95,4 @@
 <div id="games-container">
     {% include "games_table.html.jinja" %}
 </div>
-
-<script>
-// DB upload times are stored as UTC. Rewrite each user's hover tooltip in the
-// viewer's local time zone; toLocaleString() picks up the browser's locale and
-// zone automatically. The filter form renders once, so a single pass is enough.
-(function () {
-    for (const el of document.querySelectorAll('.db-updated[data-db-updated]')) {
-        const iso = el.dataset.dbUpdated;
-        if (!iso) { continue; }
-        const when = new Date(iso);
-        if (isNaN(when)) { continue; }
-        el.title = 'DB updated: ' + when.toLocaleString();
-    }
-}());
-</script>
 {% endblock %}

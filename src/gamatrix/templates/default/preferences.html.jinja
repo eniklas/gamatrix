@@ -61,6 +61,18 @@ async function uploadProfilePic() {
     if (data.pic_url) { box.querySelector('.pic-preview').src = data.pic_url; }
     saved.style.display = 'inline';
 }
+
+function applyDisplayMode() {
+    const form = document.getElementById('filters');
+    const mode = form.querySelector('select[name="display_mode"]').value;
+    const saved = form.querySelector('.saved');
+    document.body.removeAttribute('data-mode');
+    if (mode !== 'system') {
+        document.body.dataset.mode = mode;
+    }
+    saved.textContent = 'Save preferences to keep change';
+    saved.style.display = 'inline';
+}
 </script>
 
 <div class="filters">
@@ -79,7 +91,22 @@ async function uploadProfilePic() {
 
 <form id="filters" method="post" action="/preferences" class="filters"
       hx-post="/preferences" hx-swap="none"
-      hx-on::after-request="this.querySelector('.saved').style.display='inline'">
+      hx-on::after-request="const s=this.querySelector('.saved');s.textContent='Saved ✓';s.style.display='inline'">
+
+    <fieldset class="filter-group">
+        <legend>Display mode</legend>
+        <span class="muted">Your browser preference is used until you choose a mode.</span>
+        <label>
+            <select name="display_mode">
+                <option value="system"{% if prefs.display_mode is none %} selected{% endif %}>System Setting</option>
+                {% for mode in ['light', 'dark', 'high-contrast', 'color-blind'] %}
+                <option value="{{ mode }}"{% if prefs.display_mode == mode %} selected{% endif %}>
+                    {{ mode|replace('-', ' ')|title }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+    </fieldset>
 
     <fieldset class="filter-group">
         <legend>Default users</legend>
@@ -124,6 +151,7 @@ async function uploadProfilePic() {
 
     <fieldset class="filter-group">
         <legend>&nbsp;</legend>
+        <button type="button" onclick="applyDisplayMode()">Apply</button>
         <button type="submit">Save preferences</button>
         <span class="saved muted" style="display:none;">Saved ✓</span>
     </fieldset>

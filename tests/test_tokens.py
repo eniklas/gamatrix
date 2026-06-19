@@ -96,6 +96,9 @@ def test_create_token_returns_secret_and_setup_snippet(repo):
     _seed_user(repo)
     for client in _client(repo):
         _login(client)
+        management = client.get("/auth/tokens")
+        assert management.status_code == 200
+        assert "/static/templates/default/style.css?v=" in management.text
         created = client.post(
             "/auth/tokens", json={"name": "laptop", "password": "password"}
         )

@@ -25,7 +25,7 @@ from gamatrix.gogdb.ingest import ingest_db_file
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import get_queue
 from gamatrix.storage.s3 import get_s3
-from gamatrix.templating import templates
+from gamatrix.templating import authenticated_template
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def _upload_key(user: dict) -> str:
 
 @router.get("/upload", response_class=HTMLResponse)
 def upload_page(request: Request, user: dict = Depends(current_user)):
-    return templates.TemplateResponse(request, "upload.html.jinja", {"user": user})
+    return authenticated_template(request, "upload.html.jinja", {"user": user})
 
 
 @router.get("/upload/presign")

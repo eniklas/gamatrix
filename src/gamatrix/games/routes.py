@@ -23,7 +23,7 @@ from gamatrix.games.web import WebCompareOptions
 from gamatrix.jobs import create_enrichment_job, is_job_stale
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import get_queue
-from gamatrix.templating import templates
+from gamatrix.templating import authenticated_fragment, authenticated_template
 
 router = APIRouter(tags=["games"])
 
@@ -50,7 +50,7 @@ def games_page(
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
     result = service.compare(repo, opts.to_query())
     caption = web.build_caption(users, opts, result)
-    return templates.TemplateResponse(
+    return authenticated_template(
         request,
         "games.html.jinja",
         {
@@ -77,7 +77,7 @@ def games_table(
     opts = web.parse_options(request, user, repo)
     result = service.compare(repo, opts.to_query())
     caption = web.build_caption(users, opts, result)
-    return templates.TemplateResponse(
+    return authenticated_fragment(
         request,
         "games_table.html.jinja",
         {
@@ -116,7 +116,7 @@ def job_status(
         or job.get("status") in (JOB_COMPLETED, JOB_FAILED)
         or is_job_stale(job)
     )
-    return templates.TemplateResponse(
+    return authenticated_fragment(
         request,
         "job_status.html.jinja",
         {"job": job, "job_id": job_id, "done": done},
@@ -141,7 +141,7 @@ def refresh_missing(
         repo.put_game({**game, "enrichment_status": ENRICHMENT_PENDING})
     release_keys = [g["release_key"] for g in missing]
     job_id = create_enrichment_job(repo, get_queue(), release_keys)
-    return templates.TemplateResponse(
+    return authenticated_fragment(
         request,
         "job_status.html.jinja",
         {
@@ -166,7 +166,7 @@ def refresh_all(
         if game:
             repo.put_game({**game, "enrichment_status": ENRICHMENT_PENDING})
     job_id = create_enrichment_job(repo, get_queue(), release_keys)
-    return templates.TemplateResponse(
+    return authenticated_fragment(
         request,
         "job_status.html.jinja",
         {
