@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
-from starlette.responses import HTMLResponse
+from starlette.responses import Response
 
 from gamatrix import __version__
 from gamatrix.constants import PLATFORMS
@@ -50,7 +50,7 @@ def authenticated_template(
     headers: dict[str, str] | None = None,
     media_type: str | None = None,
     background: BackgroundTask | None = None,
-) -> HTMLResponse:
+) -> Response:
     """Render an authenticated page or fragment with the account's saved mode."""
     user = context.get("user") or {}
     mode = merge_preferences(user.get("preferences", {})).get("display_mode")
@@ -58,6 +58,27 @@ def authenticated_template(
         request,
         name,
         {**context, "display_mode": mode},
+        status_code=status_code,
+        headers=headers,
+        media_type=media_type,
+        background=background,
+    )
+
+
+def authenticated_fragment(
+    request,
+    name: str,
+    context: dict,
+    status_code: int = 200,
+    headers: dict[str, str] | None = None,
+    media_type: str | None = None,
+    background: BackgroundTask | None = None,
+) -> Response:
+    """Render an authenticated fragment without base-layout display-mode wiring."""
+    return authenticated_templates.TemplateResponse(
+        request,
+        name,
+        context,
         status_code=status_code,
         headers=headers,
         media_type=media_type,
