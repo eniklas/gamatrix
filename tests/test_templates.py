@@ -56,7 +56,8 @@ def test_each_stylesheet_defines_every_required_mode_and_stays_small():
 
 
 def test_default_preferences_template_includes_apply_preview_controls():
-    html = authenticated_templates.env.get_template("preferences.html.jinja").render(
+    environment = build_authenticated_templates("default")
+    html = environment.env.get_template("preferences.html.jinja").render(
         user={"email": "user@x.com", "username": "User", "user_id": "1"},
         users={"1": {"username": "User", "user_id": "1"}},
         prefs=merge_preferences({"display_mode": None}),
@@ -68,13 +69,15 @@ def test_default_preferences_template_includes_apply_preview_controls():
 
 
 def test_default_token_templates_preserve_management_ui():
-    html = authenticated_templates.env.get_template("tokens.html.jinja").render(
-        base_url="https://games.example.com"
-    )
-    fragment = authenticated_templates.env.get_template(
-        "tokens_list.html.jinja"
-    ).render(tokens=[])
-    assert 'id="token-create"' in html
-    assert "/auth/tokens/list" in html
-    assert "/auth/upload-gamatrix.sh" in html
-    assert "No tokens yet." in fragment
+    for ux_template in UX_TEMPLATES:
+        environment = build_authenticated_templates(ux_template)
+        html = environment.env.get_template("tokens.html.jinja").render(
+            base_url="https://games.example.com"
+        )
+        fragment = environment.env.get_template("tokens_list.html.jinja").render(
+            tokens=[]
+        )
+        assert 'id="token-create"' in html
+        assert "/auth/tokens/list" in html
+        assert "/auth/upload-gamatrix.sh" in html
+        assert "No tokens yet." in fragment
