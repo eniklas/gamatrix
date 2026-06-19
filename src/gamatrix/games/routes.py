@@ -81,7 +81,6 @@ def games_table(
         request,
         "games_table.html.jinja",
         {
-            "user": user,
             "users": users,
             "games": web.present_games(result, opts),
             "caption": caption,
@@ -120,7 +119,7 @@ def job_status(
     return authenticated_fragment(
         request,
         "job_status.html.jinja",
-        {"user": user, "job": job, "job_id": job_id, "done": done},
+        {"job": job, "job_id": job_id, "done": done},
     )
 
 
@@ -146,7 +145,6 @@ def refresh_missing(
         request,
         "job_status.html.jinja",
         {
-            "user": admin,
             "job": repo.get_job(job_id) if job_id else None,
             "job_id": job_id,
             "done": job_id is None,
@@ -172,7 +170,6 @@ def refresh_all(
         request,
         "job_status.html.jinja",
         {
-            "user": admin,
             "job": repo.get_job(job_id) if job_id else None,
             "job_id": job_id,
             "done": job_id is None,
