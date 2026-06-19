@@ -99,7 +99,7 @@ def test_create_token_returns_secret_and_setup_snippet(repo):
         _login(client)
         management = client.get("/auth/tokens")
         assert management.status_code == 200
-        expected = f'/static/templates/{get_settings().ux_template}/style.css?v='
+        expected = f"/static/templates/{get_settings().ux_template}/style.css?v="
         assert expected in management.text
         created = client.post(
             "/auth/tokens", json={"name": "laptop", "password": "password"}
