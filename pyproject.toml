@@ -79,7 +79,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "gamatrix.templates" = ["*.jinja", "**/*.jinja"]
-"gamatrix.static" = ["*.png", "*.jpg", "*.css", "*.js", "**/*.css"]
+"gamatrix.static" = ["*.png", "*.jpg", "*.css", "*.js", "**/*.png", "**/*.jpg", "**/*.css", "**/*.js"]
 "gamatrix.static.profile_img" = ["*.png", "*.jpg"]
 
 [tool.mypy]
