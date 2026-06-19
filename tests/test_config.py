@@ -40,6 +40,11 @@ def test_ux_template_defaults_to_default(monkeypatch):
     assert s.ux_template == "default"
 
 
+def test_ux_template_is_normalized_case_insensitively():
+    s = Settings(local_dev=True, ux_template="MODERN")
+    assert s.ux_template == "modern"
+
+
 def test_unknown_ux_template_is_rejected():
     with pytest.raises(ValueError, match="ux_template"):
         Settings(local_dev=True, ux_template="unknown")

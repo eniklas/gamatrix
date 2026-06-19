@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import json
 from functools import lru_cache
-from typing import Literal
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from gamatrix.ux_templates import DEFAULT_UX_TEMPLATE, canonicalize_ux_template_name
 
 DEFAULT_JWT_SECRET = "change-me-in-production"
 
@@ -71,7 +72,7 @@ class Settings(BaseSettings):
     # --- Behavior ---
     app_base_url: str = "http://localhost:8088"
     igdb_stale_days: int = 30
-    ux_template: Literal["default", "modern"] = "default"
+    ux_template: str = DEFAULT_UX_TEMPLATE
 
     # SSM parameter names for the title filter lists (AWS only). Locally these
     # are seeded into DynamoDB config and read from there.
@@ -124,9 +125,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _require_jwt_secret(self) -> "Settings":
-        """Fail loudly rather than silently signing sessions with the public
-        default secret in production. Either set JWT_SECRET directly or point
-        JWT_SECRET_NAME at a Secrets Manager secret."""
+        """Validate settings that must match shipped assets or production rules."""
+        self.ux_template = canonicalize_ux_template_name(self.ux_template)
         if (
             not self.local_dev
             and not self.jwt_secret_name

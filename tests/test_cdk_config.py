@@ -79,7 +79,7 @@ def test_load_deploy_config_requires_alias_hosted_zone(tmp_path, monkeypatch):
 def test_load_deploy_config_reads_ux_template(tmp_path, monkeypatch):
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    (config_dir / "cdk-config.yaml").write_text("ux_template: modern")
+    (config_dir / "cdk-config.yaml").write_text("ux_template: MODERN")
     monkeypatch.setenv("GAMATRIX_CONFIG_DIR", str(config_dir))
 
     config = _load_cdk_config_module()

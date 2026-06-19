@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
 from starlette.responses import Response
@@ -13,8 +11,12 @@ from gamatrix.config import get_settings
 from gamatrix.constants import PLATFORMS
 from gamatrix.games.preferences import merge_preferences
 from gamatrix.helpers import pic_url
+from gamatrix.ux_templates import (
+    TEMPLATES_DIR,
+    UX_TEMPLATES,
+    canonicalize_ux_template_name,
+)
 
-TEMPLATES_DIR = Path(__file__).parent / "templates"
 AUTHENTICATED_TEMPLATE_NAMES = (
     "base.html.jinja",
     "games.html.jinja",
@@ -27,7 +29,6 @@ AUTHENTICATED_TEMPLATE_NAMES = (
     "tokens_list.html.jinja",
     "upload.html.jinja",
 )
-UX_TEMPLATES = ("default", "modern")
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
@@ -43,8 +44,7 @@ _configure(templates)
 
 def build_authenticated_templates(template_name: str) -> Jinja2Templates:
     """Build an environment for a validated deployment-selected UX template."""
-    if template_name not in UX_TEMPLATES:
-        raise ValueError(f"Unknown UX template: {template_name}")
+    template_name = canonicalize_ux_template_name(template_name)
     return _configure(Jinja2Templates(directory=str(TEMPLATES_DIR / template_name)))
 
 
