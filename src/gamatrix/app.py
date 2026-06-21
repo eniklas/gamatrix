@@ -17,8 +17,10 @@ from fastapi.staticfiles import StaticFiles
 from gamatrix import __version__
 from gamatrix.auth.dependencies import RedirectToLogin
 from gamatrix.auth.routes import router as auth_router
+from gamatrix.config import get_settings
 from gamatrix.games.routes import router as games_router
 from gamatrix.preferences import router as preferences_router
+from gamatrix.templating import configure_authenticated_templates
 from gamatrix.upload import router as upload_router
 
 logging.basicConfig(
@@ -26,6 +28,9 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+
+settings = get_settings()
+configure_authenticated_templates(settings.ux_template)
 
 app = FastAPI(title="gamatrix", version=__version__)
 
