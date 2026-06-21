@@ -4,8 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from gamatrix.games.service import ComparisonQuery, SortSpec, compare
+from gamatrix.constants import JOB_RUNNING
+from gamatrix.games.service import (
+    ComparisonQuery,
+    SortSpec,
+    compare,
+    ensure_enrichment_job,
+)
 from gamatrix.helpers import now_iso
+from gamatrix.storage.queue import EnrichmentQueue
 
 
 @pytest.fixture
@@ -283,3 +290,96 @@ def test_owned_scope_lists_all_selected_users_games(populated):
     )
     titles = {g.title for g in result.items}
     assert titles == {"Coop Game", "Solo Game", "Shared MP"}
+
+
+def test_ensure_enrichment_job_reuses_active_job(repo, settings):
+    repo.put_job(
+        {
+            "job_id": "live-job",
+            "status": JOB_RUNNING,
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+            "completed_at": None,
+            "release_keys": ["steam_10"],
+            "total": 1,
+            "completed_count": 0,
+        }
+    )
+
+    job_id = ensure_enrichment_job(
+        repo,
+        EnrichmentQueue(settings=settings),
+        ComparisonQuery(selected_user_ids=["1"]),
+        settings=settings,
+    )
+
+    assert job_id == "live-job"
+
+
+def test_ensure_enrichment_job_creates_job_for_stale_selected_games(repo, settings):
+    repo.put_user({"email": "a@x.com", "username": "A", "user_id": "1"})
+    repo.put_game(
+        {
+            "release_key": "steam_10",
+            "title": "Needs Refresh",
+            "slug": "needs-refresh",
+            "igdb_key": "steam_10",
+            "platform": "steam",
+            "multiplayer": True,
+            "max_players": 4,
+            "rating": 0,
+            "game_modes": [],
+            "enrichment_status": "pending",
+            "enriched_at": None,
+        }
+    )
+    repo.replace_user_library(
+        "1", [{"release_key": "steam_10", "platform": "steam", "installed": False}]
+    )
+
+    job_id = ensure_enrichment_job(
+        repo,
+        EnrichmentQueue(settings=settings),
+        ComparisonQuery(selected_user_ids=["1"]),
+        settings=settings,
+    )
+
+    assert job_id is not None
+    job = repo.get_job(job_id)
+    assert job is not None
+    assert job["release_keys"] == ["steam_10"]
+    assert job["total"] == 1
+
+
+def test_ensure_enrichment_job_returns_none_when_selected_games_are_fresh(
+    repo, settings
+):
+    repo.put_user({"email": "a@x.com", "username": "A", "user_id": "1"})
+    repo.put_game(
+        {
+            "release_key": "steam_10",
+            "title": "Fresh Game",
+            "slug": "fresh-game",
+            "igdb_key": "steam_10",
+            "platform": "steam",
+            "multiplayer": True,
+            "max_players": 4,
+            "rating": 0,
+            "game_modes": [],
+            "enrichment_status": "done",
+            "enriched_at": now_iso(),
+        }
+    )
+    repo.replace_user_library(
+        "1", [{"release_key": "steam_10", "platform": "steam", "installed": False}]
+    )
+
+    job_id = ensure_enrichment_job(
+        repo,
+        EnrichmentQueue(settings=settings),
+        ComparisonQuery(selected_user_ids=["1"]),
+        settings=settings,
+    )
+
+    assert job_id is None
+    assert repo.get_active_job() is None
