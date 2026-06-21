@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import types
 from pathlib import Path
 
 from gamatrix.templating import (
@@ -88,6 +89,46 @@ def test_default_preferences_template_includes_apply_preview_controls():
     assert "function applyDisplayMode()" in html
     assert "Save preferences to keep change" in html
     assert "s.textContent='Saved ✓'" in html
+
+
+def test_games_templates_localize_user_db_updated_tooltips():
+    opts = types.SimpleNamespace(
+        selected_user_ids=["1"],
+        include_single_player=False,
+        installed_only=False,
+        exclusive=False,
+        randomize=False,
+        show_keys=False,
+        exclude_platforms=[],
+    )
+    users = {
+        "1": {
+            "username": "User",
+            "user_id": "1",
+            "db_updated_at": "2026-06-09T04:28:54+00:00",
+        },
+        "2": {"username": "Never", "user_id": "2"},
+    }
+
+    for ux_template in UX_TEMPLATES:
+        environment = build_authenticated_templates(ux_template)
+        html = environment.env.get_template("games.html.jinja").render(
+            user={"email": "user@x.com", "username": "Viewer", "user_id": "9"},
+            users=users,
+            opts=opts,
+            is_grid=False,
+            platforms=[],
+            job_id=None,
+            job=None,
+            games=[],
+            caption="",
+        )
+        assert 'class="user-db-updated"' in html
+        assert 'data-db-updated="2026-06-09T04:28:54+00:00"' in html
+        assert 'title="DB updated: loading local time..."' in html
+        assert 'title="DB updated: never"' in html
+        assert "function localizeDbUpdatedTooltips()" in html
+        assert "when.toLocaleString()" in html
 
 
 def test_default_token_templates_preserve_management_ui():

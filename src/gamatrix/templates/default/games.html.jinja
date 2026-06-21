@@ -27,7 +27,14 @@
     <fieldset class="filter-group">
         <legend>Users</legend>
         {% for uid, u in users.items() %}
-        <label title="DB updated: {{ u.get('db_updated_at', 'never') }}">
+        {% set db_updated_at = u.get('db_updated_at') %}
+        <label class="user-db-updated"
+               {% if db_updated_at and db_updated_at != 'never' %}
+               data-db-updated="{{ db_updated_at }}"
+               title="DB updated: loading local time..."
+               {% else %}
+               title="DB updated: never"
+               {% endif %}>
             <input type="checkbox" name="user" value="{{ uid }}"
                    {% if uid in opts.selected_user_ids %}checked{% endif %}>
             {% set pu = pic_url(u) %}
@@ -95,4 +102,23 @@
 <div id="games-container">
     {% include "games_table.html.jinja" %}
 </div>
+<script>
+(function () {
+    function localizeDbUpdatedTooltips() {
+        for (const el of document.querySelectorAll(".user-db-updated[data-db-updated]")) {
+            const iso = el.dataset.dbUpdated;
+            if (!iso) { continue; }
+            const when = new Date(iso);
+            if (isNaN(when)) { continue; }
+            el.title = `DB updated: ${when.toLocaleString()}`;
+        }
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", localizeDbUpdatedTooltips, { once: true });
+    } else {
+        localizeDbUpdatedTooltips();
+    }
+})();
+</script>
 {% endblock %}
