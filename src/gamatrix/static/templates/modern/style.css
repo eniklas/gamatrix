@@ -18,37 +18,46 @@ body[data-mode="light"] {
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --page: #111b20;
-    --surface: #19272d;
-    --surface-alt: #22333a;
-    --text: #e4edf0;
-    --muted: #aabcc3;
-    --border: #49616a;
-    --accent: #6ed7df;
-    --accent-text: #102329;
-    --row-a: #19272d;
-    --row-b: #203239;
-    --owned: #28573e;
-    --unowned: #673c3c;
-    --warning: #ffd166;
+    --page: rgb(50, 50, 50);
+    --surface: #3c3c3c;
+    --surface-alt: #4a4a4a;
+    --text: lightgray;
+    --muted: #aaaaaa;
+    --border: #555555;
+    --accent: rgb(124, 207, 228);
+    --accent-text: #102027;
+    --row-a: rgb(180, 227, 239);
+    --row-b: rgb(201, 235, 243);
+    --owned: rgb(182, 215, 168);
+    --unowned: rgb(234, 153, 153);
+    --warning: grey;
   }
+  /* Only flip the table body text when no explicit mode is chosen (system
+     follows the OS). An explicit choice is handled by its own block below,
+     so this must not leak into e.g. high-contrast while the OS is dark. */
+  body:not([data-mode]) table.results tbody tr { color: var(--accent-text); }
 }
 
+/* Dark mode uses the pre-template (2.3.x) palette: a dark page chrome with the
+   original light-blue results table. v1 paired a dark page with *light* rows and
+   dark cell text, so the table body text is flipped back to dark below while the
+   page chrome keeps the light --text. */
 body[data-mode="dark"] {
-  --page: #111b20;
-  --surface: #19272d;
-  --surface-alt: #22333a;
-  --text: #e4edf0;
-  --muted: #aabcc3;
-  --border: #49616a;
-  --accent: #6ed7df;
-  --accent-text: #102329;
-  --row-a: #19272d;
-  --row-b: #203239;
-  --owned: #28573e;
-  --unowned: #673c3c;
-  --warning: #ffd166;
+  --page: rgb(50, 50, 50);
+  --surface: #3c3c3c;
+  --surface-alt: #4a4a4a;
+  --text: lightgray;
+  --muted: #aaaaaa;
+  --border: #555555;
+  --accent: rgb(124, 207, 228);
+  --accent-text: #102027;
+  --row-a: rgb(180, 227, 239);
+  --row-b: rgb(201, 235, 243);
+  --owned: rgb(182, 215, 168);
+  --unowned: rgb(234, 153, 153);
+  --warning: grey;
 }
+body[data-mode="dark"] table.results tbody tr { color: var(--accent-text); }
 
 body[data-mode="high-contrast"] {
   --page: #000000;
