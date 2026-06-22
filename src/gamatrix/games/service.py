@@ -90,17 +90,8 @@ class ComparisonDataset:
     total: int
 
 
-@dataclass
-class RefreshAdvice:
-    job_id: str | None
-    stale_release_keys: list[str] = field(default_factory=list)
-    reused_active_job: bool = False
-    created_job: bool = False
-
-
 def compare(repo: ComparisonRepository, query: ComparisonQuery) -> ComparisonDataset:
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
-
     selected = [str(u) for u in query.selected_user_ids if str(u) in users]
 
     # For exclusive mode we need to know who else owns each game.
@@ -253,25 +244,17 @@ def ensure_enrichment_job(
     queue: EnrichmentQueue,
     query: ComparisonQuery,
     settings: Settings | None = None,
-) -> RefreshAdvice:
+) -> str | None:
     """Ensure the selected libraries have an active refresh job if needed."""
     active = repo.get_active_job()
     if active:
-        return RefreshAdvice(
-            job_id=active["job_id"],
-            reused_active_job=True,
-        )
+        return active["job_id"]
 
     stale = stale_release_keys(repo, query, settings=settings)
     if not stale:
-        return RefreshAdvice(job_id=None, stale_release_keys=[])
+        return None
 
-    job_id = create_enrichment_job(repo, queue, stale)
-    return RefreshAdvice(
-        job_id=job_id,
-        stale_release_keys=stale,
-        created_job=job_id is not None,
-    )
+    return create_enrichment_job(repo, queue, stale)
 
 
 def stale_release_keys(

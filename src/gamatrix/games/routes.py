@@ -28,17 +28,6 @@ from gamatrix.templating import authenticated_fragment, authenticated_template
 router = APIRouter(tags=["games"])
 
 
-def _maybe_enrich(repo: Repository, opts: WebCompareOptions) -> str | None:
-    """Find stale/pending games among the selected libraries and enqueue a job.
-
-    If a job is already pending or running, return its id rather than
-    creating a duplicate — each /games page load would otherwise queue a
-    new batch of the same games, exhausting Lambda concurrency.
-    """
-    advice = service.ensure_enrichment_job(repo, get_queue(), opts.to_query())
-    return advice.job_id
-
-
 @router.get("/games", response_class=HTMLResponse)
 def games_page(
     request: Request,
@@ -46,7 +35,9 @@ def games_page(
     repo: Repository = Depends(get_repo),
 ):
     opts = web.parse_options(request, user, repo)
-    job_id = _maybe_enrich(repo, opts)
+    # Reuse an active enrichment job rather than queueing duplicate work on
+    # every page load for the same stale selection.
+    job_id = service.ensure_enrichment_job(repo, get_queue(), opts.to_query())
     users = {str(u["user_id"]): u for u in repo.scan_users() if u.get("user_id")}
     result = service.compare(repo, opts.to_query())
     caption = web.build_caption(users, opts, result)

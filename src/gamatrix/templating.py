@@ -1,8 +1,6 @@
-"""Stable public and default authenticated Jinja environments."""
+"""Stable public and deployment-selected authenticated Jinja environments."""
 
 from __future__ import annotations
-
-from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
@@ -12,8 +10,12 @@ from gamatrix import __version__
 from gamatrix.constants import PLATFORMS
 from gamatrix.games.preferences import merge_preferences
 from gamatrix.helpers import pic_url
+from gamatrix.ux_templates import (
+    TEMPLATES_DIR,
+    UX_TEMPLATES,
+    canonicalize_ux_template_name,
+)
 
-TEMPLATES_DIR = Path(__file__).parent / "templates"
 AUTHENTICATED_TEMPLATE_NAMES = (
     "base.html.jinja",
     "games.html.jinja",
@@ -27,6 +29,7 @@ AUTHENTICATED_TEMPLATE_NAMES = (
     "upload.html.jinja",
 )
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+_authenticated_templates: Jinja2Templates | None = None
 
 
 def _configure(environment: Jinja2Templates) -> Jinja2Templates:
@@ -37,9 +40,36 @@ def _configure(environment: Jinja2Templates) -> Jinja2Templates:
 
 
 _configure(templates)
-authenticated_templates = _configure(
-    Jinja2Templates(directory=str(TEMPLATES_DIR / "default"))
-)
+
+
+def build_authenticated_templates(template_name: str) -> Jinja2Templates:
+    """Build an environment for a validated deployment-selected UX template."""
+    template_name = canonicalize_ux_template_name(template_name)
+    return _configure(Jinja2Templates(directory=str(TEMPLATES_DIR / template_name)))
+
+
+def configure_authenticated_templates(template_name: str) -> Jinja2Templates:
+    """Configure the authenticated template environment for the running app."""
+
+    global _authenticated_templates
+    _authenticated_templates = build_authenticated_templates(template_name)
+    return _authenticated_templates
+
+
+def get_authenticated_templates() -> Jinja2Templates:
+    """Return the authenticated template environment chosen during app startup.
+
+    App initialization must call ``configure_authenticated_templates()`` once
+    with the validated runtime ``ux_template`` setting before any authenticated
+    render helpers are used.
+    """
+
+    if _authenticated_templates is None:
+        raise RuntimeError(
+            "Authenticated templates are not configured. "
+            "Call configure_authenticated_templates() during app initialization."
+        )
+    return _authenticated_templates
 
 
 def authenticated_template(
@@ -54,7 +84,7 @@ def authenticated_template(
     """Render an authenticated page or fragment with the account's saved mode."""
     user = context.get("user") or {}
     mode = merge_preferences(user.get("preferences", {})).get("display_mode")
-    return authenticated_templates.TemplateResponse(
+    return get_authenticated_templates().TemplateResponse(
         request,
         name,
         {**context, "display_mode": mode},
@@ -75,7 +105,7 @@ def authenticated_fragment(
     background: BackgroundTask | None = None,
 ) -> Response:
     """Render an authenticated fragment without base-layout display-mode wiring."""
-    return authenticated_templates.TemplateResponse(
+    return get_authenticated_templates().TemplateResponse(
         request,
         name,
         context,

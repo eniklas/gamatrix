@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}gamatrix{% endblock %}</title>
+    {# Version query busts the browser cache on each deploy so CSS changes
+       (e.g. the sticky results header) aren't masked by a stale stylesheet. #}
+    <link rel="stylesheet" href="/static/templates/modern/style.css?v={{ version }}">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body{% if display_mode %} data-mode="{{ display_mode }}"{% endif %}>
+{% block body %}{% endblock %}
+<footer class="muted" style="margin-top:2rem;">gamatrix v{{ version }}</footer>
+</body>
+</html>

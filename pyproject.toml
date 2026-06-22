@@ -78,7 +78,7 @@ fallback_version = "0.0.0"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"gamatrix.templates" = ["*.jinja", "**/*.jinja"]
+"gamatrix.templates" = ["*.jinja", "**/*.jinja", "**/valid_template"]
 "gamatrix.static" = ["*.png", "*.jpg", "*.css", "*.js", "**/*.png", "**/*.jpg", "**/*.css", "**/*.js"]
 "gamatrix.static.profile_img" = ["*.png", "*.jpg"]
 

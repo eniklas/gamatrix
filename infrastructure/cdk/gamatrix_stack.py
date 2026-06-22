@@ -150,6 +150,7 @@ class GamatrixStack(Stack):
             "JWT_SECRET_NAME": jwt_secret.secret_name,
             "EMAIL_FROM": cfg.email_from or DEFAULT_EMAIL_FROM,
             "IGDB_STALE_DAYS": "30",
+            "UX_TEMPLATE": cfg.ux_template,
             "WEBAUTHN_RP_ID": cfg.site_domain or "",
             "WEBAUTHN_ORIGINS": (
                 f'["https://{cfg.site_domain}"]' if cfg.site_domain else "[]"

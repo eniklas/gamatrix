@@ -13,11 +13,19 @@ Gateway URL -- so anyone can clone and deploy this repo without owning a domain.
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass, field
+
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG_DIR = PROJECT_ROOT.parent / "gamatrix-configs"
+# We need to share some information/functionality with the runtime surrounding templates.
+SRC_DIR = PROJECT_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
+
+from gamatrix.ux_templates import DEFAULT_UX_TEMPLATE, canonicalize_ux_template_name
 
 
 @dataclass
@@ -30,6 +38,7 @@ class DeployConfig:
     # is extended with SANs for all alias_domains so there are no cert warnings.
     alias_hosted_zone: str | None = None
     alias_domains: list[str] = field(default_factory=list)
+    ux_template: str = DEFAULT_UX_TEMPLATE
 
     @property
     def has_custom_domain(self) -> bool:
@@ -39,12 +48,11 @@ class DeployConfig:
 def load_deploy_config() -> DeployConfig:
     config_dir = Path(os.environ.get("GAMATRIX_CONFIG_DIR", DEFAULT_CONFIG_DIR))
     path = config_dir / "cdk-config.yaml"
-    if not path.exists():
-        return DeployConfig()
+    data = {}
+    if path.exists():
+        import yaml
 
-    import yaml
-
-    data = yaml.safe_load(path.read_text()) or {}
+        data = yaml.safe_load(path.read_text()) or {}
 
     alias_domains = data.get("alias_domains") or []
     # YAML happily parses `alias_domains: games.other.com` as a scalar string.
@@ -56,6 +64,9 @@ def load_deploy_config() -> DeployConfig:
     alias_hosted_zone = data.get("alias_hosted_zone")
     if alias_domains and not alias_hosted_zone:
         raise ValueError("alias_hosted_zone is required when alias_domains is set")
+    ux_template = canonicalize_ux_template_name(
+        data.get("ux_template", DEFAULT_UX_TEMPLATE)
+    )
 
     return DeployConfig(
         hosted_zone=data.get("hosted_zone"),
@@ -63,4 +74,5 @@ def load_deploy_config() -> DeployConfig:
         email_from=data.get("email_from"),
         alias_hosted_zone=alias_hosted_zone,
         alias_domains=alias_domains,
+        ux_template=ux_template,
     )
