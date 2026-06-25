@@ -8,6 +8,7 @@ dynamodb-local in development; only the endpoint URL differs.
 from __future__ import annotations
 
 import decimal
+import time
 from typing import TYPE_CHECKING, Any, Iterable, cast
 
 import boto3
@@ -52,9 +53,37 @@ class Repository:
             region_name=self.settings.aws_region,
             endpoint_url=self.settings.dynamodb_endpoint_url,
         )
+        # Short-TTL cache for the comparison read-model so repeated filter/sort
+        # requests reuse one set of reads. Entries are keyed by name; per-user
+        # libraries use "library:<user_id>". Writes invalidate the affected key
+        # so the cache never serves data this process itself just changed.
+        self._cache: dict[str, tuple[float, Any]] = {}
 
     def _table(self, name: str):
         return self._resource.Table(name)
+
+    # ------------------------------------------------------------------
+    # read-model cache
+    # ------------------------------------------------------------------
+    def _cache_get(self, key: str) -> Any | None:
+        entry = self._cache.get(key)
+        if entry is None:
+            return None
+        expires_at, value = entry
+        if time.monotonic() >= expires_at:
+            self._cache.pop(key, None)
+            return None
+        return value
+
+    def _cache_put(self, key: str, value: Any) -> Any:
+        ttl = self.settings.read_cache_ttl_seconds
+        if ttl > 0:
+            self._cache[key] = (time.monotonic() + ttl, value)
+        return value
+
+    def _cache_invalidate(self, *keys: str) -> None:
+        for key in keys:
+            self._cache.pop(key, None)
 
     # ------------------------------------------------------------------
     # games
@@ -84,8 +113,23 @@ class Repository:
                 result[game["release_key"]] = game
         return result
 
+    def get_all_games_map(self) -> dict[str, dict]:
+        """Cached full games table keyed by release_key.
+
+        The comparison service looks up metadata for whatever release keys the
+        selected libraries contain. Serving every lookup from one cached scan
+        replaces the per-request chain of BatchGetItem calls and lets repeated
+        filter/sort changes hit memory instead of DynamoDB.
+        """
+        cached = self._cache_get("games_map")
+        if cached is not None:
+            return cached
+        games = {g["release_key"]: g for g in self._scan(self.settings.games_table)}
+        return self._cache_put("games_map", games)
+
     def put_game(self, game: dict) -> None:
         self._table(self.settings.games_table).put_item(Item=_to_dynamo(game))
+        self._cache_invalidate("games_map")
 
     def scan_all_games(self) -> list[dict]:
         return self._scan(self.settings.games_table)
@@ -108,14 +152,19 @@ class Repository:
         return None
 
     def scan_users(self) -> list[dict]:
-        return self._scan(self.settings.users_table)
+        cached = self._cache_get("users")
+        if cached is not None:
+            return cached
+        return self._cache_put("users", self._scan(self.settings.users_table))
 
     def put_user(self, user: dict) -> None:
         user = {**user, "email": user["email"].lower()}
         self._table(self.settings.users_table).put_item(Item=_to_dynamo(user))
+        self._cache_invalidate("users")
 
     def delete_user(self, email: str) -> None:
         self._table(self.settings.users_table).delete_item(Key={"email": email.lower()})
+        self._cache_invalidate("users")
 
     def purge_user_account(self, user: dict) -> None:
         """Remove a user row and its user-owned local artifacts.
@@ -145,6 +194,7 @@ class Repository:
             ExpressionAttributeValues={":v": user_handle},
             ReturnValues="ALL_NEW",
         )
+        self._cache_invalidate("users")
         return str(response["Attributes"]["webauthn_user_id"])
 
     def update_user(self, email: str, attrs: dict) -> None:
@@ -159,18 +209,27 @@ class Repository:
             ExpressionAttributeNames=names,
             ExpressionAttributeValues=values,
         )
+        self._cache_invalidate("users")
 
     # ------------------------------------------------------------------
     # user_libraries  (PK user_id, SK release_key)
     # ------------------------------------------------------------------
     def get_user_library(self, user_id: str) -> list[dict]:
-        return self._query_all(
+        key = f"library:{user_id}"
+        cached = self._cache_get(key)
+        if cached is not None:
+            return cached
+        rows = self._query_all(
             self.settings.libraries_table,
             KeyConditionExpression=Key("user_id").eq(str(user_id)),
         )
+        return self._cache_put(key, rows)
 
     def replace_user_library(self, user_id: str, entries: list[dict]) -> None:
         """Delete the user's existing library rows and write the new set."""
+        # Drop any cached copy so the read below sees current rows, and so later
+        # comparison reads pick up the replacement once writes land.
+        self._cache_invalidate(f"library:{user_id}")
         table = self._table(self.settings.libraries_table)
         existing = self.get_user_library(user_id)
         incoming: dict[str, dict] = {}
@@ -200,9 +259,11 @@ class Repository:
             for entry in incoming.values():
                 item = {**entry, "user_id": str(user_id)}
                 batch.put_item(Item=_to_dynamo(item))
+        self._cache_invalidate(f"library:{user_id}")
 
     def clear_user_library(self, user_id: str) -> int:
         """Delete every library row for a user. Returns the number removed."""
+        self._cache_invalidate(f"library:{user_id}")
         table = self._table(self.settings.libraries_table)
         existing = self.get_user_library(user_id)
         with table.batch_writer() as batch:
@@ -210,6 +271,7 @@ class Repository:
                 batch.delete_item(
                     Key={"user_id": str(user_id), "release_key": row["release_key"]}
                 )
+        self._cache_invalidate(f"library:{user_id}")
         return len(existing)
 
     def get_owners_of_release(self, release_key: str) -> list[str]:
@@ -310,10 +372,15 @@ class Repository:
     # metadata_overrides  (PK slug)
     # ------------------------------------------------------------------
     def get_all_metadata(self) -> dict[str, dict]:
-        return {m["slug"]: m for m in self._scan(self.settings.metadata_table)}
+        cached = self._cache_get("metadata")
+        if cached is not None:
+            return cached
+        overrides = {m["slug"]: m for m in self._scan(self.settings.metadata_table)}
+        return self._cache_put("metadata", overrides)
 
     def put_metadata(self, override: dict) -> None:
         self._table(self.settings.metadata_table).put_item(Item=_to_dynamo(override))
+        self._cache_invalidate("metadata")
 
     def clear_metadata(self) -> int:
         """Delete every override row. Returns the number removed."""
@@ -322,6 +389,7 @@ class Repository:
         with table.batch_writer() as batch:
             for row in rows:
                 batch.delete_item(Key={"slug": row["slug"]})
+        self._cache_invalidate("metadata")
         return len(rows)
 
     # ------------------------------------------------------------------

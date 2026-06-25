@@ -8,10 +8,10 @@ from pathlib import Path
 
 from gamatrix.templating import (
     AUTHENTICATED_TEMPLATE_NAMES,
-    UX_TEMPLATES,
     build_authenticated_templates,
     templates,
 )
+from gamatrix.ux_templates import UX_TEMPLATES
 from gamatrix.games.preferences import DISPLAY_MODES
 from gamatrix.games.preferences import merge_preferences
 from gamatrix.ux_templates import (

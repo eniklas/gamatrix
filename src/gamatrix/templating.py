@@ -12,7 +12,6 @@ from gamatrix.games.preferences import merge_preferences
 from gamatrix.helpers import pic_url
 from gamatrix.ux_templates import (
     TEMPLATES_DIR,
-    UX_TEMPLATES,
     canonicalize_ux_template_name,
 )
 

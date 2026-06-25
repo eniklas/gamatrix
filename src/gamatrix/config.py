@@ -74,6 +74,13 @@ class Settings(BaseSettings):
     igdb_stale_days: int = 30
     ux_template: str = DEFAULT_UX_TEMPLATE
 
+    # How long the Repository serves the comparison read-model (users, games,
+    # libraries, metadata overrides) from its in-process cache before re-reading
+    # from DynamoDB. Lets repeated filter changes reuse one set of reads. Writes
+    # invalidate the relevant cache entry in-process, so the only staleness is
+    # across separate processes (e.g. an upload/enrich Lambda) until expiry.
+    read_cache_ttl_seconds: float = 60.0
+
     # SSM parameter names for the title filter lists (AWS only). Locally these
     # are seeded into DynamoDB config and read from there.
     hidden_games_param: str = "/gamatrix/hidden-games"
