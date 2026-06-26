@@ -42,9 +42,18 @@ _configure(templates)
 
 
 def build_authenticated_templates(template_name: str) -> Jinja2Templates:
-    """Build an environment for a validated deployment-selected UX template."""
+    """Build an environment for a validated deployment-selected UX template.
+
+    The mode directory is searched first so a mode can override any template,
+    with the shared top-level templates directory as a fallback so mode pages
+    can ``{% include %}`` shared partials (e.g. ``passkeys_manage_list``).
+    """
     template_name = canonicalize_ux_template_name(template_name)
-    return _configure(Jinja2Templates(directory=str(TEMPLATES_DIR / template_name)))
+    return _configure(
+        Jinja2Templates(
+            directory=[str(TEMPLATES_DIR / template_name), str(TEMPLATES_DIR)]
+        )
+    )
 
 
 def configure_authenticated_templates(template_name: str) -> Jinja2Templates:

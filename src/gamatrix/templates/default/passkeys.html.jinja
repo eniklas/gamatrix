@@ -26,24 +26,7 @@
 
 <div class="card wide">
     <h3>Registered passkeys</h3>
-    {% if passkeys %}
-    <ul class="passkey-list">
-        {% for passkey in passkeys %}
-        <li>
-            <strong>{{ passkey.friendly_name }}</strong>
-            <span class="muted">
-                {% if passkey.backup_eligible %}sync-capable{% else %}device-bound{% endif %}
-                {% if passkey.backed_up %}, backed up{% endif %}
-                {% if passkey.created_at %} - added {{ passkey.created_at[:10] }}{% endif %}
-            </span>
-            <button type="button" class="secondary delete-passkey"
-                    data-credential-id="{{ passkey.credential_id }}">Delete</button>
-        </li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p class="muted">No passkeys registered.</p>
-    {% endif %}
+    {% include "passkeys_manage_list.html.jinja" %}
 </div>
 <script src="/static/passkeys.js"></script>
 <script>window.gamatrixPasskeys.enableManagement();</script>
