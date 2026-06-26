@@ -19,7 +19,6 @@ from gamatrix.constants import (
 )
 from gamatrix.games import api, service, web
 from gamatrix.games.preferences import merge_preferences
-from gamatrix.games.web import WebCompareOptions
 from gamatrix.jobs import create_enrichment_job, is_job_stale
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import get_queue

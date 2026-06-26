@@ -1,13 +1,14 @@
 {# Renders the results table. Swapped in by HTMX on filter/sort changes. #}
+{# Columns sort in the browser (see /static/games_sort.js): clicking a header
+   reorders the rows already in the DOM, so no server round-trip is needed. The
+   server still renders the initial order from opts.sort/opts.direction. #}
 {% macro sort_header(label, col) %}
-    {% set next_dir = 'desc' if (opts.sort == col and opts.direction == 'asc') else 'asc' %}
-    <th hx-get="/games/table?sort={{ col }}&dir={{ next_dir }}"
-        hx-include="#filters"
-        hx-target="#games-container">
+    {% set is_active = opts.sort == col %}
+    <th class="sortable" data-sort-col="{{ col }}"
+        data-sort-type="{{ 'text' if col == 'title' else 'num' }}"
+        {% if is_active %}aria-sort="{{ 'ascending' if opts.direction == 'asc' else 'descending' }}"{% endif %}>
         {{ label }}
-        {% if opts.sort == col %}
-        <span class="sort-arrow">{{ '▲' if opts.direction == 'asc' else '▼' }}</span>
-        {% endif %}
+        <span class="sort-arrow">{% if is_active %}{{ '▲' if opts.direction == 'asc' else '▼' }}{% endif %}</span>
     </th>
 {% endmacro %}
 
@@ -41,7 +42,11 @@
     <tbody>
     {% for game in games %}
         {% set mp = game.max_players|default(0)|int %}
-        <tr class="{{ 'subthreshold' if (mp > 0 and mp < selected|length) else '' }}">
+        <tr class="{{ 'subthreshold' if (mp > 0 and mp < selected|length) else '' }}"
+            data-sort-title="{{ game.slug }}"
+            data-sort-players="{{ mp }}"
+            data-sort-rating="{{ game.rating|default(0) }}"
+            data-sort-installed="{{ game.installed|length }}">
             <td>
                 {% if game.url %}<a href="{{ game.url }}">{{ game.title }}</a>
                 {% else %}{{ game.title }}{% endif %}

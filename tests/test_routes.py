@@ -15,7 +15,7 @@ from starlette.datastructures import QueryParams
 
 from gamatrix.app import app
 from gamatrix.auth.dependencies import current_user_api, get_repo
-from gamatrix.games import routes, web
+from gamatrix.games import web
 
 
 def _opts(query_string: str, preferences: dict):

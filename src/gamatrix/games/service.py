@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, Literal, Protocol
+from typing import Literal, Protocol
 
 from gamatrix.config import Settings, get_settings
 from gamatrix.constants import (
@@ -48,7 +48,7 @@ class ComparisonRepository(Protocol):
 
     def get_user_library(self, user_id: str) -> list[dict]: ...
 
-    def batch_get_games(self, release_keys: Iterable[str]) -> dict[str, dict]: ...
+    def get_all_games_map(self) -> dict[str, dict]: ...
 
     def get_all_metadata(self) -> dict[str, dict]: ...
 
@@ -116,7 +116,7 @@ def compare(repo: ComparisonRepository, query: ComparisonQuery) -> ComparisonDat
             if entry.get("installed"):
                 slot["installed"].add(user_id)
 
-    metadata = repo.batch_get_games(agg.keys())
+    metadata = repo.get_all_games_map()
     overrides = repo.get_all_metadata()
 
     games: list[ComparisonItem] = []
