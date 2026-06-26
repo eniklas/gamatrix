@@ -34,10 +34,6 @@ class CeremonyVerificationRequest(BaseModel):
     credential: dict
 
 
-class DeletePasskeyRequest(BaseModel):
-    password: str
-
-
 class CreateTokenRequest(BaseModel):
     password: str
     name: str
@@ -245,31 +241,6 @@ def passkey_authentication_verify(
         value=service.create_session_token(user["email"]), **_cookie_kwargs()
     )
     return response
-
-
-@router.delete("/passkeys/{credential_id}")
-def delete_passkey(
-    credential_id: str,
-    body: DeletePasskeyRequest,
-    user: dict = Depends(current_user_api),
-    repo: Repository = Depends(get_repo),
-):
-    if not service.authenticate(repo, user["email"], body.password):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Wrong password."
-        )
-    user_handle = user.get("webauthn_user_id")
-    if not user_handle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No passkeys are registered for this account.",
-        )
-    if not repo.delete_passkey(credential_id, user_handle):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Passkey not found for this account.",
-        )
-    return {"deleted": True}
 
 
 def _token_setup_snippet(token: str) -> str:

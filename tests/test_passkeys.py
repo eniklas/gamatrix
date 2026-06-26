@@ -222,7 +222,7 @@ def test_expired_challenge_and_unknown_credential_are_rejected(repo):
         assert response.status_code == 400
 
 
-def test_listing_hides_key_material_and_deletion_requires_password(repo):
+def test_listing_hides_key_material(repo):
     user = _user(repo)
     handle = repo.ensure_webauthn_user_id(user["email"], "opaque-handle")
     repo.put_passkey(
@@ -245,20 +245,6 @@ def test_listing_hides_key_material_and_deletion_requires_password(repo):
         assert "Current password" not in listed.text
         assert "public_key" not in listed.text
         assert "secret-public-key" not in listed.text
-
-        assert (
-            client.request(
-                "DELETE", "/auth/passkeys/credential", json={"password": "wrong"}
-            ).status_code
-            == 403
-        )
-        assert (
-            client.request(
-                "DELETE", "/auth/passkeys/credential", json={"password": "password"}
-            ).status_code
-            == 200
-        )
-        assert repo.get_passkey("credential") is None
 
 
 def test_inline_passkey_deletion_uses_password_field_and_refreshes_list(repo):
@@ -325,9 +311,7 @@ def test_delete_passkey_returns_explicit_404_without_registered_handle(repo):
     _user(repo)
     for client in _client(repo):
         _login(client)
-        response = client.request(
-            "DELETE", "/auth/passkeys/missing", json={"password": "password"}
-        )
+        response = client.get("/auth/passkeys/missing/delete")
         assert response.status_code == 404
         assert (
             response.json()["detail"] == "No passkeys are registered for this account."
@@ -339,9 +323,7 @@ def test_delete_passkey_returns_explicit_404_for_missing_credential(repo):
     repo.ensure_webauthn_user_id(user["email"], "opaque-handle")
     for client in _client(repo):
         _login(client)
-        response = client.request(
-            "DELETE", "/auth/passkeys/missing", json={"password": "password"}
-        )
+        response = client.get("/auth/passkeys/missing/delete")
         assert response.status_code == 404
         assert response.json()["detail"] == "Passkey not found for this account."
 
