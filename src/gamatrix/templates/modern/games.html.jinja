@@ -25,7 +25,7 @@
     <input type="hidden" name="filters_active" value="1">
 
     <fieldset class="filter-group">
-        <legend>Users</legend>
+        <legend><input type="checkbox" class="toggle-all" aria-label="Select all users"> Users</legend>
         {% for uid, u in users.items() %}
         {% set db_updated_at = u.get('db_updated_at') %}
         <label class="user-db-updated"
@@ -67,11 +67,11 @@
     </fieldset>
 
     <fieldset class="filter-group">
-        <legend>Exclude platforms</legend>
+        <legend><input type="checkbox" class="toggle-all" aria-label="Include all platforms"> Include platforms</legend>
         <div class="platform-grid">
             {% for p in platforms %}
-            <label><input type="checkbox" name="exclude" value="{{ p }}"
-                {% if p in opts.exclude_platforms %}checked{% endif %}>
+            <label><input type="checkbox" name="include" value="{{ p }}"
+                {% if p not in opts.exclude_platforms %}checked{% endif %}>
                 <img src="/static/{{ p }}.png" width="18" height="18"> {{ p|capitalize }}</label>
             {% endfor %}
         </div>
@@ -103,6 +103,7 @@
     {% include "games_table.html.jinja" %}
 </div>
 <script src="/static/games_sort.js"></script>
+<script src="/static/toggle_all.js"></script>
 <script>
 (function () {
     function localizeDbUpdatedTooltips() {

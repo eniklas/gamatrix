@@ -109,7 +109,7 @@ function applyDisplayMode() {
     </fieldset>
 
     <fieldset class="filter-group">
-        <legend>Default users</legend>
+        <legend><input type="checkbox" class="toggle-all" aria-label="Select all users"> Default users</legend>
         {% for uid, u in users.items() %}
         <label>
             <input type="checkbox" name="user" value="{{ uid }}"
@@ -140,11 +140,11 @@ function applyDisplayMode() {
     </fieldset>
 
     <fieldset class="filter-group">
-        <legend>Exclude platforms</legend>
+        <legend><input type="checkbox" class="toggle-all" aria-label="Include all platforms"> Include platforms</legend>
         <div class="platform-grid">
             {% for p in platforms %}
-            <label><input type="checkbox" name="exclude" value="{{ p }}"
-                {% if p in prefs.exclude_platforms %}checked{% endif %}> {{ p|capitalize }}</label>
+            <label><input type="checkbox" name="include" value="{{ p }}"
+                {% if p not in prefs.exclude_platforms %}checked{% endif %}> {{ p|capitalize }}</label>
             {% endfor %}
         </div>
     </fieldset>
@@ -156,4 +156,5 @@ function applyDisplayMode() {
         <span class="saved muted" style="display:none;">Saved ✓</span>
     </fieldset>
 </form>
+<script src="/static/toggle_all.js"></script>
 {% endblock %}
