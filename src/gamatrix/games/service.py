@@ -15,6 +15,7 @@ from typing import Literal, Protocol
 from gamatrix.config import Settings, get_settings
 from gamatrix.constants import (
     ENRICHMENT_PENDING,
+    IGDB_GAME_MODE,
     IGDB_MULTIPLAYER_GAME_MODES,
     PLATFORMS,
 )
@@ -152,7 +153,7 @@ def _build_game(rk: str, slot: dict, meta: dict, overrides: dict) -> ComparisonI
         platforms=[slot["platform"]],
         owners=sorted(slot["owners"]),
         installed=sorted(slot["installed"]),
-        max_players=meta.get("max_players", 0),
+        max_players=_display_max_players(meta),
         multiplayer=meta.get("multiplayer", False),
         rating=meta.get("rating", 0),
         rating_count=meta.get("rating_count", 0),
@@ -173,6 +174,23 @@ def _build_game(rk: str, slot: dict, meta: dict, overrides: dict) -> ComparisonI
         if override.get("url"):
             game.url = override["url"]
     return game
+
+
+def _display_max_players(meta: dict) -> int:
+    """Player count to show for a game.
+
+    IGDB gives confirmed single-player games no max-player figure, which would
+    otherwise render as an empty Players cell. When a game is known single-player
+    (IGDB lists the single-player mode and nothing multiplayer), surface that as
+    1 player instead of a blank. Games with an unknown mode set stay at 0 so we
+    don't claim a count IGDB never confirmed.
+    """
+    max_players = meta.get("max_players", 0)
+    if max_players or meta.get("multiplayer", False):
+        return max_players
+    if IGDB_GAME_MODE["singleplayer"] in meta.get("game_modes", []):
+        return 1
+    return max_players
 
 
 def _multiplayer(max_players: int, game_modes: list[int]) -> bool:

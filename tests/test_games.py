@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from gamatrix.constants import JOB_RUNNING
+from gamatrix.constants import IGDB_GAME_MODE, JOB_RUNNING
 from gamatrix.games.service import (
     ComparisonQuery,
     SortSpec,
@@ -113,6 +113,46 @@ def test_metadata_override_applied(populated):
     coop = next(g for g in result.items if g.slug == "coopgame")
     assert coop.max_players == 2
     assert coop.comment == "Use Hamachi"
+
+
+def test_confirmed_single_player_populates_one_player(repo):
+    """A game IGDB confirms is single-player (single-player mode, no count)
+    shows 1 player; a game with no known modes stays blank (0)."""
+    repo.put_user({"email": "a@x.com", "username": "A", "user_id": "1"})
+
+    def game(rk, slug, game_modes):
+        repo.put_game(
+            {
+                "release_key": rk,
+                "title": slug,
+                "slug": slug,
+                "igdb_key": rk,
+                "platform": "steam",
+                "multiplayer": False,
+                "max_players": 0,
+                "game_modes": game_modes,
+                "enrichment_status": "done",
+                "enriched_at": now_iso(),
+            }
+        )
+
+    game("steam_50", "solo", [IGDB_GAME_MODE["singleplayer"]])
+    game("steam_51", "mystery", [])
+    repo.replace_user_library(
+        "1",
+        [
+            {"release_key": "steam_50", "platform": "steam", "installed": False},
+            {"release_key": "steam_51", "platform": "steam", "installed": False},
+        ],
+    )
+
+    result = compare(
+        repo,
+        ComparisonQuery(selected_user_ids=["1"], include_single_player=True),
+    )
+    by_slug = {g.slug: g for g in result.items}
+    assert by_slug["solo"].max_players == 1
+    assert by_slug["mystery"].max_players == 0
 
 
 def test_merge_cross_platform_duplicates(repo):
