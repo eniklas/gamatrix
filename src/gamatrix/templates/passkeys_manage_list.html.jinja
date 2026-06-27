@@ -1,0 +1,21 @@
+<div id="passkey-list">
+    {% if passkeys %}
+    <ul class="passkey-list">
+        {% for passkey in passkeys %}
+        <li>
+            <strong>{{ passkey.friendly_name }}</strong>
+            <span class="muted">
+                {% if passkey.backup_eligible %}sync-capable{% else %}device-bound{% endif %}
+                {% if passkey.backed_up %}, backed up{% endif %}
+                {% if passkey.created_at %} - added {{ passkey.created_at[:10] }}{% endif %}
+            </span>
+            <button type="button" class="secondary"
+                    hx-get="/auth/passkeys/{{ passkey.credential_id }}/delete"
+                    hx-target="closest li" hx-swap="outerHTML">Delete</button>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No passkeys registered.</p>
+    {% endif %}
+</div>

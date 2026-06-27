@@ -167,6 +167,10 @@ table.results td.unowned { background-color: var(--unowned); }
   display: flex; gap: 1rem; align-items: center; margin: 0.75rem 0;
 }
 .passkey-list li .muted, .token-list li .muted { flex: 1; }
+.passkey-delete-confirm { align-items: flex-start !important; flex-direction: column; }
+.passkey-delete-confirm form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; width: 100%; }
+.passkey-delete-confirm label { display: flex; gap: 0.5rem; align-items: center; }
+.passkey-delete-confirm input[type=password] { padding: 6px; border-radius: 4px; border: 1px solid #888; }
 .token-box {
   white-space: pre-wrap;
   word-break: break-all;

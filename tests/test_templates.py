@@ -78,6 +78,14 @@ def test_each_stylesheet_defines_every_required_mode_and_stays_small():
             assert f'data-mode="{mode}"' in css
 
 
+def test_authenticated_stylesheets_style_passkey_delete_confirmation():
+    for ux_template in UX_TEMPLATES:
+        css = Path(STATIC_TEMPLATES_DIR / ux_template / "style.css").read_text()
+        assert ".passkey-delete-confirm" in css
+        assert ".passkey-delete-confirm form" in css
+        assert ".passkey-delete-confirm input[type=password]" in css
+
+
 def test_default_preferences_template_includes_apply_preview_controls():
     environment = build_authenticated_templates("default")
     html = environment.env.get_template("preferences.html.jinja").render(

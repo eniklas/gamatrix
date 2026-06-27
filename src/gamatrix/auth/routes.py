@@ -19,7 +19,11 @@ from gamatrix.auth.service import COOKIE_NAME
 from gamatrix.config import get_settings
 from gamatrix.constants import API_TOKEN_NAME_MAX_LENGTH
 from gamatrix.storage.dynamo import Repository
-from gamatrix.templating import authenticated_template, templates
+from gamatrix.templating import (
+    authenticated_fragment,
+    authenticated_template,
+    templates,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -32,10 +36,6 @@ class RegistrationOptionsRequest(BaseModel):
 class CeremonyVerificationRequest(BaseModel):
     challenge_id: str
     credential: dict
-
-
-class DeletePasskeyRequest(BaseModel):
-    password: str
 
 
 class CreateTokenRequest(BaseModel):
@@ -99,6 +99,22 @@ def _passkey_credentials(user: dict, repo: Repository) -> list[dict]:
     return repo.list_passkeys(user_handle) if user_handle else []
 
 
+def _owned_passkey(credential_id: str, user: dict, repo: Repository) -> dict:
+    user_handle = user.get("webauthn_user_id")
+    if not user_handle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No passkeys are registered for this account.",
+        )
+    passkey = repo.get_passkey(credential_id)
+    if not passkey or passkey.get("user_handle") != user_handle:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Passkey not found for this account.",
+        )
+    return passkey
+
+
 @router.get("/passkeys", response_class=HTMLResponse)
 def passkey_management(
     request: Request,
@@ -122,6 +138,61 @@ def list_passkeys(
         request,
         "passkeys_list.html.jinja",
         {"user": user, "passkeys": _passkey_credentials(user, repo)},
+    )
+
+
+@router.get("/passkeys/manage/list", response_class=HTMLResponse)
+def manage_passkeys_list(
+    request: Request,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    return authenticated_fragment(
+        request,
+        "passkeys_manage_list.html.jinja",
+        {"passkeys": _passkey_credentials(user, repo)},
+    )
+
+
+@router.get("/passkeys/{credential_id}/delete", response_class=HTMLResponse)
+def confirm_delete_passkey(
+    credential_id: str,
+    request: Request,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    return authenticated_fragment(
+        request,
+        "passkey_delete_form.html.jinja",
+        {"passkey": _owned_passkey(credential_id, user, repo), "error": None},
+    )
+
+
+@router.post("/passkeys/{credential_id}/delete", response_class=HTMLResponse)
+def delete_passkey_inline(
+    credential_id: str,
+    request: Request,
+    password: str = Form(...),
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    passkey = _owned_passkey(credential_id, user, repo)
+    if not service.authenticate(repo, user["email"], password):
+        return authenticated_fragment(
+            request,
+            "passkey_delete_form.html.jinja",
+            {"passkey": passkey, "error": "Wrong password."},
+        )
+    if not repo.delete_passkey(credential_id, user["webauthn_user_id"]):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Passkey not found for this account.",
+        )
+    return authenticated_fragment(
+        request,
+        "passkeys_manage_list.html.jinja",
+        {"passkeys": _passkey_credentials(user, repo)},
+        headers={"HX-Retarget": "#passkey-list", "HX-Reswap": "outerHTML"},
     )
 
 
@@ -174,31 +245,6 @@ def passkey_authentication_verify(
         value=service.create_session_token(user["email"]), **_cookie_kwargs()
     )
     return response
-
-
-@router.delete("/passkeys/{credential_id}")
-def delete_passkey(
-    credential_id: str,
-    body: DeletePasskeyRequest,
-    user: dict = Depends(current_user_api),
-    repo: Repository = Depends(get_repo),
-):
-    if not service.authenticate(repo, user["email"], body.password):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Wrong password."
-        )
-    user_handle = user.get("webauthn_user_id")
-    if not user_handle:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No passkeys are registered for this account.",
-        )
-    if not repo.delete_passkey(credential_id, user_handle):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Passkey not found for this account.",
-        )
-    return {"deleted": True}
 
 
 def _token_setup_snippet(token: str) -> str:
