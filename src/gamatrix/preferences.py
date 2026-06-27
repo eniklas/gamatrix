@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from gamatrix.auth.dependencies import current_user, current_user_api, get_repo
-from gamatrix.constants import DISPLAY_NAME_MAX_LENGTH, PROFILE_PIC_MAX_UPLOAD_SIZE
+from gamatrix.constants import (
+    DISPLAY_NAME_MAX_LENGTH,
+    PLATFORMS,
+    PROFILE_PIC_MAX_UPLOAD_SIZE,
+)
 from gamatrix.games.preferences import DISPLAY_MODES, merge_preferences
 from gamatrix.helpers import pic_url
 from gamatrix.images import process_profile_pic
@@ -68,6 +72,10 @@ async def save_preferences(
         return source.get(name) in ("true", "on", "1")
 
     selected = form.getlist("user") or qp.getlist("user")
+    # The platform control is an inclusive list ("Include platforms"); store the
+    # complement so the saved pref stays in the service's exclude vocabulary.
+    included = set(form.getlist("include") or qp.getlist("include"))
+    exclude_platforms = [p for p in PLATFORMS if p not in included]
     current = merge_preferences(user.get("preferences", {}))
     requested_mode = form.get("display_mode")
     if requested_mode == "system":
@@ -81,7 +89,7 @@ async def save_preferences(
         "installed_only": flag("installed_only"),
         "exclusive": flag("exclusive"),
         "show_keys": flag("show_keys"),
-        "exclude_platforms": form.getlist("exclude") or qp.getlist("exclude"),
+        "exclude_platforms": exclude_platforms,
         "default_view": form.get("view", qp.get("view", "list")),
         "selected_users": selected if selected else "all",
         "display_mode": display_mode,

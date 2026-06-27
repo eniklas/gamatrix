@@ -134,6 +134,7 @@ h1, h2, h3 { line-height: 1.15; }
 }
 .filters fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .filters legend { margin-bottom: .45rem; color: var(--accent); font-weight: bold; }
+.filters legend input.toggle-all { margin-right: .35rem; vertical-align: middle; }
 .filter-group { display: flex; flex-direction: column; gap: .3rem; }
 .filters label { display: flex; align-items: center; gap: .35rem; }
 .platform-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem; }

@@ -15,7 +15,13 @@ from starlette.datastructures import QueryParams
 
 from gamatrix.app import app
 from gamatrix.auth.dependencies import current_user_api, get_repo
+from gamatrix.constants import PLATFORMS
 from gamatrix.games import web
+
+
+def _include_all() -> str:
+    """Query fragment with every platform's Include box checked."""
+    return "&".join(f"include={p}" for p in PLATFORMS)
 
 
 def _opts(query_string: str, preferences: dict):
@@ -60,18 +66,28 @@ def test_marker_applies_to_all_boolean_flags():
     assert opts.exclusive is False
 
 
-def test_emptied_exclude_list_clears_saved_pref():
-    """Submitting with every platform-exclude box unchecked clears the saved
+def test_all_included_clears_saved_exclude():
+    """Submitting with every Include-platform box checked clears the saved
     exclude list instead of falling back to it."""
     prefs = {"exclude_platforms": ["gog", "epic"], "selected_users": ["1"]}
-    opts = _opts("user=1&filters_active=1", prefs)
+    opts = _opts(f"user=1&filters_active=1&{_include_all()}", prefs)
     assert opts.exclude_platforms == []
 
 
-def test_partial_exclude_list_wins_over_saved_pref():
+def test_no_include_on_submit_excludes_all():
+    """Submitting with every Include-platform box unchecked excludes them all
+    (the inverse of the old all-unchecked-exclude case)."""
+    prefs = {"exclude_platforms": [], "selected_users": ["1"]}
+    opts = _opts("user=1&filters_active=1", prefs)
+    assert opts.exclude_platforms == list(PLATFORMS)
+
+
+def test_partial_include_excludes_the_rest():
+    """Only the checked platforms are kept; everything else is excluded, in the
+    canonical PLATFORMS order."""
     prefs = {"exclude_platforms": ["gog", "epic"], "selected_users": ["1"]}
-    opts = _opts("user=1&filters_active=1&exclude=gog", prefs)
-    assert opts.exclude_platforms == ["gog"]
+    opts = _opts("user=1&filters_active=1&include=steam&include=gog", prefs)
+    assert opts.exclude_platforms == [p for p in PLATFORMS if p not in {"steam", "gog"}]
 
 
 def test_bare_load_uses_saved_exclude_list():

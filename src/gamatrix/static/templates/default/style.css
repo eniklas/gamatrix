@@ -63,6 +63,7 @@ h1, h2 { font-weight: 600; }
 }
 .filters fieldset { border: none; margin: 0; padding: 0; }
 .filters legend { font-weight: 600; margin-bottom: 0.25rem; }
+.filters legend input.toggle-all { margin-right: 0.35rem; vertical-align: middle; }
 .filters label { display: inline-flex; align-items: center; gap: 4px; }
 .filter-group { display: flex; flex-direction: column; gap: 2px; }
 .platform-grid { display: grid; grid-template-columns: repeat(2, auto); gap: 2px 12px; }

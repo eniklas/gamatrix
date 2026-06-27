@@ -14,6 +14,7 @@ from typing import Literal
 
 from fastapi import Request
 
+from gamatrix.constants import PLATFORMS
 from gamatrix.games.preferences import merge_preferences
 from gamatrix.games.service import (
     ComparisonDataset,
@@ -73,11 +74,15 @@ def parse_options(
             return qp[name] in ("true", "on", "1")
         return False if form_submitted else default
 
-    def multi(name: str, default: list[str]) -> list[str]:
-        values = qp.getlist(name)
-        if values or form_submitted:
-            return values
-        return default
+    # Platforms are shown as an inclusive list ("Include platforms") with every
+    # box checked by default; translate the included set the form returns into
+    # the excluded set the comparison service expects. On a bare load, treat
+    # everything except the saved excludes as included.
+    if form_submitted:
+        included = set(qp.getlist("include"))
+    else:
+        included = set(PLATFORMS) - set(prefs["exclude_platforms"])
+    exclude_platforms = [p for p in PLATFORMS if p not in included]
 
     # User selection: checked `user` boxes win. On a bare load fall back to the
     # saved preference, expanding the "all" sentinel to every known user.
@@ -102,7 +107,7 @@ def parse_options(
         selected_user_ids=selected,
         include_single_player=flag("single_player", prefs["include_single_player"]),
         installed_only=flag("installed_only", prefs["installed_only"]),
-        exclude_platforms=multi("exclude", prefs["exclude_platforms"]),
+        exclude_platforms=exclude_platforms,
         exclusive=flag("exclusive", prefs["exclusive"]),
         view=view,
         randomize=flag("randomize", False),
