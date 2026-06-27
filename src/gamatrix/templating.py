@@ -22,6 +22,8 @@ AUTHENTICATED_TEMPLATE_NAMES = (
     "job_status.html.jinja",
     "passkeys.html.jinja",
     "passkeys_list.html.jinja",
+    "passkey_delete_form.html.jinja",
+    "passkeys_manage_list.html.jinja",
     "preferences.html.jinja",
     "tokens.html.jinja",
     "tokens_list.html.jinja",

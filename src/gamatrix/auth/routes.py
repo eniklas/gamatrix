@@ -19,7 +19,11 @@ from gamatrix.auth.service import COOKIE_NAME
 from gamatrix.config import get_settings
 from gamatrix.constants import API_TOKEN_NAME_MAX_LENGTH
 from gamatrix.storage.dynamo import Repository
-from gamatrix.templating import authenticated_template, templates
+from gamatrix.templating import (
+    authenticated_fragment,
+    authenticated_template,
+    templates,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -143,7 +147,7 @@ def manage_passkeys_list(
     user: dict = Depends(current_user_api),
     repo: Repository = Depends(get_repo),
 ):
-    return templates.TemplateResponse(
+    return authenticated_fragment(
         request,
         "passkeys_manage_list.html.jinja",
         {"passkeys": _passkey_credentials(user, repo)},
@@ -157,7 +161,7 @@ def confirm_delete_passkey(
     user: dict = Depends(current_user_api),
     repo: Repository = Depends(get_repo),
 ):
-    return templates.TemplateResponse(
+    return authenticated_fragment(
         request,
         "passkey_delete_form.html.jinja",
         {"passkey": _owned_passkey(credential_id, user, repo), "error": None},
@@ -174,7 +178,7 @@ def delete_passkey_inline(
 ):
     passkey = _owned_passkey(credential_id, user, repo)
     if not service.authenticate(repo, user["email"], password):
-        return templates.TemplateResponse(
+        return authenticated_fragment(
             request,
             "passkey_delete_form.html.jinja",
             {"passkey": passkey, "error": "Wrong password."},
@@ -184,7 +188,7 @@ def delete_passkey_inline(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Passkey not found for this account.",
         )
-    return templates.TemplateResponse(
+    return authenticated_fragment(
         request,
         "passkeys_manage_list.html.jinja",
         {"passkeys": _passkey_credentials(user, repo)},
