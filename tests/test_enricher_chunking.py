@@ -8,7 +8,14 @@ from __future__ import annotations
 
 import gamatrix.igdb.enricher as enricher
 import gamatrix.jobs as jobs
-from gamatrix.constants import ENRICHMENT_DONE, JOB_COMPLETED, JOB_RUNNING
+from gamatrix.constants import (
+    ENRICHMENT_DONE,
+    ENRICHMENT_PENDING,
+    IGDB_API_CALL_DELAY,
+    JOB_COMPLETED,
+    JOB_RUNNING,
+)
+from gamatrix.igdb.client import GameMetadata
 from gamatrix.igdb.enricher import run_job
 from gamatrix.jobs import create_enrichment_job
 
@@ -36,6 +43,33 @@ def _seed_done_games(repo, release_keys):
                 "enrichment_status": ENRICHMENT_DONE,
             }
         )
+
+
+class _FakeIGDBClient:
+    """Stand-in for IGDBClient that records the call_delay it was built with and
+    does no network I/O."""
+
+    last_call_delay: float | None = None
+
+    def __init__(self, client_id, client_secret, call_delay=IGDB_API_CALL_DELAY):
+        type(self).last_call_delay = call_delay
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def fetch_metadata(self, igdb_key, title):
+        return GameMetadata()
+
+
+def _stub_igdb(monkeypatch):
+    _FakeIGDBClient.last_call_delay = None
+    monkeypatch.setattr(enricher, "IGDBClient", _FakeIGDBClient)
+    monkeypatch.setattr(
+        enricher, "resolve_igdb_credentials", lambda settings: ("id", "secret")
+    )
 
 
 def test_create_enrichment_job_fans_out_one_message_per_chunk(repo, monkeypatch):
@@ -121,3 +155,43 @@ async def test_local_worker_path_runs_whole_job_in_one_pass(
     job = repo.get_job(job_id)
     assert job["status"] == JOB_COMPLETED
     assert job["completed_count"] == 5
+
+
+async def test_igdb_call_delay_scales_with_concurrency(repo, settings, monkeypatch):
+    # With N enricher invocations running in parallel, each must pace at N x the
+    # base delay so their combined request rate stays within IGDB's budget.
+    _stub_igdb(monkeypatch)
+    repo.put_game(
+        {
+            "release_key": "steam_1",
+            "title": "Pending Game",
+            "igdb_key": "steam_1",
+            "platform": "steam",
+            "enrichment_status": ENRICHMENT_PENDING,
+        }
+    )
+    job_id = create_enrichment_job(repo, _RecordingQueue(), ["steam_1"])
+
+    concurrent = settings.model_copy(update={"enricher_max_concurrency": 2})
+    await run_job(job_id, repo, settings=concurrent, chunk_index=0)
+
+    assert _FakeIGDBClient.last_call_delay == IGDB_API_CALL_DELAY * 2
+
+
+async def test_igdb_call_delay_defaults_to_full_budget(repo, settings, monkeypatch):
+    # A single worker (the local/default case) uses the full 4 req/sec budget.
+    _stub_igdb(monkeypatch)
+    repo.put_game(
+        {
+            "release_key": "steam_1",
+            "title": "Pending Game",
+            "igdb_key": "steam_1",
+            "platform": "steam",
+            "enrichment_status": ENRICHMENT_PENDING,
+        }
+    )
+    job_id = create_enrichment_job(repo, _RecordingQueue(), ["steam_1"])
+
+    await run_job(job_id, repo, settings=settings, chunk_index=0)
+
+    assert _FakeIGDBClient.last_call_delay == IGDB_API_CALL_DELAY

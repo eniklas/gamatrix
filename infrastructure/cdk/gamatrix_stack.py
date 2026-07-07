@@ -45,6 +45,11 @@ from config import DeployConfig
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TABLE_PREFIX = "gamatrix"
 DEFAULT_EMAIL_FROM = "noreply@example.com"
+# Max enricher invocations SQS runs in parallel. The same value is handed to the
+# enricher (ENRICHER_MAX_CONCURRENCY) so it scales its IGDB call delay and the
+# workers share, rather than each consume, IGDB's 4 req/sec budget. The SQS event
+# source enforces a floor of 2, so 2 is the lowest safe value.
+ENRICHER_MAX_CONCURRENCY = 2
 
 
 def _project_version() -> str:
@@ -168,7 +173,12 @@ class GamatrixStack(Stack):
             "EnricherFn",
             "lambda-enricher",
             "handler.handler",
-            env=common_env,
+            # The enricher scales its IGDB call delay by this so parallel
+            # invocations share the rate-limit budget (see enricher.run_job).
+            env={
+                **common_env,
+                "ENRICHER_MAX_CONCURRENCY": str(ENRICHER_MAX_CONCURRENCY),
+            },
             timeout=Duration.minutes(15),
         )
         parser_fn = self._lambda(
@@ -195,12 +205,15 @@ class GamatrixStack(Stack):
 
         # Triggers.
         # A job fans out to one message per chunk (see gamatrix.jobs). Cap
-        # concurrency so a full-library refresh doesn't run many chunks at once,
-        # each with its own IGDB rate limiter, and collectively trip IGDB's
-        # global throttle. Chunking already keeps each invocation under the
-        # 15-min timeout, so bounded parallelism costs wall-clock, not success.
+        # concurrency so a full-library refresh doesn't run unbounded chunks at
+        # once; the enricher scales its IGDB delay by the same number so the
+        # workers share the rate-limit budget rather than each consume it.
+        # Chunking already keeps each invocation under the 15-min timeout, so
+        # bounded parallelism costs wall-clock, not success.
         enricher_fn.add_event_source(
-            sources.SqsEventSource(queue, batch_size=1, max_concurrency=2)
+            sources.SqsEventSource(
+                queue, batch_size=1, max_concurrency=ENRICHER_MAX_CONCURRENCY
+            )
         )
         upload_bucket.add_event_notification(
             s3.EventType.OBJECT_CREATED,

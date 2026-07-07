@@ -74,6 +74,12 @@ class Settings(BaseSettings):
     igdb_stale_days: int = 30
     ux_template: str = DEFAULT_UX_TEMPLATE
 
+    # Max number of enricher invocations that run at once (mirrors the SQS event
+    # source's max_concurrency in AWS). The enricher scales its IGDB call delay by
+    # this so parallel workers share, rather than each consume, the 4 req/sec
+    # budget. Defaults to 1: locally the worker runs a single job at a time.
+    enricher_max_concurrency: int = 1
+
     # How long the Repository serves the comparison read-model (users, games,
     # libraries, metadata overrides) from its in-process cache before re-reading
     # from DynamoDB. Lets repeated filter changes reuse one set of reads. Writes

@@ -17,6 +17,7 @@ from gamatrix.constants import (
     ENRICHMENT_DONE,
     ENRICHMENT_NOT_FOUND,
     ENRICHMENT_PENDING,
+    IGDB_API_CALL_DELAY,
     JOB_COMPLETED,
     JOB_RUNNING,
 )
@@ -72,7 +73,11 @@ async def run_job(
 
     if by_igdb_key:
         client_id, client_secret = resolve_igdb_credentials(settings)
-        async with IGDBClient(client_id, client_secret) as client:
+        # Parallel enricher invocations each pace themselves, so scale the delay
+        # by the concurrency: N workers at (N x base) delay share the 4 req/sec
+        # budget instead of each consuming all of it and tripping IGDB's throttle.
+        call_delay = IGDB_API_CALL_DELAY * max(settings.enricher_max_concurrency, 1)
+        async with IGDBClient(client_id, client_secret, call_delay) as client:
             for igdb_key, rks in by_igdb_key.items():
                 # Use any sharing release key's title for matching.
                 title = games[rks[0]].get("title", "")

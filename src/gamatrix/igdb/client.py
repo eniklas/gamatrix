@@ -75,12 +75,17 @@ class IGDBClient:
     TOKEN_URL = "https://id.twitch.tv/oauth2/token"
     API_BASE = "https://api.igdb.com/v4"
 
-    def __init__(self, client_id: str, client_secret: str):
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        call_delay: float = IGDB_API_CALL_DELAY,
+    ):
         self.client_id = client_id
         self.client_secret = client_secret
         self.access_token: str | None = None
         self._http = httpx.AsyncClient(timeout=30.0)
-        self._limiter = _RateLimiter(IGDB_API_CALL_DELAY)
+        self._limiter = _RateLimiter(call_delay)
 
     async def aclose(self) -> None:
         await self._http.aclose()

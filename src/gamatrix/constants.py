@@ -50,7 +50,10 @@ IGDB_MAX_PLAYER_KEYS = [
     "onlinemax",
 ]
 
-# The IGDB API has a rate limit of 4 requests/sec.
+# The IGDB API has a rate limit of 4 requests/sec. This delay is per client
+# (per enricher process); with several enricher invocations running in parallel
+# the effective delay is scaled up by the concurrency so their combined request
+# rate still fits the shared budget (see ENRICHER_MAX_CONCURRENCY).
 IGDB_API_CALL_DELAY = 0.25
 
 # Order matters; when deduping, the release key retained is the first one in
