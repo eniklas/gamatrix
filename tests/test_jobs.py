@@ -33,6 +33,7 @@ def _job(repo, **overrides):
         "release_keys": ["steam_1", "steam_2"],
         "total": 2,
         "completed_count": 0,
+        "chunk_progress": {},
     }
     job.update(overrides)
     repo.put_job(job)
@@ -119,14 +120,24 @@ def test_get_active_job_self_heals_stale(repo):
     assert repo.get_job("dead")["status"] == JOB_FAILED
 
 
-def test_set_job_progress_is_absolute_and_idempotent(repo):
-    _job(repo, job_id="j1", completed_count=0)
-    repo.set_job_progress("j1", 1)
-    repo.set_job_progress("j1", 2)
-    # A redelivered run replays the same values; the count must not climb past
-    # what it sets, unlike an atomic increment (see #131).
-    repo.set_job_progress("j1", 1)
-    repo.set_job_progress("j1", 2)
+def test_set_chunk_progress_is_absolute_and_idempotent(repo):
+    _job(repo, job_id="j1", total=4)
+    repo.set_chunk_progress("j1", "0", 1)
+    repo.set_chunk_progress("j1", "0", 2)
+    # A redelivered run replays the same values; a chunk's count must not climb
+    # past what it sets, unlike an atomic increment (see #131).
+    repo.set_chunk_progress("j1", "0", 1)
+    repo.set_chunk_progress("j1", "0", 2)
     job = repo.get_job("j1")
     assert job["completed_count"] == 2
     assert job["updated_at"]
+
+
+def test_completed_count_sums_chunks_without_clobbering(repo):
+    # Parallel chunks write distinct map keys, so their progress adds up instead
+    # of one overwriting the other.
+    _job(repo, job_id="j1", total=4)
+    repo.set_chunk_progress("j1", "0", 2)
+    progress = repo.set_chunk_progress("j1", "1", 2)
+    assert progress == {"0": 2, "1": 2}
+    assert repo.get_job("j1")["completed_count"] == 4

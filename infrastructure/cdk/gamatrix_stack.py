@@ -194,7 +194,14 @@ class GamatrixStack(Stack):
         web_fn.add_to_role_policy(self._ses_send_policy())
 
         # Triggers.
-        enricher_fn.add_event_source(sources.SqsEventSource(queue, batch_size=1))
+        # A job fans out to one message per chunk (see gamatrix.jobs). Cap
+        # concurrency so a full-library refresh doesn't run many chunks at once,
+        # each with its own IGDB rate limiter, and collectively trip IGDB's
+        # global throttle. Chunking already keeps each invocation under the
+        # 15-min timeout, so bounded parallelism costs wall-clock, not success.
+        enricher_fn.add_event_source(
+            sources.SqsEventSource(queue, batch_size=1, max_concurrency=2)
+        )
         upload_bucket.add_event_notification(
             s3.EventType.OBJECT_CREATED,
             s3n.LambdaDestination(parser_fn),

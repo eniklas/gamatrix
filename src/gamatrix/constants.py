@@ -82,3 +82,9 @@ JOB_FAILED = "failed"
 # status). Past this it stops driving the UI. Kept above the enricher's 15-min
 # Lambda timeout so a slow-but-live job isn't reaped mid-run.
 JOB_TIMEOUT_MINUTES = 20
+
+# A job's release keys are split into chunks of this size, one SQS message each,
+# so no single enricher invocation has to enrich the whole library within the
+# 15-min Lambda timeout. IGDB rate limiting caps throughput at ~1 game/sec, so a
+# chunk this size finishes with comfortable margin while keeping messages small.
+ENRICHMENT_CHUNK_SIZE = 200

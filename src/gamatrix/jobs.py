@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import NotRequired, TypedDict
 
 from gamatrix.constants import (
+    ENRICHMENT_CHUNK_SIZE,
     JOB_PENDING,
     JOB_RUNNING,
     JOB_TIMEOUT_MINUTES,
@@ -34,6 +35,10 @@ class JobRecord(TypedDict):
     release_keys: list[str]
     total: int
     completed_count: int
+    # Absolute progress per chunk (`{chunk_id: count}`); `completed_count` is
+    # derived from its sum. Parallel chunks update distinct keys so they don't
+    # clobber each other. Empty until the first chunk records progress.
+    chunk_progress: NotRequired[dict[str, int]]
     updated_at: NotRequired[str]
 
 
@@ -79,8 +84,21 @@ def create_enrichment_job(
         "release_keys": release_keys,
         "total": len(release_keys),
         "completed_count": 0,
+        "chunk_progress": {},
     }
     repo.put_job(job)
-    queue.enqueue(job_id)
-    log.info("Created enrichment job %s for %d games", job_id, len(release_keys))
+    # One message per chunk so each enricher invocation processes only its slice
+    # and finishes well inside the Lambda timeout; SQS fans the chunks out across
+    # concurrent invocations. Locally the queue is a no-op and the worker runs
+    # the whole job in a single pass.
+    chunk_count = 0
+    for start in range(0, len(release_keys), ENRICHMENT_CHUNK_SIZE):
+        queue.enqueue(job_id, start // ENRICHMENT_CHUNK_SIZE)
+        chunk_count += 1
+    log.info(
+        "Created enrichment job %s for %d games in %d chunk(s)",
+        job_id,
+        len(release_keys),
+        chunk_count,
+    )
     return job_id

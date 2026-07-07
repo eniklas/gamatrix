@@ -15,6 +15,7 @@ import boto3
 from boto3.dynamodb.conditions import Key
 
 from gamatrix.config import Settings, get_settings
+from gamatrix.constants import ENRICHMENT_PENDING
 from gamatrix.helpers import now_iso
 
 if TYPE_CHECKING:
@@ -129,6 +130,19 @@ class Repository:
 
     def put_game(self, game: dict) -> None:
         self._table(self.settings.games_table).put_item(Item=_to_dynamo(game))
+        self._cache_invalidate("games_map")
+
+    def mark_games_pending(self, games: list[dict]) -> None:
+        """Flip a batch of games to `pending` so the enricher won't skip them
+        (it only touches unset/pending games, see #134). Batched because a
+        full-library refresh re-stamps thousands of rows and a per-row loop would
+        blow the web request timeout."""
+        table = self._table(self.settings.games_table)
+        with table.batch_writer() as batch:
+            for game in games:
+                batch.put_item(
+                    Item=_to_dynamo({**game, "enrichment_status": ENRICHMENT_PENDING})
+                )
         self._cache_invalidate("games_map")
 
     def scan_all_games(self) -> list[dict]:
@@ -292,7 +306,15 @@ class Repository:
     def get_job(self, job_id: str) -> JobRecord | None:
         resp = self._table(self.settings.jobs_table).get_item(Key={"job_id": job_id})
         item = resp.get("Item")
-        return _from_dynamo(item) if item else None
+        if item is None:
+            return None
+        job = _from_dynamo(item)
+        # `completed_count` is derived from the per-chunk progress map rather than
+        # stored, so parallel chunks never race on a shared counter.
+        progress = job.get("chunk_progress")
+        if progress:
+            job["completed_count"] = sum(progress.values())
+        return job
 
     def update_job(self, job_id: str, attrs: dict) -> None:
         names = {f"#{k}": k for k in attrs}
@@ -305,15 +327,30 @@ class Repository:
             ExpressionAttributeValues=values,
         )
 
-    def set_job_progress(self, job_id: str, completed_count: int) -> None:
-        """Record absolute progress. Idempotent across SQS redeliveries: a
-        retried or concurrently-running enricher converges on the same value
-        instead of inflating an atomic counter past `total` (see #131). Also
-        stamps `updated_at` so staleness is measured from the last progress,
-        not job creation."""
-        self.update_job(
-            job_id, {"completed_count": completed_count, "updated_at": now_iso()}
+    def set_chunk_progress(
+        self, job_id: str, chunk_id: str, count: int
+    ) -> dict[str, int]:
+        """Record absolute progress for one chunk and return the full per-chunk
+        progress map (post-write).
+
+        Absolute, not incremental: a redelivered or concurrent run of the same
+        chunk converges on the same value instead of inflating the count past
+        `total` (see #131). Each chunk writes its own map key, so parallel chunks
+        of one job update the same row without a read-modify-write race. Also
+        stamps `updated_at` so staleness is measured from the last progress, not
+        job creation."""
+        resp = self._table(self.settings.jobs_table).update_item(
+            Key={"job_id": job_id},
+            UpdateExpression="SET chunk_progress.#c = :v, #u = :u",
+            ExpressionAttributeNames={"#c": chunk_id, "#u": "updated_at"},
+            ExpressionAttributeValues={
+                ":v": _to_dynamo(count),
+                ":u": now_iso(),
+            },
+            ReturnValues="ALL_NEW",
         )
+        attrs = _from_dynamo(resp.get("Attributes", {}))
+        return attrs.get("chunk_progress", {})
 
     def list_pending_jobs(self) -> list[dict]:
         from gamatrix.constants import JOB_PENDING

@@ -149,12 +149,12 @@ def refresh_all(
     repo: Repository = Depends(get_repo),
 ):
     """Re-enrich every game from scratch."""
-    release_keys = [g["release_key"] for g in repo.scan_all_games()]
-    # Mark them pending so the staleness check and UI reflect the refresh.
-    for rk in release_keys:
-        game = repo.get_game(rk)
-        if game:
-            repo.put_game({**game, "enrichment_status": ENRICHMENT_PENDING})
+    games = repo.scan_all_games()
+    # Flip every game to pending (batched) so the enricher won't skip it and the
+    # staleness check / UI reflect the refresh. The scan already returned each
+    # full record, so re-fetching per row would just be wasted round-trips.
+    repo.mark_games_pending(games)
+    release_keys = [g["release_key"] for g in games]
     job_id = create_enrichment_job(repo, get_queue(), release_keys)
     return authenticated_fragment(
         request,
