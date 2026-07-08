@@ -76,3 +76,28 @@ def test_refresh_missing_with_nothing_to_do_creates_no_job(repo):
         assert client.post("/games/refresh-igdb").status_code == 200
 
     assert repo.get_active_job() is None
+
+
+def test_refresh_all_marks_every_game_pending(repo):
+    _game(repo, "steam_1", ENRICHMENT_DONE)
+    _game(repo, "gog_2", ENRICHMENT_NOT_FOUND)
+    _game(repo, "steam_3", ENRICHMENT_DONE)
+    for client in _client(repo):
+        assert client.post("/games/refresh-igdb-all").status_code == 200
+
+    # Every game is flipped to pending so the enricher re-fetches all of them,
+    # not just the ones that were unset/pending before.
+    for rk in ("steam_1", "gog_2", "steam_3"):
+        assert repo.get_game(rk)["enrichment_status"] == ENRICHMENT_PENDING
+
+
+def test_refresh_all_queues_every_game(repo):
+    _game(repo, "steam_1", ENRICHMENT_DONE)
+    _game(repo, "gog_2", ENRICHMENT_DONE)
+    for client in _client(repo):
+        assert client.post("/games/refresh-igdb-all").status_code == 200
+
+    job = repo.get_active_job()
+    assert job is not None
+    assert sorted(job["release_keys"]) == ["gog_2", "steam_1"]
+    assert job["total"] == 2

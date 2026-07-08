@@ -33,7 +33,14 @@ def main() -> None:
             pending = []
         for job in pending:
             log.info("Running job %s (%d games)", job["job_id"], job.get("total", 0))
-            asyncio.run(run_job(job["job_id"], repo))
+            try:
+                # No chunk_index: locally there's no SQS fan-out, so the worker
+                # runs the whole job in one pass.
+                asyncio.run(run_job(job["job_id"], repo))
+            except Exception:
+                # One bad job shouldn't kill the poll loop; the stale reaper will
+                # mark it dead so it stops blocking new enrichment.
+                log.exception("Enrichment job %s failed", job["job_id"])
         time.sleep(POLL_SECONDS)
 
 

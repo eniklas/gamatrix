@@ -28,14 +28,17 @@ class EnrichmentQueue:
                 endpoint_url=self.settings.sqs_endpoint_url,
             )
 
-    def enqueue(self, job_id: str) -> None:
-        """Publish a job id. No-op when no queue is configured (local dev)."""
+    def enqueue(self, job_id: str, chunk_index: int) -> None:
+        """Publish one chunk of a job. The enricher reads `chunk_index` to slice
+        the job's release keys, so each invocation processes only its share.
+        No-op when no queue is configured (local dev); the local worker runs the
+        whole job instead."""
         if self._client is None or self.settings.enrichment_queue_url is None:
             log.info("No SQS queue configured; job %s left for local worker", job_id)
             return
         self._client.send_message(
             QueueUrl=self.settings.enrichment_queue_url,
-            MessageBody=json.dumps({"job_id": job_id}),
+            MessageBody=json.dumps({"job_id": job_id, "chunk_index": chunk_index}),
         )
 
 
