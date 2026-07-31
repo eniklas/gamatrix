@@ -205,12 +205,12 @@ table.results tr.subthreshold td { color: var(--warning); }
 .job-progress { padding: .75rem; margin-bottom: 1rem; border: 1px solid var(--accent); background: var(--surface); }
 .bar { height: .65rem; overflow: hidden; background: var(--surface-alt); border: 1px solid var(--border); }
 .bar > span { display: block; height: 100%; background: var(--accent); }
-.passkey-list, .token-list { list-style: none; padding: 0; }
-.passkey-list li, .token-list li {
+.passkey-list, .token-list, .platform-list { list-style: none; padding: 0; }
+.passkey-list li, .token-list li, .platform-list li {
   display: flex; align-items: center; gap: 1rem; padding: .6rem 0;
   border-bottom: 1px solid var(--border);
 }
-.passkey-list li .muted, .token-list li .muted { flex: 1; }
+.passkey-list li .muted, .token-list li .muted, .platform-list li .muted { flex: 1; }
 .passkey-delete-confirm { align-items: flex-start !important; flex-direction: column; }
 .passkey-delete-confirm form { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; width: 100%; }
 .passkey-delete-confirm label { display: flex; gap: .5rem; align-items: center; }

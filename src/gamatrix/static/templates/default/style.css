@@ -163,11 +163,11 @@ table.results td.unowned { background-color: var(--unowned); }
 }
 .card.wide { max-width: 720px; margin: 1rem auto; }
 .separator { color: #aaa; text-align: center; }
-.passkey-list, .token-list { list-style: none; padding: 0; }
-.passkey-list li, .token-list li {
+.passkey-list, .token-list, .platform-list { list-style: none; padding: 0; }
+.passkey-list li, .token-list li, .platform-list li {
   display: flex; gap: 1rem; align-items: center; margin: 0.75rem 0;
 }
-.passkey-list li .muted, .token-list li .muted { flex: 1; }
+.passkey-list li .muted, .token-list li .muted, .platform-list li .muted { flex: 1; }
 .passkey-delete-confirm { align-items: flex-start !important; flex-direction: column; }
 .passkey-delete-confirm form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; width: 100%; }
 .passkey-delete-confirm label { display: flex; gap: 0.5rem; align-items: center; }

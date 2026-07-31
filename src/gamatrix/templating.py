@@ -20,6 +20,7 @@ AUTHENTICATED_TEMPLATE_NAMES = (
     "games.html.jinja",
     "games_table.html.jinja",
     "job_status.html.jinja",
+    "library_platforms.html.jinja",
     "passkeys.html.jinja",
     "passkeys_list.html.jinja",
     "passkey_delete_form.html.jinja",
