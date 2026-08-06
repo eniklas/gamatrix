@@ -10,13 +10,47 @@ from __future__ import annotations
 import logging
 
 from gamatrix.constants import ENRICHMENT_PENDING
-from gamatrix.gogdb.parser import GogDBParser
+from gamatrix.gogdb.parser import GogDBParser, ParsedLibrary
 from gamatrix.helpers import now_iso
 from gamatrix.jobs import create_enrichment_job
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import EnrichmentQueue
 
 log = logging.getLogger(__name__)
+
+
+def _retained_entries(
+    repo: Repository, parsed: ParsedLibrary, entries: list[dict]
+) -> list[dict]:
+    """Stored rows this upload must not delete (issue #186).
+
+    ``replace_user_library`` makes the library exactly what it is given, so a
+    title missing from the upload is dropped. That is right for a refund, a
+    cancelled subscription, or a title leaving Game Pass — the platform is still
+    connected and simply stopped reporting the game. It is wrong when the user
+    disconnected the integration, because GOG then purges every one of its
+    titles and we would wipe a platform the user still owns games on.
+
+    So deletions are scoped to the platforms the parser vouched for. Rows on any
+    other platform are carried over untouched, which keeps their original
+    ``db_updated_at`` as a record of when they were last actually seen.
+    """
+    incoming_keys = {entry["release_key"] for entry in entries}
+    retained = [
+        row
+        for row in repo.get_user_library(parsed.user_id)
+        if row["release_key"] not in incoming_keys
+        and row.get("platform", row["release_key"].split("_")[0])
+        not in parsed.authoritative_platforms
+    ]
+    if retained:
+        log.info(
+            "Keeping %d stored titles for user %s from platforms absent from "
+            "this DB",
+            len(retained),
+            parsed.user_id,
+        )
+    return retained
 
 
 def ingest_db_file(
@@ -33,7 +67,8 @@ def ingest_db_file(
 
     timestamp = now_iso()
     entries = [{**e, "db_updated_at": timestamp} for e in parsed.entries]
-    repo.replace_user_library(parsed.user_id, entries)
+    retained = _retained_entries(repo, parsed, entries)
+    repo.replace_user_library(parsed.user_id, entries + retained)
 
     user = repo.get_user_by_user_id(parsed.user_id)
     if user:
@@ -71,9 +106,10 @@ def ingest_db_file(
 
     job_id = create_enrichment_job(repo, queue, to_enrich)
     log.info(
-        "Ingested user %s: %d library entries, %d new games to enrich",
+        "Ingested user %s: %d library entries (%d retained), %d new games to enrich",
         parsed.user_id,
         len(entries),
+        len(retained),
         len(to_enrich),
     )
     return parsed.user_id, job_id

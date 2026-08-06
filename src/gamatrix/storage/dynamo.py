@@ -275,6 +275,28 @@ class Repository:
                 batch.put_item(Item=_to_dynamo(item))
         self._cache_invalidate(f"library:{user_id}")
 
+    def delete_user_library_platform(self, user_id: str, platform: str) -> int:
+        """Delete a user's rows for one platform. Returns the number removed.
+
+        The escape hatch for issue #186: ingest keeps titles from platforms that
+        are not authoritative in an upload, so a user who is done with a
+        platform for good needs a way to say so explicitly.
+        """
+        self._cache_invalidate(f"library:{user_id}")
+        table = self._table(self.settings.libraries_table)
+        doomed = [
+            row
+            for row in self.get_user_library(user_id)
+            if row.get("platform", row["release_key"].split("_")[0]) == platform
+        ]
+        with table.batch_writer() as batch:
+            for row in doomed:
+                batch.delete_item(
+                    Key={"user_id": str(user_id), "release_key": row["release_key"]}
+                )
+        self._cache_invalidate(f"library:{user_id}")
+        return len(doomed)
+
     def clear_user_library(self, user_id: str) -> int:
         """Delete every library row for a user. Returns the number removed."""
         self._cache_invalidate(f"library:{user_id}")

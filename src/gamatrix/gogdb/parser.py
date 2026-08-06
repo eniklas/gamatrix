@@ -4,8 +4,10 @@ Where v1 read every user's DB at request time and computed the intersection on
 the spot, v2 parses one DB per upload and writes that user's library to
 DynamoDB. The common-games computation now happens in the games service from
 the stored libraries. The SQLite queries themselves are carried over from v1's
-gogdb_helper, with one addition: the issue #120 fix that drops expired Xbox
-Game Pass titles via LicensedReleases.isOwned.
+gogdb_helper, with two additions: the issue #120 fix that drops expired Xbox
+Game Pass titles via LicensedReleases.isOwned, and the issue #186 fix that reads
+PlatformConnections so ingest can tell "you no longer own this" apart from "that
+integration is disconnected, so its titles are missing from this DB".
 """
 
 from __future__ import annotations
@@ -33,6 +35,9 @@ class ParsedLibrary:
     entries: list[dict] = field(default_factory=list)
     # One stub per release key: the GOG-derived fields the games table needs.
     games: list[dict] = field(default_factory=list)
+    # Platforms whose absence of a title in this DB means "no longer owned"
+    # (issue #186). Ingest only deletes stored rows for these platforms.
+    authoritative_platforms: set[str] = field(default_factory=set)
 
 
 class GogDBParser:
@@ -91,6 +96,36 @@ class GogDBParser:
             )
             return set()
         return {row[0] for row in self.cursor.fetchall()}
+
+    def get_connected_platforms(self) -> set[str]:
+        """Platforms whose integration is currently connected (issue #186).
+
+        PlatformConnections maps each platform to a connectionState of
+        'Connected' or 'Disconnected'. When a user disconnects an integration,
+        GOG purges its titles from ProductPurchaseDates, so an upload taken
+        afterwards looks identical to "the user no longer owns those games".
+        The connection state is what tells the two apart.
+
+        GOG's own titles are not listed here (there is no integration to
+        connect), so ``gog`` is always treated as connected.
+
+        Returns an empty set if the table is missing, which callers treat as
+        "no connection information available" rather than "nothing connected".
+        """
+        try:
+            self.cursor.execute(
+                "SELECT platform, connectionState FROM PlatformConnections"
+            )
+        except sqlite3.OperationalError:
+            # Older GOG Galaxy schemas may lack this table; degrade gracefully.
+            log.warning("PlatformConnections not found; skipping #186 fix")
+            return set()
+        connected = {
+            row[0] for row in self.cursor.fetchall() if row[1].lower() == "connected"
+        }
+        if connected:
+            connected.add("gog")
+        return connected
 
     # Carried over from v1 (originally from AB1908/GOG-Galaxy-Export-Script).
     def _owned_games(self) -> list[tuple]:
@@ -173,6 +208,7 @@ class GogDBParser:
         owned = self._owned_games()
         installed = self._installed_games()
         excluded = self.get_subscription_release_keys()
+        connected = self.get_connected_platforms()
         log.info(
             "Parsed DB for user %s: %d owned rows, %d installed, "
             "%d excluded (Game Pass)",
@@ -230,4 +266,15 @@ class GogDBParser:
                 )
 
         parsed.entries = list(entries_by_release_key.values())
+
+        # A platform is authoritative only if it is connected *and* actually
+        # produced titles here. The second condition covers a Galaxy that is
+        # signed in but has not finished syncing yet, and is the whole rule when
+        # the DB predates PlatformConnections.
+        present = {e["platform"] for e in parsed.entries}
+        parsed.authoritative_platforms = present & connected if connected else present
+        skipped = present - parsed.authoritative_platforms
+        if skipped:
+            log.info("Not authoritative in this DB, keeping stored titles: %s", skipped)
+
         return parsed

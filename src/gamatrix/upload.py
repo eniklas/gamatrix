@@ -16,6 +16,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from gamatrix.auth.dependencies import (
     current_user,
+    current_user_api,
     current_user_upload,
     get_repo,
 )
@@ -36,9 +37,75 @@ def _upload_key(user: dict) -> str:
     return f"uploads/{user['email']}.db"
 
 
+def _platform_summary(repo: Repository, user: dict) -> list[dict]:
+    """Per-platform row counts for the user's stored library.
+
+    ``stale`` marks a platform whose titles were kept rather than confirmed by
+    the most recent upload (issue #186): its rows still carry the
+    ``db_updated_at`` of the last DB that actually listed them, which is older
+    than the one on the user record.
+    """
+    user_id = str(user.get("user_id") or "")
+    if not user_id:
+        return []
+
+    latest = user.get("db_updated_at")
+    by_platform: dict[str, dict] = {}
+    for row in repo.get_user_library(user_id):
+        platform = row.get("platform") or row["release_key"].split("_")[0]
+        slot = by_platform.setdefault(
+            platform, {"platform": platform, "count": 0, "last_seen": None}
+        )
+        slot["count"] += 1
+        seen = row.get("db_updated_at")
+        if seen and (slot["last_seen"] is None or seen > slot["last_seen"]):
+            slot["last_seen"] = seen
+
+    for slot in by_platform.values():
+        slot["stale"] = bool(
+            latest and slot["last_seen"] and slot["last_seen"] < latest
+        )
+    return sorted(by_platform.values(), key=lambda s: (-s["count"], s["platform"]))
+
+
 @router.get("/upload", response_class=HTMLResponse)
-def upload_page(request: Request, user: dict = Depends(current_user)):
-    return authenticated_template(request, "upload.html.jinja", {"user": user})
+def upload_page(
+    request: Request,
+    user: dict = Depends(current_user),
+    repo: Repository = Depends(get_repo),
+):
+    return authenticated_template(
+        request,
+        "upload.html.jinja",
+        {"user": user, "platforms": _platform_summary(repo, user)},
+    )
+
+
+@router.post("/library/platforms/{platform}/remove", response_class=HTMLResponse)
+def remove_library_platform(
+    platform: str,
+    request: Request,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    """Drop every stored title for one platform.
+
+    Uploads keep titles from platforms they can't vouch for, so this is how a
+    user says "I'm done with this platform" about one they have disconnected.
+    """
+    removed = repo.delete_user_library_platform(
+        str(user.get("user_id") or ""), platform
+    )
+    log.info("Removed %d %s titles for %s", removed, platform, user["email"])
+    return authenticated_template(
+        request,
+        "library_platforms.html.jinja",
+        {
+            "user": user,
+            "platforms": _platform_summary(repo, user),
+            "removed": {"platform": platform, "count": removed},
+        },
+    )
 
 
 @router.get("/upload/presign")
