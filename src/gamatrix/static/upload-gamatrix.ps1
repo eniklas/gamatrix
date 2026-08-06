@@ -22,7 +22,7 @@
     Path to galaxy-2.0.db. Defaults to the standard GOG Galaxy location.
 
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File upload-gamatrix.ps1 -BaseUrl https://gamatrix.example.com
+    powershell -NoProfile -ExecutionPolicy Bypass -File upload-gamatrix.ps1 -BaseUrl https://gamatrix.example.com
 #>
 [CmdletBinding()]
 param(
