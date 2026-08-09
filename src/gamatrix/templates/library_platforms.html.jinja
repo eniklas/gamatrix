@@ -1,0 +1,30 @@
+{# Shared partial: the stored library broken down by platform, with a way to
+   drop a platform outright. Uploads deliberately keep titles from platforms
+   they can't confirm (a disconnected integration purges its games from the GOG
+   DB), so this is the only way those titles ever leave. #}
+<div id="library-platforms">
+    {% if removed %}
+    <p class="muted">Removed {{ removed.count }} {{ removed.platform }} {{ 'title' if removed.count == 1 else 'titles' }}.</p>
+    {% endif %}
+    {% if platforms %}
+    <ul class="platform-list">
+        {% for p in platforms %}
+        <li>
+            <strong>{{ p.platform }}</strong>
+            <span class="muted">
+                {{ p.count }} {{ 'title' if p.count == 1 else 'titles' }}
+                {% if p.stale %}
+                · kept from {{ p.last_seen[:10] }} (not in your latest upload)
+                {% endif %}
+            </span>
+            <button type="button" class="secondary"
+                    hx-post="/library/platforms/{{ p.platform }}/remove"
+                    hx-target="#library-platforms" hx-swap="outerHTML"
+                    hx-confirm="Remove {{ p.count }} {{ p.platform }} {{ 'title' if p.count == 1 else 'titles' }} from your library? Titles from a disconnected integration can only come back by reconnecting it.">Remove</button>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No games stored yet — upload your DB to get started.</p>
+    {% endif %}
+</div>

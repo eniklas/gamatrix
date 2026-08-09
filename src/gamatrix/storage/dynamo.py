@@ -275,6 +275,30 @@ class Repository:
                 batch.put_item(Item=_to_dynamo(item))
         self._cache_invalidate(f"library:{user_id}")
 
+    def delete_user_library_platform(self, user_id: str, platform: str) -> int:
+        """Delete a user's rows for one platform. Returns the number removed.
+
+        Disconnecting a GOG integration purges its games from the Galaxy DB, so
+        an upload cannot tell "you no longer own these" from "that integration
+        is gone". Ingest resolves that in favor of keeping the titles, which
+        means they never go away on their own. This is how a user who is done
+        with a platform for good says so (issue #186).
+        """
+        self._cache_invalidate(f"library:{user_id}")
+        table = self._table(self.settings.libraries_table)
+        doomed = [
+            row
+            for row in self.get_user_library(user_id)
+            if row.get("platform", row["release_key"].split("_")[0]) == platform
+        ]
+        with table.batch_writer() as batch:
+            for row in doomed:
+                batch.delete_item(
+                    Key={"user_id": str(user_id), "release_key": row["release_key"]}
+                )
+        self._cache_invalidate(f"library:{user_id}")
+        return len(doomed)
+
     def clear_user_library(self, user_id: str) -> int:
         """Delete every library row for a user. Returns the number removed."""
         self._cache_invalidate(f"library:{user_id}")

@@ -84,6 +84,17 @@ def _build_gog_db(path: str) -> None:
         (1, library_ids["xboxone_300"]),
     )
 
+    # PlatformConnections drives the #186 fix: steam and xboxone are connected,
+    # epic is not (its titles are already gone from ProductPurchaseDates).
+    c.execute(
+        "CREATE TABLE PlatformConnections "
+        "(userId INTEGER, platform TEXT, connectionState TEXT)"
+    )
+    c.executemany(
+        "INSERT INTO PlatformConnections VALUES (12345, ?, ?)",
+        [("steam", "Connected"), ("xboxone", "Connected"), ("epic", "Disconnected")],
+    )
+
     # Installed-games query plumbing: steam_1 is installed.
     c.execute("CREATE TABLE Platforms (id INTEGER, name TEXT)")
     c.execute("INSERT INTO Platforms VALUES (1, 'steam')")
@@ -207,6 +218,140 @@ def test_ingest_same_db_twice_with_duplicate_parser_rows_is_idempotent(
         "xboxone_200",
     }
     assert len(library) == 3
+
+
+def _set_connection_state(path: str, platform: str, state: str) -> None:
+    conn = sqlite3.connect(path)
+    conn.execute(
+        "INSERT INTO PlatformConnections VALUES (12345, ?, ?) ", (platform, state)
+    )
+    conn.execute(
+        "DELETE FROM PlatformConnections WHERE platform = ? AND connectionState != ?",
+        (platform, state),
+    )
+    conn.commit()
+    conn.close()
+
+
+def _parse(path: str):
+    parser = GogDBParser(path)
+    try:
+        return parser.parse()
+    finally:
+        parser.close()
+
+
+def test_connected_platforms(gog_db):
+    parser = GogDBParser(gog_db)
+    try:
+        connected = parser.get_connected_platforms()
+    finally:
+        parser.close()
+    # gog has no integration row of its own but is always authoritative.
+    assert connected == {"steam", "xboxone", "gog"}
+    assert "epic" not in connected
+
+
+def test_authoritative_platforms_exclude_disconnected_integrations(gog_db):
+    """A platform whose titles are still present but is no longer connected
+    (the window before GOG finishes purging) must not license deletions."""
+    _set_connection_state(gog_db, "xboxone", "Disconnected")
+
+    parsed = _parse(gog_db)
+
+    assert "xboxone_200" in {e["release_key"] for e in parsed.entries}
+    assert parsed.authoritative_platforms == {"steam", "gog"}
+
+
+def test_authoritative_platforms_without_platform_connections_table(gog_db):
+    """Older GOG schemas have no PlatformConnections; fall back to "a platform
+    that reported at least one title speaks for itself"."""
+    conn = sqlite3.connect(gog_db)
+    conn.execute("DROP TABLE PlatformConnections")
+    conn.commit()
+    conn.close()
+
+    parsed = _parse(gog_db)
+
+    assert parsed.authoritative_platforms == {"steam", "gog", "xboxone"}
+
+
+def test_ingest_keeps_titles_from_a_disconnected_platform(gog_db, repo, settings):
+    """Issue #186: disconnecting an integration purges its titles from the GOG
+    DB, and that must not empty the platform out of gamatrix."""
+    repo.replace_user_library(
+        "12345",
+        [
+            {
+                "release_key": "epic_9",
+                "platform": "epic",
+                "installed": True,
+                "db_updated_at": "2020-01-01T00:00:00+00:00",
+            }
+        ],
+    )
+
+    ingest_db_file(gog_db, repo, EnrichmentQueue(settings=settings))
+
+    library = {row["release_key"]: row for row in repo.get_user_library("12345")}
+    assert set(library) == {"steam_1", "gog_2", "xboxone_200", "epic_9"}
+    # Retained untouched, so its db_updated_at still records when it was last
+    # actually seen in an upload.
+    assert library["epic_9"]["db_updated_at"] == "2020-01-01T00:00:00+00:00"
+    assert library["epic_9"]["installed"] is True
+
+
+def test_ingest_removes_titles_a_connected_platform_stopped_reporting(
+    gog_db, repo, settings
+):
+    """The legitimate removals — refunds, a cancelled subscription, a title
+    leaving Game Pass — all come from a platform that is still connected."""
+    repo.replace_user_library(
+        "12345",
+        [
+            {"release_key": "xboxone_500", "platform": "xboxone", "installed": False},
+            {"release_key": "steam_99", "platform": "steam", "installed": False},
+        ],
+    )
+
+    ingest_db_file(gog_db, repo, EnrichmentQueue(settings=settings))
+
+    library = {row["release_key"] for row in repo.get_user_library("12345")}
+    assert library == {"steam_1", "gog_2", "xboxone_200"}
+
+
+def test_ingest_keeps_titles_from_a_connected_platform_reporting_nothing(
+    gog_db, repo, settings
+):
+    """A signed-in but unsynced integration reports zero titles; that is not
+    evidence the user sold their library."""
+    _set_connection_state(gog_db, "uplay", "Connected")
+    repo.replace_user_library(
+        "12345",
+        [{"release_key": "uplay_7", "platform": "uplay", "installed": False}],
+    )
+
+    ingest_db_file(gog_db, repo, EnrichmentQueue(settings=settings))
+
+    library = {row["release_key"] for row in repo.get_user_library("12345")}
+    assert library == {"steam_1", "gog_2", "xboxone_200", "uplay_7"}
+
+
+def test_delete_user_library_platform_is_the_escape_hatch(gog_db, repo, settings):
+    repo.replace_user_library(
+        "12345",
+        [
+            {"release_key": "epic_9", "platform": "epic", "installed": False},
+            {"release_key": "epic_10", "platform": "epic", "installed": False},
+        ],
+    )
+    ingest_db_file(gog_db, repo, EnrichmentQueue(settings=settings))
+
+    removed = repo.delete_user_library_platform("12345", "epic")
+
+    assert removed == 2
+    library = {row["release_key"] for row in repo.get_user_library("12345")}
+    assert library == {"steam_1", "gog_2", "xboxone_200"}
 
 
 def test_ingest_writes_db_updated_at_to_user_record(gog_db, repo, settings):

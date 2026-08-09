@@ -16,6 +16,14 @@
     Set up <a href="/auth/tokens">an API token for unattended uploads</a>.</p>
 </div>
 
+<div class="card" style="max-width:540px; margin:1rem 0;">
+    <h3>Your library by platform</h3>
+    <p class="muted">Disconnecting an integration in GOG Galaxy removes its games
+    from your DB, so uploads keep the titles of any platform they don't see.
+    Remove a platform here when you want those titles gone for good.</p>
+    {% include "library_platforms.html.jinja" %}
+</div>
+
 <script>
 const statusEl = document.getElementById('status');
 

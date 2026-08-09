@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from starlette.datastructures import QueryParams
 
 from gamatrix.app import app
-from gamatrix.auth.dependencies import current_user_api, get_repo
+from gamatrix.auth.dependencies import current_user, current_user_api, get_repo
 from gamatrix.constants import PLATFORMS
 from gamatrix.games import web
 
@@ -192,7 +192,70 @@ def test_authenticated_ux_routes_remain_auth_gated(repo):
         for path in ("/games/table", "/api/games", "/api/jobs/not-found"):
             assert client.get(path).status_code == 401
 
-        for path in ("/games/refresh-igdb", "/games/refresh-igdb-all"):
+        for path in (
+            "/games/refresh-igdb",
+            "/games/refresh-igdb-all",
+            "/library/platforms/steam/remove",
+        ):
             assert client.post(path).status_code == 401
     finally:
         app.dependency_overrides.clear()
+
+
+def _upload_page_user(repo) -> dict:
+    """A user with a two-platform library, one platform kept from an older DB."""
+    repo.put_user(
+        {
+            "email": "viewer@x.com",
+            "user_id": "1",
+            "username": "Viewer",
+            "db_updated_at": "2026-01-02T00:00:00+00:00",
+        }
+    )
+    repo.replace_user_library(
+        "1",
+        [
+            {
+                "release_key": "steam_10",
+                "platform": "steam",
+                "installed": True,
+                "db_updated_at": "2026-01-02T00:00:00+00:00",
+            },
+            {
+                "release_key": "epic_9",
+                "platform": "epic",
+                "installed": False,
+                "db_updated_at": "2025-06-01T00:00:00+00:00",
+            },
+        ],
+    )
+    return repo.get_user("viewer@x.com")
+
+
+def test_upload_page_lists_platforms_and_flags_kept_ones(repo):
+    user = _upload_page_user(repo)
+    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[current_user] = lambda: user
+    try:
+        response = TestClient(app).get("/upload")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert "steam" in response.text and "epic" in response.text
+    # Only the platform missing from the latest upload is called out as kept.
+    assert "not in your latest upload" in response.text
+
+
+def test_remove_library_platform_drops_only_that_platform(repo):
+    user = _upload_page_user(repo)
+    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[current_user_api] = lambda: user
+    try:
+        response = TestClient(app).post("/library/platforms/epic/remove")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert "Removed 1 epic title" in response.text
+    assert {row["release_key"] for row in repo.get_user_library("1")} == {"steam_10"}

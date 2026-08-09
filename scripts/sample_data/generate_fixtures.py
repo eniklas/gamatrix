@@ -219,6 +219,24 @@ def build_fixture(
         for table in EMPTY_TABLES:
             _copy_schema(src, dst, table)
 
+        # PlatformConnections tells the parser which integrations are live, so
+        # ingest knows whose missing titles mean "no longer owned" (issue #186).
+        # Fixtures are synthetic: declare every platform the sampled keys use as
+        # connected. gog has no integration row here, matching the real schema.
+        dst.execute(
+            "CREATE TABLE PlatformConnections('userId' INT64 NOT NULL, "
+            "'platform' TEXT NOT NULL, 'connectionState' TEXT NOT NULL)"
+        )
+        dst.executemany(
+            "INSERT INTO PlatformConnections VALUES (?, ?, 'Connected')",
+            [
+                (int(user_id), platform)
+                for platform in sorted(
+                    {k.split("_")[0] for k in release_keys} - {"gog"}
+                )
+            ],
+        )
+
         # GamePieceTypes is tiny and id-stable; copy it whole.
         _copy_table_rows(src, dst, "GamePieceTypes")
 
