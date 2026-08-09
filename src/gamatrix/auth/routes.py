@@ -274,8 +274,10 @@ def _token_setup_snippet(token: str) -> str:
         f'Invoke-WebRequest "{base_url}/auth/upload-gamatrix.ps1" '
         '-OutFile "$dir\\upload-gamatrix.ps1"\n\n'
         "# 3) Schedule a daily upload at 5am (adjust the time as you like).\n"
+        # -NoProfile: the script needs nothing from the user's profile, and a
+        # profile that errors (or just prints) makes unattended runs look broken.
         "$action = New-ScheduledTaskAction -Execute powershell.exe -Argument "
-        f'"-ExecutionPolicy Bypass -File `"$dir\\upload-gamatrix.ps1`" '
+        f'"-NoProfile -ExecutionPolicy Bypass -File `"$dir\\upload-gamatrix.ps1`" '
         f'-BaseUrl {base_url}"\n'
         "$trigger = New-ScheduledTaskTrigger -Daily -At 5am\n"
         # A v2-specific task name so it doesn't collide with a leftover v1 task.
