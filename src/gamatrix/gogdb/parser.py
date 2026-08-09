@@ -118,7 +118,12 @@ class GogDBParser:
             )
         except sqlite3.OperationalError:
             # Older GOG Galaxy schemas may lack this table; degrade gracefully.
-            log.warning("PlatformConnections not found; skipping #186 fix")
+            log.warning(
+                "PlatformConnections not found: cannot tell a disconnected "
+                "integration from titles the user no longer owns, so any "
+                "platform listing at least one title here is trusted to say "
+                "which of its titles are gone (issue #186)"
+            )
             return set()
         connected = {
             row[0] for row in self.cursor.fetchall() if row[1].lower() == "connected"

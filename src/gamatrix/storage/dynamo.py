@@ -278,9 +278,11 @@ class Repository:
     def delete_user_library_platform(self, user_id: str, platform: str) -> int:
         """Delete a user's rows for one platform. Returns the number removed.
 
-        The escape hatch for issue #186: ingest keeps titles from platforms that
-        are not authoritative in an upload, so a user who is done with a
-        platform for good needs a way to say so explicitly.
+        Disconnecting a GOG integration purges its games from the Galaxy DB, so
+        an upload cannot tell "you no longer own these" from "that integration
+        is gone". Ingest resolves that in favor of keeping the titles, which
+        means they never go away on their own. This is how a user who is done
+        with a platform for good says so (issue #186).
         """
         self._cache_invalidate(f"library:{user_id}")
         table = self._table(self.settings.libraries_table)
