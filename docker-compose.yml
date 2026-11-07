@@ -7,6 +7,10 @@
 # DynamoDB tables and seed test users, then start the local job worker with
 # `just worker` (or `python scripts/local_worker.py`).
 
+# Extra pod cgroups fail on some rootless Podman/WSL machines. Docker ignores this.
+x-podman:
+  in_pod: false
+
 services:
   app:
     build:
@@ -73,7 +77,9 @@ services:
       - dynamodb-data:/home/dynamodblocal
 
   minio:
-    image: minio/minio:latest
+    build:
+      context: .
+      target: minio
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
