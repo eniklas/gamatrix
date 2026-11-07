@@ -75,6 +75,49 @@ def test_metadata_caches_until_an_override_is_written(repo):
     assert set(repo.get_all_metadata()) == {"one", "two"}
 
 
+def test_metadata_comment_updates_preserve_other_overrides_and_reject_stale_edits(
+    repo,
+):
+    repo.put_metadata(
+        {"slug": "one", "max_players": 4, "url": "https://example.com/game"}
+    )
+    cached = repo.get_all_metadata()
+
+    assert repo.update_metadata_comment("one", "Use the LAN mod", "Alice", 0)
+    updated = repo.get_metadata("one")
+    assert updated["comment"] == "Use the LAN mod"
+    assert updated["comment_updated_by"] == "Alice"
+    assert updated["comment_updated_at"]
+    assert updated["comment_revision"] == 1
+    assert updated["max_players"] == 4
+    assert updated["url"] == "https://example.com/game"
+    assert repo.get_all_metadata() is not cached
+
+    assert not repo.update_metadata_comment("one", "Stale edit", "Bob", 0)
+    assert repo.get_metadata("one")["comment"] == "Use the LAN mod"
+
+
+def test_metadata_comment_clear_preserves_other_overrides(repo):
+    repo.put_metadata(
+        {
+            "slug": "one",
+            "max_players": 4,
+            "comment": "Use the LAN mod",
+            "comment_updated_at": "2026-01-01T00:00:00+00:00",
+            "comment_updated_by": "Alice",
+            "comment_revision": 2,
+        }
+    )
+
+    assert repo.update_metadata_comment("one", None, "Bob", 2)
+    updated = repo.get_metadata("one")
+    assert "comment" not in updated
+    assert "comment_updated_at" not in updated
+    assert "comment_updated_by" not in updated
+    assert updated["comment_revision"] == 3
+    assert updated["max_players"] == 4
+
+
 def test_ttl_zero_disables_caching(repo):
     repo.settings = repo.settings.model_copy(update={"read_cache_ttl_seconds": 0})
     repo.put_game({"release_key": "steam_1", "slug": "one", "title": "One"})

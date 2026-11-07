@@ -174,6 +174,100 @@ def test_api_games_returns_headless_dataset(repo):
     assert payload["games"][0]["title"] == "Coop Game"
 
 
+def _comment_route_game(repo) -> dict:
+    user = {"email": "viewer@x.com", "username": "Viewer", "user_id": "99"}
+    repo.put_user(user)
+    repo.put_game(
+        {
+            "release_key": "steam_10",
+            "title": "Coop Game",
+            "slug": "coopgame",
+            "igdb_key": "steam_10",
+            "platform": "steam",
+            "multiplayer": True,
+            "max_players": 4,
+        }
+    )
+    repo.put_metadata(
+        {
+            "slug": "coopgame",
+            "max_players": 4,
+            "comment": "Original",
+            "comment_revision": 1,
+        }
+    )
+    return user
+
+
+def test_game_comment_can_be_edited_and_cleared(repo):
+    user = _comment_route_game(repo)
+    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[current_user_api] = lambda: user
+    try:
+        client = TestClient(app)
+        edit = client.get("/games/steam_10/comment/edit")
+        saved = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "Use https://example.com/mod", "expected_revision": "1"},
+        )
+        cleared = client.post(
+            "/games/steam_10/comment/clear",
+            data={"expected_revision": "2"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert edit.status_code == 200
+    assert "<textarea" in edit.text
+    assert "Original" in edit.text
+    assert saved.status_code == 200
+    assert saved.headers["hx-trigger"] == "commentChanged"
+    assert 'href="https://example.com/mod"' in saved.text
+    assert 'title="Viewer edited ' in saved.text
+    assert cleared.status_code == 200
+    assert cleared.headers["hx-trigger"] == "commentChanged"
+    assert 'aria-label="add/edit comment"' in cleared.text
+    metadata = repo.get_metadata("coopgame")
+    assert "comment" not in metadata
+    assert metadata["max_players"] == 4
+    assert metadata["comment_revision"] == 3
+
+
+def test_game_comment_rejects_blank_stale_and_oversized_edits(repo):
+    user = _comment_route_game(repo)
+    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[current_user_api] = lambda: user
+    try:
+        client = TestClient(app)
+        blank = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "  ", "expected_revision": "1"},
+        )
+        oversized = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "x" * 513, "expected_revision": "1"},
+        )
+        first = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "First edit", "expected_revision": "1"},
+        )
+        stale = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "Stale edit", "expected_revision": "1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert blank.status_code == 422
+    assert "Comment cannot be empty" in blank.text
+    assert oversized.status_code == 422
+    assert "512 characters or fewer" in oversized.text
+    assert first.status_code == 200
+    assert stale.status_code == 409
+    assert "changed while you were editing" in stale.text
+    assert repo.get_metadata("coopgame")["comment"] == "First edit"
+
+
 def test_authenticated_ux_routes_remain_auth_gated(repo):
     app.dependency_overrides[get_repo] = lambda: repo
     try:
@@ -189,12 +283,20 @@ def test_authenticated_ux_routes_remain_auth_gated(repo):
             assert response.status_code == 302
             assert response.headers["location"] == "/auth/login"
 
-        for path in ("/games/table", "/api/games", "/api/jobs/not-found"):
+        for path in (
+            "/games/table",
+            "/api/games",
+            "/api/jobs/not-found",
+            "/games/steam_10/comment",
+            "/games/steam_10/comment/edit",
+        ):
             assert client.get(path).status_code == 401
 
         for path in (
             "/games/refresh-igdb",
             "/games/refresh-igdb-all",
+            "/games/steam_10/comment",
+            "/games/steam_10/comment/clear",
             "/library/platforms/steam/remove",
         ):
             assert client.post(path).status_code == 401

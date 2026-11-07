@@ -102,6 +102,64 @@ def test_authenticated_stylesheets_style_passkey_delete_confirmation():
         assert ".passkey-delete-confirm input[type=password]" in css
 
 
+def test_game_comments_are_editable_and_safely_linkified():
+    game = {
+        "release_key": "steam_10",
+        "title": "Coop Game",
+        "comment": "Read https://example.com/mod\n<script>alert(1)</script>",
+        "comment_updated_at": "2026-11-07T05:00:00+00:00",
+        "comment_updated_by": "Alice",
+        "comment_revision": 2,
+    }
+    for ux_template in UX_TEMPLATES:
+        environment = build_authenticated_templates(ux_template)
+        display = environment.env.get_template("game_comment.html.jinja").render(
+            game=game,
+            editing=False,
+            error=None,
+        )
+        edit = environment.env.get_template("game_comment.html.jinja").render(
+            game=game,
+            editing=True,
+            error=None,
+        )
+        assert 'href="https://example.com/mod"' in display
+        assert "<script>" not in display
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in display
+        assert 'title="Alice edited 2026-11-07 05:00"' in display
+        assert 'class="game-comment-details"' in display
+        assert 'class="game-comment-preview"' in display
+        assert 'class="game-comment-popup"' in display
+        assert "/games/steam_10/comment/edit" in display
+        assert 'aria-label="add/edit comment"' in display
+        assert 'title="add/edit comment"' in display
+        assert "📝" in display
+        assert "<textarea" in edit
+        assert 'maxlength="512"' in edit
+        assert 'name="expected_revision" value="2"' in edit
+        assert '<button type="submit" class="btn">Save</button>' in edit
+        assert 'class="btn secondary"' in edit
+        assert ">Cancel</button>" in edit
+        assert ">Clear</button>" in edit
+        assert "/games/steam_10/comment/clear" in edit
+
+
+def test_comment_styles_and_overflow_script_keep_rows_compact():
+    script = Path("src/gamatrix/static/comment_popup.js").read_text()
+    assert "preview.scrollWidth > preview.clientWidth" in script
+    assert 'classList.toggle("is-overflowing", overflowing)' in script
+
+    for ux_template in UX_TEMPLATES:
+        css = Path(STATIC_TEMPLATES_DIR / ux_template / "style.css").read_text()
+        assert (
+            ".comment-column, .game-comment-cell { width: 20%; max-width: 20%; }" in css
+        )
+        assert "white-space: nowrap" in css
+        assert "text-overflow: ellipsis" in css
+        assert ".game-comment-popup" in css
+        assert ".comment-actions .btn { flex: 0 0 auto; white-space: nowrap; }" in css
+
+
 def test_default_preferences_template_includes_apply_preview_controls():
     environment = build_authenticated_templates("default")
     html = environment.env.get_template("preferences.html.jinja").render(

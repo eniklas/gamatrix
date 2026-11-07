@@ -78,6 +78,9 @@ class ComparisonItem:
     rating_count: int = 0
     enrichment_status: str | None = None
     comment: str = ""
+    comment_updated_at: str | None = None
+    comment_updated_by: str | None = None
+    comment_revision: int = 0
     url: str | None = None
 
     def to_dict(self) -> dict:
@@ -171,6 +174,9 @@ def _build_game(rk: str, slot: dict, meta: dict, overrides: dict) -> ComparisonI
             )
         if override.get("comment"):
             game.comment = override["comment"]
+            game.comment_updated_at = override.get("comment_updated_at")
+            game.comment_updated_by = override.get("comment_updated_by")
+        game.comment_revision = override.get("comment_revision", 0)
         if override.get("url"):
             game.url = override["url"]
     return game

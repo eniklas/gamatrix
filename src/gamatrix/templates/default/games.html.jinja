@@ -99,11 +99,15 @@
     {% if job_id %}{% include "job_status.html.jinja" %}{% endif %}
 </div>
 
-<div id="games-container">
+<div id="games-container"
+     hx-get="/games/table"
+     hx-trigger="commentChanged from:body"
+     hx-include="#filters">
     {% include "games_table.html.jinja" %}
 </div>
 <script src="/static/games_sort.js"></script>
 <script src="/static/toggle_all.js"></script>
+<script src="/static/comment_popup.js"></script>
 <script>
 (function () {
     function localizeDbUpdatedTooltips() {

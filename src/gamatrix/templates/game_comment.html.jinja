@@ -1,0 +1,53 @@
+{% if editing %}
+<form class="game-comment-form"
+      hx-post="/games/{{ game.release_key }}/comment"
+      hx-target="closest td"
+      hx-swap="innerHTML">
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <label>
+        <span class="visually-hidden">Comment for {{ game.title }}</span>
+        <textarea name="comment" rows="4"
+                  maxlength="{{ game_comment_max_length }}"
+                  required>{{ game.comment }}</textarea>
+    </label>
+    <input type="hidden" name="expected_revision" value="{{ game.comment_revision }}">
+    <div class="comment-actions">
+        <button type="submit" class="btn">Save</button>
+        <button type="button" class="btn secondary"
+                hx-get="/games/{{ game.release_key }}/comment"
+                hx-target="closest td"
+                hx-swap="innerHTML">Cancel</button>
+        {% if game.comment %}
+        <button type="button" class="btn secondary"
+                hx-post="/games/{{ game.release_key }}/comment/clear"
+                hx-include="closest form"
+                hx-target="closest td"
+                hx-swap="innerHTML"
+                hx-confirm="Clear this shared comment?">Clear</button>
+        {% endif %}
+    </div>
+</form>
+{% else %}
+<div class="game-comment-display">
+    {% if game.comment %}
+        {% if game.comment_updated_at %}
+            {% set edited_at = game.comment_updated_at[:16]|replace("T", " ") %}
+            {% set provenance = (game.comment_updated_by or "Unknown user") ~ " edited " ~ edited_at %}
+        {% else %}
+            {% set provenance = "Comment edit details unavailable" %}
+        {% endif %}
+    <details class="game-comment-details" title="{{ provenance }}">
+        <summary class="game-comment-preview">{{ game.comment }}</summary>
+        <div class="game-comment-popup">{{ game.comment|urlize(target="_blank", rel="noopener noreferrer") }}</div>
+    </details>
+    {% else %}
+    <span></span>
+    {% endif %}
+    <button type="button" class="comment-edit"
+            aria-label="add/edit comment"
+            title="add/edit comment"
+            hx-get="/games/{{ game.release_key }}/comment/edit"
+            hx-target="closest td"
+            hx-swap="innerHTML">📝</button>
+</div>
+{% endif %}

@@ -439,9 +439,64 @@ class Repository:
         overrides = {m["slug"]: m for m in self._scan(self.settings.metadata_table)}
         return self._cache_put("metadata", overrides)
 
+    def get_metadata(self, slug: str) -> dict | None:
+        resp = self._table(self.settings.metadata_table).get_item(Key={"slug": slug})
+        item = resp.get("Item")
+        return _from_dynamo(item) if item else None
+
     def put_metadata(self, override: dict) -> None:
         self._table(self.settings.metadata_table).put_item(Item=_to_dynamo(override))
         self._cache_invalidate("metadata")
+
+    def update_metadata_comment(
+        self,
+        slug: str,
+        comment: str | None,
+        updated_by: str,
+        expected_revision: int,
+    ) -> bool:
+        """Update only a metadata comment, rejecting stale concurrent edits."""
+        next_revision = expected_revision + 1
+        values: dict[str, Any] = {
+            ":expected": expected_revision,
+            ":next": next_revision,
+            ":zero": 0,
+        }
+        condition = (
+            "(attribute_not_exists(comment_revision) AND :expected = :zero) "
+            "OR comment_revision = :expected"
+        )
+        if comment is None:
+            update = (
+                "SET comment_revision = :next "
+                "REMOVE #comment, comment_updated_at, comment_updated_by"
+            )
+            names = {"#comment": "comment"}
+        else:
+            update = (
+                "SET #comment = :comment, comment_updated_at = :updated_at, "
+                "comment_updated_by = :updated_by, comment_revision = :next"
+            )
+            names = {"#comment": "comment"}
+            values.update(
+                {
+                    ":comment": comment,
+                    ":updated_at": now_iso(),
+                    ":updated_by": updated_by,
+                }
+            )
+        try:
+            self._table(self.settings.metadata_table).update_item(
+                Key={"slug": slug},
+                UpdateExpression=update,
+                ConditionExpression=condition,
+                ExpressionAttributeNames=names,
+                ExpressionAttributeValues=_to_dynamo(values),
+            )
+        except self._resource.meta.client.exceptions.ConditionalCheckFailedException:
+            return False
+        self._cache_invalidate("metadata")
+        return True
 
     def clear_metadata(self) -> int:
         """Delete every override row. Returns the number removed."""

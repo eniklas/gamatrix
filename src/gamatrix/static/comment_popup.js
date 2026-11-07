@@ -1,0 +1,35 @@
+(function () {
+    function updateCommentOverflow(root) {
+        const scope = root && root.querySelectorAll ? root : document;
+        for (const details of scope.querySelectorAll(".game-comment-details")) {
+            const preview = details.querySelector(".game-comment-preview");
+            if (!preview) { continue; }
+            const overflowing = preview.scrollWidth > preview.clientWidth + 1;
+            details.classList.toggle("is-overflowing", overflowing);
+            if (!overflowing) { details.open = false; }
+        }
+    }
+
+    document.addEventListener("click", function (event) {
+        if (!(event.target instanceof Element)) { return; }
+        const summary = event.target.closest(".game-comment-details > summary");
+        if (summary && !summary.parentElement.classList.contains("is-overflowing")) {
+            event.preventDefault();
+        }
+        if (!event.target.closest(".game-comment-details")) {
+            for (const details of document.querySelectorAll(".game-comment-details[open]")) {
+                details.open = false;
+            }
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        updateCommentOverflow(document);
+    });
+    document.body.addEventListener("htmx:afterSwap", function (event) {
+        updateCommentOverflow(event.target);
+    });
+    window.addEventListener("resize", function () {
+        updateCommentOverflow(document);
+    });
+})();

@@ -107,12 +107,22 @@ def test_sort_by_rating_desc(populated):
 
 def test_metadata_override_applied(populated):
     populated.put_metadata(
-        {"slug": "coopgame", "max_players": 2, "comment": "Use Hamachi"}
+        {
+            "slug": "coopgame",
+            "max_players": 2,
+            "comment": "Use Hamachi",
+            "comment_updated_at": "2026-11-07T05:00:00+00:00",
+            "comment_updated_by": "Alice",
+            "comment_revision": 3,
+        }
     )
     result = compare(populated, ComparisonQuery(selected_user_ids=["1", "2"]))
     coop = next(g for g in result.items if g.slug == "coopgame")
     assert coop.max_players == 2
     assert coop.comment == "Use Hamachi"
+    assert coop.comment_updated_at == "2026-11-07T05:00:00+00:00"
+    assert coop.comment_updated_by == "Alice"
+    assert coop.comment_revision == 3
 
 
 def test_confirmed_single_player_populates_one_player(repo):
