@@ -56,6 +56,22 @@ def test_authenticated_bases_use_their_own_cache_busted_stylesheet():
         assert expected in html
 
 
+def test_base_templates_link_to_github_feedback_forms():
+    expected_links = (
+        "https://github.com/eniklas/gamatrix/issues/new?template=bug_report.yml",
+        "https://github.com/eniklas/gamatrix/issues/new?template=feature_request.yml",
+    )
+    base_html = templates.env.get_template("base.html.jinja").render()
+    for link in expected_links:
+        assert f'href="{link}"' in base_html
+
+    for ux_template in UX_TEMPLATES:
+        environment = build_authenticated_templates(ux_template)
+        html = environment.env.get_template("base.html.jinja").render()
+        for link in expected_links:
+            assert f'href="{link}"' in html
+
+
 def test_authenticated_templates_apply_only_valid_explicit_modes():
     environment = build_authenticated_templates("modern")
     template = environment.env.get_template("base.html.jinja")

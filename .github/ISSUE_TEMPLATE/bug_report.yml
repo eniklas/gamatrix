@@ -1,0 +1,51 @@
+name: Bug report
+description: Tell us about something in Gamatrix that is not working.
+title: "[Bug]: "
+labels:
+  - bug
+  - triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Gamatrix. Please avoid including passwords,
+        API credentials, or your GOG Galaxy database.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest set of steps that reliably demonstrates the problem.
+      placeholder: |
+        1. Go to ...
+        2. Select ...
+        3. See ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Gamatrix version
+      description: The version shown in the footer of the page.
+      placeholder: "For example: 2.8.1"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and operating system
+      placeholder: "For example: Firefox 145 on Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add screenshots, error messages, or other relevant details.
+
