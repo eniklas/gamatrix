@@ -99,10 +99,7 @@
     {% if job_id %}{% include "job_status.html.jinja" %}{% endif %}
 </div>
 
-<div id="games-container"
-     hx-get="/games/table"
-     hx-trigger="commentChanged from:body"
-     hx-include="#filters">
+<div id="games-container">
     {% include "games_table.html.jinja" %}
 </div>
 <script src="/static/games_sort.js"></script>

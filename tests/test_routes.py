@@ -222,11 +222,11 @@ def test_game_comment_can_be_edited_and_cleared(repo):
     assert "<textarea" in edit.text
     assert "Original" in edit.text
     assert saved.status_code == 200
-    assert saved.headers["hx-trigger"] == "commentChanged"
+    assert "commentChanged" in saved.headers["hx-trigger-after-swap"]
     assert 'href="https://example.com/mod"' in saved.text
     assert 'title="Viewer edited ' in saved.text
     assert cleared.status_code == 200
-    assert cleared.headers["hx-trigger"] == "commentChanged"
+    assert "commentChanged" in cleared.headers["hx-trigger-after-swap"]
     assert 'aria-label="add/edit comment"' in cleared.text
     metadata = repo.get_metadata("coopgame")
     assert "comment" not in metadata

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 
@@ -55,7 +57,7 @@ def _comment_fragment(
     error: str | None = None,
     stored_comment: str | None = None,
     status_code: int = 200,
-    headers: dict[str, str] | None = None,
+    changed: bool = False,
 ):
     return authenticated_fragment(
         request,
@@ -67,7 +69,20 @@ def _comment_fragment(
             "stored_comment": stored_comment,
         },
         status_code=status_code,
-        headers=headers,
+        headers=(
+            {
+                "HX-Trigger-After-Swap": json.dumps(
+                    {
+                        "commentChanged": {
+                            "slug": game["slug"],
+                            "releaseKey": game["release_key"],
+                        }
+                    }
+                )
+            }
+            if changed
+            else None
+        ),
     )
 
 
@@ -213,7 +228,7 @@ def save_game_comment(
     return _comment_fragment(
         request,
         _comment_game(repo, release_key),
-        headers={"HX-Trigger": "commentChanged"},
+        changed=True,
     )
 
 
@@ -248,7 +263,7 @@ def clear_game_comment(
     return _comment_fragment(
         request,
         _comment_game(repo, release_key),
-        headers={"HX-Trigger": "commentChanged"},
+        changed=True,
     )
 
 

@@ -21,6 +21,27 @@
         }
     }
 
+    document.body.addEventListener("commentChanged", function (event) {
+        const cells = Array.from(document.querySelectorAll(".game-comment-cell"));
+        const source = cells.find(cell =>
+            cell.dataset.slug === event.detail.slug &&
+            cell.dataset.releaseKey === event.detail.releaseKey
+        );
+        if (!source || !source.querySelector(".game-comment-display")) { return; }
+        for (const cell of cells) {
+            if (cell === source || cell.dataset.slug !== event.detail.slug) { continue; }
+            if (cell.querySelector(".game-comment-form")) { continue; }
+            cell.innerHTML = source.innerHTML;
+            const edit = cell.querySelector(".comment-edit");
+            if (edit) {
+                edit.setAttribute("hx-get", "/games/" +
+                    encodeURIComponent(cell.dataset.releaseKey) + "/comment/edit");
+            }
+            htmx.process(cell);
+            updateCommentOverflow(cell);
+        }
+    });
+
     document.addEventListener("click", function (event) {
         if (!(event.target instanceof Element)) { return; }
         const summary = event.target.closest(".game-comment-details > summary");

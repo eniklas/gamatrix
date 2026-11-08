@@ -91,7 +91,8 @@
                 {% endif %}
             </td>
             {% endif %}
-            <td class="game-comment-cell">{% include "game_comment.html.jinja" %}</td>
+            <td class="game-comment-cell" data-slug="{{ game.slug }}"
+                data-release-key="{{ game.release_key }}">{% include "game_comment.html.jinja" %}</td>
             {% if opts.show_keys %}<td>{{ game.release_key }}</td>{% endif %}
         </tr>
     {% endfor %}

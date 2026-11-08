@@ -116,3 +116,41 @@ def test_comment_conflict_displays_stored_text_and_preserves_draft(comment_page)
     cell.get_by_role("button", name="Save", exact=True).click()
     cell.locator(".game-comment-display").wait_for()
     assert repo.get_metadata("alpha")["comment"] == "My draft"
+
+
+def test_comment_save_preserves_sort_and_other_drafts_and_updates_duplicates(
+    comment_page,
+):
+    page, _ = comment_page
+    requests = []
+    page.on("request", lambda request: requests.append(urlsplit(request.url).path))
+    rating = page.locator("th[data-sort-col=rating]")
+    rating.click()
+    rating.click()
+    beta = page.locator("tbody tr").filter(has_text="Beta")
+    beta.locator(".comment-edit").click()
+    beta.locator("textarea").fill("Unsubmitted beta draft")
+    alpha = page.locator("tbody tr").filter(has_text="Alpha").first
+    alpha.locator(".comment-edit").click()
+    alpha.locator("textarea").fill("Saved shared comment")
+    alpha.get_by_role("button", name="Save", exact=True).click()
+    page.wait_for_load_state("networkidle")
+    assert "/games/table" not in requests
+    assert rating.get_attribute("aria-sort") == "descending"
+    assert beta.locator("textarea").input_value() == "Unsubmitted beta draft"
+    assert page.locator(".game-comment-preview").all_text_contents() == [
+        "Saved shared comment",
+        "Saved shared comment",
+    ]
+
+
+def test_comment_save_preserves_same_slug_sibling_editor(comment_page):
+    page, _ = comment_page
+    alpha = page.locator("tbody tr").filter(has_text="Alpha")
+    alpha.nth(1).locator(".comment-edit").click()
+    alpha.nth(1).locator("textarea").fill("Sibling draft")
+    alpha.nth(0).locator(".comment-edit").click()
+    alpha.nth(0).locator("textarea").fill("First save")
+    alpha.nth(0).get_by_role("button", name="Save", exact=True).click()
+    page.wait_for_load_state("networkidle")
+    assert alpha.nth(1).locator("textarea").input_value() == "Sibling draft"
