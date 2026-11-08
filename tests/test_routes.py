@@ -9,6 +9,7 @@ falling back to the user's saved preference.
 from __future__ import annotations
 
 import types
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -343,6 +344,28 @@ def test_comment_api_keeps_editor_identity_private(repo, monkeypatch):
     assert "comment_updated_by" not in game
     assert "comment_updated_at" not in game
     assert "comment_revision" not in game
+
+
+@pytest.mark.parametrize("clear", [False, True])
+def test_comment_write_uses_authoritative_result_without_second_reads(
+    repo, monkeypatch, clear
+):
+    user = _comment_route_game(repo)
+    monkeypatch.setitem(app.dependency_overrides, get_repo, lambda: repo)
+    monkeypatch.setitem(app.dependency_overrides, current_user_api, lambda: user)
+    with (
+        patch.object(repo, "get_game", wraps=repo.get_game) as game_read,
+        patch.object(repo, "get_metadata", wraps=repo.get_metadata) as metadata_read,
+    ):
+        response = TestClient(app).post(
+            "/games/steam_10/comment" + ("/clear" if clear else ""),
+            data={"comment": "Authoritative", "expected_revision": "1"},
+        )
+    assert response.status_code == 200
+    assert game_read.call_count == 1
+    assert metadata_read.call_count == 1
+    if not clear:
+        assert "Authoritative" in response.text
 
 
 def test_authenticated_ux_routes_remain_auth_gated(repo):

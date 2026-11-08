@@ -529,7 +529,7 @@ class Repository:
         updated_by: str,
         expected_revision: int,
         updated_user_id: str | None = None,
-    ) -> bool:
+    ) -> dict | None:
         """Update only a metadata comment, rejecting stale concurrent edits."""
         next_revision = expected_revision + 1
         values: dict[str, Any] = {
@@ -567,17 +567,18 @@ class Repository:
             else:
                 update += " REMOVE comment_updated_user_id"
         try:
-            self._table(self.settings.metadata_table).update_item(
+            response = self._table(self.settings.metadata_table).update_item(
                 Key={"slug": slug},
                 UpdateExpression=update,
                 ConditionExpression=condition,
                 ExpressionAttributeNames=names,
                 ExpressionAttributeValues=_to_dynamo(values),
+                ReturnValues="ALL_NEW",
             )
         except self._resource.meta.client.exceptions.ConditionalCheckFailedException:
-            return False
+            return None
         self._cache_invalidate("metadata")
-        return True
+        return _from_dynamo(response["Attributes"])
 
     def clear_metadata(self) -> int:
         """Delete every override row. Returns the number removed."""

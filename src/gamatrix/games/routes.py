@@ -207,13 +207,14 @@ def save_game_comment(
         )
 
     updated_by = user.get("username") or "anonymous coward"
-    if not repo.update_metadata_comment(
+    updated = repo.update_metadata_comment(
         game["slug"],
         comment,
         updated_by,
         expected_revision,
         updated_user_id=user.get("user_id"),
-    ):
+    )
+    if updated is None:
         current = _comment_game(repo, release_key)
         return _comment_fragment(
             request,
@@ -229,7 +230,12 @@ def save_game_comment(
         )
     return _comment_fragment(
         request,
-        _comment_game(repo, release_key),
+        {
+            **game,
+            **updated,
+            "comment": updated.get("comment", ""),
+            "comment_updated_by": comment_author(updated, repo.scan_users()),
+        },
         changed=True,
     )
 
@@ -244,13 +250,14 @@ def clear_game_comment(
 ):
     game = _comment_game(repo, release_key)
     updated_by = user.get("username") or "anonymous coward"
-    if not repo.update_metadata_comment(
+    updated = repo.update_metadata_comment(
         game["slug"],
         None,
         updated_by,
         expected_revision,
         updated_user_id=user.get("user_id"),
-    ):
+    )
+    if updated is None:
         current = _comment_game(repo, release_key)
         return _comment_fragment(
             request,
@@ -265,7 +272,13 @@ def clear_game_comment(
         )
     return _comment_fragment(
         request,
-        _comment_game(repo, release_key),
+        {
+            **game,
+            "comment": "",
+            "comment_updated_at": None,
+            "comment_updated_by": None,
+            "comment_revision": updated["comment_revision"],
+        },
         changed=True,
     )
 
