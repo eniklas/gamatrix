@@ -165,7 +165,7 @@ def save_game_comment(
     repo: Repository = Depends(get_repo),
 ):
     game = _comment_game(repo, release_key)
-    comment = comment.strip()
+    comment = comment.replace("\r\n", "\n").replace("\r", "\n").strip()
     if not comment:
         return _comment_fragment(
             request,
@@ -174,7 +174,8 @@ def save_game_comment(
             error="Comment cannot be empty. Use Clear to remove an existing comment.",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
-    if len(comment) > GAME_COMMENT_MAX_LENGTH:
+    # HTML maxlength counts UTF-16 units, not Python Unicode code points.
+    if len(comment.encode("utf-16-le")) // 2 > GAME_COMMENT_MAX_LENGTH:
         return _comment_fragment(
             request,
             {**game, "comment": comment},

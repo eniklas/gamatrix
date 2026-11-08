@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import types
 
+import pytest
 from fastapi.testclient import TestClient
 from starlette.datastructures import QueryParams
 
@@ -266,6 +267,33 @@ def test_game_comment_rejects_blank_stale_and_oversized_edits(repo):
     assert stale.status_code == 409
     assert "changed while you were editing" in stale.text
     assert repo.get_metadata("coopgame")["comment"] == "First edit"
+
+
+@pytest.mark.parametrize(
+    "submitted,expected,status_code",
+    [
+        ("a" * 510 + "\r\nb", "a" * 510 + "\nb", 200),
+        ("a\rb", "a\nb", 200),
+        ("a" * 511 + "\r\nb", None, 422),
+        ("\U0001f600" * 257, None, 422),
+        ("\U0001f600" * 256, "\U0001f600" * 256, 200),
+    ],
+    ids=["crlf-at-limit", "lone-cr", "crlf-over-limit", "emoji-over", "emoji-at"],
+)
+def test_comment_limit_matches_normalized_textarea(
+    repo, monkeypatch, submitted, expected, status_code
+):
+    user = _comment_route_game(repo)
+    monkeypatch.setitem(app.dependency_overrides, get_repo, lambda: repo)
+    monkeypatch.setitem(app.dependency_overrides, current_user_api, lambda: user)
+    response = TestClient(app).post(
+        "/games/steam_10/comment",
+        data={"comment": submitted, "expected_revision": "1"},
+    )
+    assert response.status_code == status_code
+    assert repo.get_metadata("coopgame")["comment"] == (
+        expected if expected is not None else "Original"
+    )
 
 
 def test_authenticated_ux_routes_remain_auth_gated(repo):
