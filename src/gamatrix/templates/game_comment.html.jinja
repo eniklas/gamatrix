@@ -49,11 +49,13 @@
     {% else %}
     <span></span>
     {% endif %}
+    {% if game.slug %}
     <button type="button" class="comment-edit"
             aria-label="add/edit comment"
             title="add/edit comment"
             hx-get="/games/{{ game.release_key }}/comment/edit"
             hx-target="closest td"
             hx-swap="innerHTML">📝</button>
+    {% endif %}
 </div>
 {% endif %}

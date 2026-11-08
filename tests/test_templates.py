@@ -106,6 +106,7 @@ def test_game_comments_are_editable_and_safely_linkified():
     game = {
         "release_key": "steam_10",
         "title": "Coop Game",
+        "slug": "coopgame",
         "comment": "Read https://example.com/mod\n<script>alert(1)</script>",
         "comment_updated_at": "2026-11-07T05:00:00+00:00",
         "comment_updated_by": "Alice",
@@ -142,6 +143,18 @@ def test_game_comments_are_editable_and_safely_linkified():
         assert ">Cancel</button>" in edit
         assert ">Clear</button>" in edit
         assert "/games/steam_10/comment/clear" in edit
+
+
+def test_slugless_games_have_no_comment_edit_control():
+    for ux_template in UX_TEMPLATES:
+        template = build_authenticated_templates(ux_template).env.get_template(
+            "game_comment.html.jinja"
+        )
+        html = template.render(
+            game={"release_key": "steam_1", "slug": "", "comment": ""},
+            editing=False,
+        )
+        assert "comment-edit" not in html
 
 
 def test_comment_styles_and_overflow_script_keep_rows_compact():
