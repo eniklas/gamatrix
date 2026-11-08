@@ -53,13 +53,19 @@ def _comment_fragment(
     *,
     editing: bool = False,
     error: str | None = None,
+    stored_comment: str | None = None,
     status_code: int = 200,
     headers: dict[str, str] | None = None,
 ):
     return authenticated_fragment(
         request,
         "game_comment.html.jinja",
-        {"game": game, "editing": editing, "error": error},
+        {
+            "game": game,
+            "editing": editing,
+            "error": error,
+            "stored_comment": stored_comment,
+        },
         status_code=status_code,
         headers=headers,
     )
@@ -198,8 +204,10 @@ def save_game_comment(
             editing=True,
             error=(
                 "This comment changed while you were editing. "
-                "Review it and save again."
+                "Review the latest stored comment below. "
+                "Saving again will replace it with your draft."
             ),
+            stored_comment=current["comment"],
             status_code=status.HTTP_409_CONFLICT,
         )
     return _comment_fragment(
@@ -225,14 +233,16 @@ def clear_game_comment(
         updated_by,
         expected_revision,
     ):
+        current = _comment_game(repo, release_key)
         return _comment_fragment(
             request,
-            _comment_game(repo, release_key),
+            current,
             editing=True,
             error=(
                 "This comment changed while you were editing. "
-                "Review it and try again."
+                "Review the latest stored comment below before trying again."
             ),
+            stored_comment=current["comment"],
             status_code=status.HTTP_409_CONFLICT,
         )
     return _comment_fragment(

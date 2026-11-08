@@ -440,7 +440,9 @@ class Repository:
         return self._cache_put("metadata", overrides)
 
     def get_metadata(self, slug: str) -> dict | None:
-        resp = self._table(self.settings.metadata_table).get_item(Key={"slug": slug})
+        resp = self._table(self.settings.metadata_table).get_item(
+            Key={"slug": slug}, ConsistentRead=True
+        )
         item = resp.get("Item")
         return _from_dynamo(item) if item else None
 

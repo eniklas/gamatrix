@@ -100,3 +100,19 @@ def test_comment_validation_error_is_visible(comment_page):
     assert "cannot be empty" in cell.locator(".error").inner_text()
     assert textarea.input_value() == ""
     assert repo.get_metadata("alpha")["comment"] == "Original alpha"
+
+
+def test_comment_conflict_displays_stored_text_and_preserves_draft(comment_page):
+    page, repo = comment_page
+    cell = page.locator(".game-comment-cell").first
+    cell.locator(".comment-edit").click()
+    cell.locator("textarea").fill("My draft")
+    assert repo.update_metadata_comment("alpha", "Someone else's change", "Other", 0)
+    cell.get_by_role("button", name="Save", exact=True).click()
+    cell.locator(".error").wait_for(timeout=3000)
+    assert cell.locator("textarea").input_value() == "My draft"
+    assert "Someone else's change" in cell.inner_text()
+    assert repo.get_metadata("alpha")["comment"] == "Someone else's change"
+    cell.get_by_role("button", name="Save", exact=True).click()
+    cell.locator(".game-comment-display").wait_for()
+    assert repo.get_metadata("alpha")["comment"] == "My draft"

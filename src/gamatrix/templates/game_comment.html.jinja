@@ -4,6 +4,12 @@
       hx-target="closest td"
       hx-swap="innerHTML">
     {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+    {% if stored_comment is defined and stored_comment is not none %}
+    <div class="comment-conflict">
+        <strong>Latest stored comment</strong>
+        <p style="white-space: pre-wrap;">{{ stored_comment or "(cleared)" }}</p>
+    </div>
+    {% endif %}
     <label>
         <span class="visually-hidden">Comment for {{ game.title }}</span>
         <textarea name="comment" rows="4"
