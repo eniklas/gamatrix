@@ -37,12 +37,15 @@
 <div class="game-comment-display">
     {% if game.comment %}
         {% if game.comment_updated_at %}
-            {% set edited_at = game.comment_updated_at[:16]|replace("T", " ") %}
-            {% set provenance = (game.comment_updated_by or "Unknown user") ~ " edited " ~ edited_at %}
+            {% set provenance = (game.comment_updated_by or "anonymous coward") ~ " edited " ~ game.comment_updated_at %}
         {% else %}
             {% set provenance = "Comment edit details unavailable" %}
         {% endif %}
-    <details class="game-comment-details" title="{{ provenance }}">
+    <details class="game-comment-details" title="{{ provenance }}"
+             {% if game.comment_updated_at %}
+             data-comment-updated="{{ game.comment_updated_at }}"
+             data-comment-author="{{ game.comment_updated_by or 'anonymous coward' }}"
+             {% endif %}>
         <summary class="game-comment-preview">{{ game.comment }}</summary>
         <div class="game-comment-popup">{{ game.comment|urlize(target="_blank", rel="noopener noreferrer") }}</div>
     </details>

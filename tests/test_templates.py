@@ -127,7 +127,7 @@ def test_game_comments_are_editable_and_safely_linkified():
         assert 'href="https://example.com/mod"' in display
         assert "<script>" not in display
         assert "&lt;script&gt;alert(1)&lt;/script&gt;" in display
-        assert 'title="Alice edited 2026-11-07 05:00"' in display
+        assert 'data-comment-updated="2026-11-07T05:00:00+00:00"' in display
         assert 'class="game-comment-details"' in display
         assert 'class="game-comment-preview"' in display
         assert 'class="game-comment-popup"' in display

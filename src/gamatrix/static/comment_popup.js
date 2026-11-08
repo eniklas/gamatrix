@@ -13,6 +13,19 @@
     function updateCommentOverflow(root) {
         const scope = root && root.querySelectorAll ? root : document;
         for (const details of scope.querySelectorAll(".game-comment-details")) {
+            if (details.dataset.commentUpdated) {
+                const when = new Date(details.dataset.commentUpdated);
+                if (!isNaN(when)) {
+                    const pad = value => String(value).padStart(2, "0");
+                    const local = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())} ` +
+                        `${pad(when.getHours())}:${pad(when.getMinutes())}`;
+                    const zone = new Intl.DateTimeFormat("en", { timeZoneName: "short" })
+                        .formatToParts(when).find(part => part.type === "timeZoneName").value;
+                    details.title = `${details.dataset.commentAuthor} edited ${local} ${zone}`;
+                } else {
+                    details.title = `${details.dataset.commentAuthor}: edit time unavailable`;
+                }
+            }
             const preview = details.querySelector(".game-comment-preview");
             if (!preview) { continue; }
             const overflowing = preview.scrollWidth > preview.clientWidth + 1;

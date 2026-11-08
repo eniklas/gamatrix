@@ -154,3 +154,31 @@ def test_comment_save_preserves_same_slug_sibling_editor(comment_page):
     alpha.nth(0).get_by_role("button", name="Save", exact=True).click()
     page.wait_for_load_state("networkidle")
     assert alpha.nth(1).locator("textarea").input_value() == "Sibling draft"
+
+
+def test_comment_edit_time_is_localized_on_load_and_after_swap(comment_page):
+    page, repo = comment_page
+    repo.put_metadata(
+        {
+            "slug": "alpha",
+            "comment": "Timestamped",
+            "comment_updated_by": "Viewer",
+            "comment_updated_at": "2026-11-07T05:00:00+00:00",
+        }
+    )
+    page.reload()
+    cell = page.locator(".game-comment-cell").first
+    details = cell.locator("details")
+    assert "2026-11-06 21:00" in details.get_attribute("title")
+    assert "PST" in details.get_attribute("title") or "PDT" in details.get_attribute(
+        "title"
+    )
+    cell.locator(".comment-edit").click()
+    cell.locator("textarea").fill("Saved timestamp")
+    cell.get_by_role("button", name="Save", exact=True).click()
+    page.wait_for_load_state("networkidle")
+    for title in page.locator("details").evaluate_all(
+        "(elements) => elements.map(el => el.title)"
+    ):
+        if "edited" in title:
+            assert "PST" in title or "PDT" in title
