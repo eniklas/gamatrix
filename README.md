@@ -183,6 +183,11 @@ test browser with `uv run playwright install chromium`, then run
 `GAMATRIX_TEST_BROWSER` to your installed Chrome executable. These tests are
 reported as skipped if neither browser is available.
 
+Re-running `scripts/migrate_metadata.py` replaces imported player-count and URL
+overrides but preserves user-edited comments, edit details, and deliberate
+clears. YAML comments are imported only for titles without a user edit.
+`--wipe` resets imported overrides, not user comments; `--dry-run` makes no writes.
+
 ## Deployment
 
 Infrastructure is managed with AWS CDK. See [`infrastructure/cdk/README.md`](infrastructure/cdk/README.md) for full instructions.

@@ -32,8 +32,8 @@ def main() -> None:
     parser.add_argument(
         "--wipe",
         action="store_true",
-        help="Delete all existing override rows before importing "
-        "(clears stale keys left by the old slug format)",
+        help="Reset imported overrides before importing, preserving user-edited "
+        "and cleared comments",
     )
     args = parser.parse_args()
 
@@ -54,10 +54,10 @@ def main() -> None:
 
     if args.wipe:
         if args.dry_run:
-            log.info("[dry-run] would delete all existing override rows first")
+            log.info("[dry-run] would reset imported fields, preserving user comments")
         else:
-            removed = repo.clear_metadata()  # type: ignore[union-attr]
-            log.info("Wiped %d existing override row(s)", removed)
+            reset = repo.reset_imported_metadata()  # type: ignore[union-attr]
+            log.info("Reset %d override row(s); user comments preserved", reset)
 
     written = 0
     for title, fields in metadata.items():
@@ -73,7 +73,7 @@ def main() -> None:
         if args.dry_run:
             log.info("[dry-run] %s → %s", title, item)
         else:
-            repo.put_metadata(item)  # type: ignore[union-attr]
+            repo.import_metadata(item)  # type: ignore[union-attr]
             log.info("Wrote %s → slug=%s", title, slug)
         written += 1
 
