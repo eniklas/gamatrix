@@ -528,6 +528,7 @@ class Repository:
         comment: str | None,
         updated_by: str,
         expected_revision: int,
+        updated_user_id: str | None = None,
     ) -> bool:
         """Update only a metadata comment, rejecting stale concurrent edits."""
         next_revision = expected_revision + 1
@@ -543,7 +544,8 @@ class Repository:
         if comment is None:
             update = (
                 "SET comment_revision = :next "
-                "REMOVE #comment, comment_updated_at, comment_updated_by"
+                "REMOVE #comment, comment_updated_at, comment_updated_by, "
+                "comment_updated_user_id"
             )
             names = {"#comment": "comment"}
         else:
@@ -559,6 +561,11 @@ class Repository:
                     ":updated_by": updated_by,
                 }
             )
+            if updated_user_id:
+                update += ", comment_updated_user_id = :user_id"
+                values[":user_id"] = str(updated_user_id)
+            else:
+                update += " REMOVE comment_updated_user_id"
         try:
             self._table(self.settings.metadata_table).update_item(
                 Key={"slug": slug},

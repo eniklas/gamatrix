@@ -50,6 +50,17 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def comment_author(override: dict, users: list[dict]) -> str:
+    author_id = override.get("comment_updated_user_id")
+    if author_id:
+        author = next((u for u in users if str(u.get("user_id")) == str(author_id)), {})
+        return author.get("username") or "anonymous coward"
+    legacy = override.get("comment_updated_by")
+    if legacy and "@" not in legacy:
+        return legacy
+    return "anonymous coward"
+
+
 def parse_iso(value: str) -> datetime:
     """Parse an ISO 8601 string, tolerating a trailing Z."""
     return datetime.fromisoformat(value.replace("Z", "+00:00"))

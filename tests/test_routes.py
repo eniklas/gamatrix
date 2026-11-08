@@ -296,6 +296,55 @@ def test_comment_limit_matches_normalized_textarea(
     )
 
 
+@pytest.mark.parametrize("legacy", [False, True])
+def test_comment_author_never_exposes_email(repo, monkeypatch, legacy):
+    user = _comment_route_game(repo)
+    user.pop("username")
+    repo.put_user(user)
+    monkeypatch.setitem(app.dependency_overrides, get_repo, lambda: repo)
+    monkeypatch.setitem(app.dependency_overrides, current_user_api, lambda: user)
+    if legacy:
+        repo.put_metadata(
+            {
+                "slug": "coopgame",
+                "comment": "Legacy comment",
+                "comment_updated_by": user["email"],
+                "comment_updated_at": "2026-11-07T05:00:00+00:00",
+            }
+        )
+        response = TestClient(app).get("/games/steam_10/comment")
+    else:
+        response = TestClient(app).post(
+            "/games/steam_10/comment",
+            data={"comment": "New comment", "expected_revision": "1"},
+        )
+    assert response.status_code == 200
+    assert user["email"] not in response.text
+    assert "anonymous coward" in response.text
+
+
+def test_comment_api_keeps_editor_identity_private(repo, monkeypatch):
+    user = _comment_route_game(repo)
+    repo.replace_user_library("99", [{"release_key": "steam_10"}])
+    repo.put_metadata(
+        {
+            "slug": "coopgame",
+            "comment": "Comment",
+            "comment_updated_by": user["email"],
+            "comment_updated_at": "2026-11-07T05:00:00+00:00",
+            "comment_revision": 1,
+        }
+    )
+    monkeypatch.setitem(app.dependency_overrides, get_repo, lambda: repo)
+    monkeypatch.setitem(app.dependency_overrides, current_user_api, lambda: user)
+    response = TestClient(app).get("/api/games?user=99")
+    game = response.json()["games"][0]
+    assert game["comment"] == "Comment"
+    assert "comment_updated_by" not in game
+    assert "comment_updated_at" not in game
+    assert "comment_revision" not in game
+
+
 def test_authenticated_ux_routes_remain_auth_gated(repo):
     app.dependency_overrides[get_repo] = lambda: repo
     try:

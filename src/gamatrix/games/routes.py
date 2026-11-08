@@ -22,6 +22,7 @@ from gamatrix.constants import (
 )
 from gamatrix.games import api, service, web
 from gamatrix.games.preferences import merge_preferences
+from gamatrix.helpers import comment_author
 from gamatrix.jobs import create_enrichment_job, is_job_stale
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import get_queue
@@ -44,7 +45,7 @@ def _comment_game(repo: Repository, release_key: str) -> dict:
         "slug": game["slug"],
         "comment": override.get("comment", ""),
         "comment_updated_at": override.get("comment_updated_at"),
-        "comment_updated_by": override.get("comment_updated_by"),
+        "comment_updated_by": comment_author(override, repo.scan_users()),
         "comment_revision": override.get("comment_revision", 0),
     }
 
@@ -205,12 +206,13 @@ def save_game_comment(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
-    updated_by = user.get("username") or user["email"]
+    updated_by = user.get("username") or "anonymous coward"
     if not repo.update_metadata_comment(
         game["slug"],
         comment,
         updated_by,
         expected_revision,
+        updated_user_id=user.get("user_id"),
     ):
         current = _comment_game(repo, release_key)
         return _comment_fragment(
@@ -241,12 +243,13 @@ def clear_game_comment(
     repo: Repository = Depends(get_repo),
 ):
     game = _comment_game(repo, release_key)
-    updated_by = user.get("username") or user["email"]
+    updated_by = user.get("username") or "anonymous coward"
     if not repo.update_metadata_comment(
         game["slug"],
         None,
         updated_by,
         expected_revision,
+        updated_user_id=user.get("user_id"),
     ):
         current = _comment_game(repo, release_key)
         return _comment_fragment(
