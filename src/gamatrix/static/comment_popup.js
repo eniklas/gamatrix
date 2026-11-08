@@ -1,4 +1,15 @@
 (function () {
+    document.body.addEventListener("htmx:beforeSwap", function (event) {
+        const detail = event.detail;
+        if (!detail.target.matches(".game-comment-cell")) { return; }
+        if (detail.xhr.status !== 409 && detail.xhr.status !== 422) { return; }
+        if (!(detail.xhr.getResponseHeader("Content-Type") || "").startsWith("text/html")) {
+            return;
+        }
+        if (!detail.serverResponse.includes('class="game-comment-form"')) { return; }
+        detail.shouldSwap = true;
+    });
+
     function updateCommentOverflow(root) {
         const scope = root && root.querySelectorAll ? root : document;
         for (const details of scope.querySelectorAll(".game-comment-details")) {

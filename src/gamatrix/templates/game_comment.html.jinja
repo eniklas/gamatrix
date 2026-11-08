@@ -3,7 +3,7 @@
       hx-post="/games/{{ game.release_key }}/comment"
       hx-target="closest td"
       hx-swap="innerHTML">
-    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
     <label>
         <span class="visually-hidden">Comment for {{ game.title }}</span>
         <textarea name="comment" rows="4"

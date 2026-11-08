@@ -177,6 +177,12 @@ If `pytest` fails while importing `aws_cdk` / `jsii` with a message like
 `FileNotFoundError: [WinError 2]`, your Python env is fine but `node.exe` is
 not on `PATH` for that shell.
 
+Comment interaction tests use Chromium and the real HTMX library. Install the
+test browser with `uv run playwright install chromium`, then run
+`uv run pytest tests/test_comment_browser.py`. Alternatively, set
+`GAMATRIX_TEST_BROWSER` to your installed Chrome executable. These tests are
+reported as skipped if neither browser is available.
+
 ## Deployment
 
 Infrastructure is managed with AWS CDK. See [`infrastructure/cdk/README.md`](infrastructure/cdk/README.md) for full instructions.
