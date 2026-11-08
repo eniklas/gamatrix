@@ -264,6 +264,12 @@ button.comment-edit {
   line-height: 1;
 }
 button.comment-edit:hover { filter: none; transform: scale(1.08); }
+@media (hover: hover) and (pointer: fine) {
+  button.comment-edit { opacity: 0; }
+  .game-comment-cell:hover button.comment-edit,
+  .game-comment-cell:focus-within button.comment-edit { opacity: 1; }
+}
+button.comment-edit:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 .game-comment-form textarea { width: 100%; box-sizing: border-box; resize: vertical; }
 .comment-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }
 .comment-actions .btn { flex: 0 0 auto; white-space: nowrap; }

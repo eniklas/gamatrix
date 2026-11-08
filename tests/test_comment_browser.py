@@ -182,3 +182,17 @@ def test_comment_edit_time_is_localized_on_load_and_after_swap(comment_page):
     ):
         if "edited" in title:
             assert "PST" in title or "PDT" in title
+
+
+def test_comment_edit_button_reveals_on_hover_and_keyboard_focus(comment_page):
+    page, _ = comment_page
+    page.mouse.move(0, 0)
+    button = page.locator(".comment-edit").first
+    assert button.evaluate("el => getComputedStyle(el).opacity") == "0"
+    button.hover()
+    assert button.evaluate("el => getComputedStyle(el).opacity") == "1"
+    page.mouse.move(0, 0)
+    button.focus()
+    assert button.evaluate("el => getComputedStyle(el).opacity") == "1"
+    button.press("Enter")
+    page.locator(".game-comment-form textarea").wait_for()
