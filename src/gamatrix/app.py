@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -33,6 +34,10 @@ settings = get_settings()
 configure_authenticated_templates(settings.ux_template)
 
 app = FastAPI(title="gamatrix", version=__version__)
+# Lambda rejects responses over 6 MB, and the all-games table for a
+# large group can exceed that as uncompressed HTML. Mangum base64-encodes
+# the gzipped body, which API Gateway decodes before sending it to the client.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

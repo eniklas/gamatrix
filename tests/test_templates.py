@@ -131,7 +131,8 @@ def test_game_comments_are_editable_and_safely_linkified():
         assert 'class="game-comment-details"' in display
         assert 'class="game-comment-preview"' in display
         assert 'class="game-comment-popup"' in display
-        assert "/games/steam_10/comment/edit" in display
+        # Edit is wired by a delegated listener, not per-row htmx attributes.
+        assert "hx-" not in display
         assert 'aria-label="add/edit comment"' in display
         assert 'title="add/edit comment"' in display
         assert "📝" in display
@@ -155,6 +156,21 @@ def test_slugless_games_have_no_comment_edit_control():
             editing=False,
         )
         assert "comment-edit" not in html
+
+
+def test_empty_comment_cell_stays_compact():
+    """Every table row renders this cell, so its size multiplies by the row
+    count; the full-library grid must stay under Lambda's 6 MB response cap."""
+    for ux_template in UX_TEMPLATES:
+        template = build_authenticated_templates(ux_template).env.get_template(
+            "game_comment.html.jinja"
+        )
+        html = template.render(
+            game={"release_key": "steam_1", "slug": "game", "comment": ""},
+            editing=False,
+        )
+        assert "comment-edit" in html
+        assert len(html.encode()) < 200
 
 
 def test_comment_styles_and_overflow_script_keep_rows_compact():
