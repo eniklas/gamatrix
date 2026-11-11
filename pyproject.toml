@@ -49,6 +49,7 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
+    "playwright",
     "moto[dynamodb,s3,sqs,ses]",
     "boto3-stubs[dynamodb,s3,sqs,ses]",
     "types-python-jose",

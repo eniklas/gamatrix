@@ -11,6 +11,6 @@
 </head>
 <body{% if display_mode %} data-mode="{{ display_mode }}"{% endif %}>
 {% block body %}{% endblock %}
-<footer class="muted" style="margin-top:2rem;">gamatrix v{{ version }}</footer>
+{% include "feedback_footer.html.jinja" %}
 </body>
 </html>

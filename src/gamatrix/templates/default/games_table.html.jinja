@@ -35,7 +35,7 @@
             {% if not is_grid %}
                 {{ sort_header('Installed', 'installed') }}
             {% endif %}
-            <th>Comment</th>
+            <th class="comment-column">Comment</th>
             {% if opts.show_keys %}<th>Release Key</th>{% endif %}
         </tr>
     </thead>
@@ -91,7 +91,8 @@
                 {% endif %}
             </td>
             {% endif %}
-            <td>{{ game.comment }}</td>
+            <td class="game-comment-cell" data-slug="{{ game.slug }}"
+                data-release-key="{{ game.release_key }}">{% include "game_comment.html.jinja" %}</td>
             {% if opts.show_keys %}<td>{{ game.release_key }}</td>{% endif %}
         </tr>
     {% endfor %}

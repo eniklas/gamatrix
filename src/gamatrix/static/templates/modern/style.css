@@ -215,6 +215,65 @@ table.results tr.subthreshold td { color: var(--warning); }
 .passkey-delete-confirm form { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; width: 100%; }
 .passkey-delete-confirm label { display: flex; gap: .5rem; align-items: center; }
 .passkey-delete-confirm input[type=password] { padding: 6px; border-radius: 4px; border: 1px solid var(--border); }
+.comment-column, .game-comment-cell { width: 20%; max-width: 20%; }
+.game-comment-cell { position: relative; }
+.game-comment-display {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .35rem;
+  align-items: start;
+  min-width: 0;
+}
+.game-comment-details { position: relative; min-width: 0; }
+.game-comment-preview {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  cursor: default;
+}
+.game-comment-preview::-webkit-details-marker { display: none; }
+.game-comment-details.is-overflowing .game-comment-preview {
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.game-comment-popup {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + .35rem);
+  right: 0;
+  width: min(28rem, 70vw);
+  max-height: 16rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: .75rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .2);
+}
+button.comment-edit {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+button.comment-edit:hover { filter: none; transform: scale(1.08); }
+@media (hover: hover) and (pointer: fine) {
+  button.comment-edit { opacity: 0; }
+  .game-comment-cell:hover button.comment-edit,
+  .game-comment-cell:focus-within button.comment-edit { opacity: 1; }
+}
+button.comment-edit:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.game-comment-form textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+.comment-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }
+.comment-actions .btn { flex: 0 0 auto; white-space: nowrap; }
+.game-comment-form .error { margin: 0 0 .4rem; }
 .token-box {
   white-space: pre-wrap;
   word-break: break-all;

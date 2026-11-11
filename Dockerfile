@@ -28,6 +28,16 @@ RUN uv export --frozen --no-emit-project --extra dev -o /tmp/requirements.txt \
 EXPOSE 8080
 CMD ["uvicorn", "gamatrix.app:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
 
+# ---- minio: local S3; upstream community releases are now source-only ----
+FROM docker.io/library/golang:1.24-alpine AS minio-build
+RUN CGO_ENABLED=0 go install github.com/minio/minio@RELEASE.2025-10-15T17-29-55Z
+
+FROM docker.io/library/alpine:3.22 AS minio
+RUN apk add --no-cache ca-certificates
+COPY --from=minio-build /go/bin/minio /usr/local/bin/minio
+EXPOSE 9000 9001
+ENTRYPOINT ["minio"]
+
 # ---- lambda-web: image for the API Gateway-backed web Lambda ----
 FROM public.ecr.aws/lambda/python:3.12 AS lambda-web
 ARG SETUPTOOLS_SCM_PRETEND_VERSION

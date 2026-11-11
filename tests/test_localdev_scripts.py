@@ -40,6 +40,57 @@ def _local_settings(prefix: str) -> Settings:
     )
 
 
+@pytest.mark.parametrize("wipe", [False, True])
+def test_metadata_migration_preserves_user_edits_and_clears(
+    repo, monkeypatch, tmp_path, wipe
+):
+    script = _load_script(monkeypatch, "migrate_metadata")
+    monkeypatch.setattr("gamatrix.storage.dynamo.get_repository", lambda: repo)
+    config = tmp_path / "config.yaml"
+    config.write_text(
+        "metadata:\n"
+        "  Edited:\n    max_players: 8\n    comment: YAML default\n"
+        "  Cleared:\n    max_players: 2\n    comment: YAML default\n"
+        "  New:\n    comment: Imported default\n"
+    )
+    repo.put_metadata({"slug": "edited", "url": "https://example.com"})
+    assert repo.update_metadata_comment("edited", "User text", "Viewer", 0)
+    assert repo.update_metadata_comment("cleared", None, "Viewer", 0)
+    repo.put_metadata({"slug": "orphan", "comment": "Keep orphan user text"})
+    assert repo.update_metadata_comment("orphan", "Keep orphan user text", "Viewer", 0)
+    repo.put_metadata({"slug": "old-config", "max_players": 4})
+    before = repo.get_metadata("edited")
+    monkeypatch.setattr(
+        sys, "argv", ["migrate_metadata.py", str(config)] + (["--wipe"] if wipe else [])
+    )
+    script.main()
+    edited = repo.get_metadata("edited")
+    assert edited["comment"] == "User text"
+    assert edited["comment_revision"] == before["comment_revision"]
+    assert edited["comment_updated_at"] == before["comment_updated_at"]
+    assert edited["comment_updated_by"] == before["comment_updated_by"]
+    assert edited["max_players"] == 8
+    assert "comment" not in repo.get_metadata("cleared")
+    assert repo.get_metadata("cleared")["comment_revision"] == 1
+    assert repo.get_metadata("orphan")["comment"] == "Keep orphan user text"
+    assert repo.get_metadata("new")["comment"] == "Imported default"
+    assert (repo.get_metadata("old-config") is None) == wipe
+
+
+def test_metadata_migration_dry_run_does_not_write(repo, monkeypatch, tmp_path):
+    script = _load_script(monkeypatch, "migrate_metadata")
+    monkeypatch.setattr("gamatrix.storage.dynamo.get_repository", lambda: repo)
+    config = tmp_path / "config.yaml"
+    config.write_text("metadata:\n  Edited:\n    comment: YAML default\n")
+    repo.put_metadata({"slug": "edited", "comment": "User text", "comment_revision": 1})
+    before = repo.get_all_metadata()
+    monkeypatch.setattr(
+        sys, "argv", ["migrate_metadata.py", str(config), "--wipe", "--dry-run"]
+    )
+    script.main()
+    assert repo.get_all_metadata() == before
+
+
 def test_seed_users_main_creates_requested_user(repo, monkeypatch):
     seed_users = _load_script(monkeypatch, "seed_users")
     monkeypatch.setattr(seed_users, "get_repository", lambda: repo)

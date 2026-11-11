@@ -9,7 +9,9 @@ falling back to the user's saved preference.
 from __future__ import annotations
 
 import types
+from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 from starlette.datastructures import QueryParams
 
@@ -174,6 +176,200 @@ def test_api_games_returns_headless_dataset(repo):
     assert payload["games"][0]["title"] == "Coop Game"
 
 
+def _comment_route_game(repo) -> dict:
+    user = {"email": "viewer@x.com", "username": "Viewer", "user_id": "99"}
+    repo.put_user(user)
+    repo.put_game(
+        {
+            "release_key": "steam_10",
+            "title": "Coop Game",
+            "slug": "coopgame",
+            "igdb_key": "steam_10",
+            "platform": "steam",
+            "multiplayer": True,
+            "max_players": 4,
+        }
+    )
+    repo.put_metadata(
+        {
+            "slug": "coopgame",
+            "max_players": 4,
+            "comment": "Original",
+            "comment_revision": 1,
+        }
+    )
+    return user
+
+
+def test_game_comment_can_be_edited_and_cleared(repo):
+    user = _comment_route_game(repo)
+    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[current_user_api] = lambda: user
+    try:
+        client = TestClient(app)
+        edit = client.get("/games/steam_10/comment/edit")
+        saved = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "Use https://example.com/mod", "expected_revision": "1"},
+        )
+        cleared = client.post(
+            "/games/steam_10/comment/clear",
+            data={"expected_revision": "2"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert edit.status_code == 200
+    assert "<textarea" in edit.text
+    assert "Original" in edit.text
+    assert saved.status_code == 200
+    assert "commentChanged" in saved.headers["hx-trigger-after-swap"]
+    assert 'href="https://example.com/mod"' in saved.text
+    assert 'title="Viewer edited ' in saved.text
+    assert cleared.status_code == 200
+    assert "commentChanged" in cleared.headers["hx-trigger-after-swap"]
+    assert 'aria-label="add/edit comment"' in cleared.text
+    metadata = repo.get_metadata("coopgame")
+    assert "comment" not in metadata
+    assert metadata["max_players"] == 4
+    assert metadata["comment_revision"] == 3
+
+
+def test_game_comment_rejects_blank_stale_and_oversized_edits(repo):
+    user = _comment_route_game(repo)
+    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[current_user_api] = lambda: user
+    try:
+        client = TestClient(app)
+        blank = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "  ", "expected_revision": "1"},
+        )
+        oversized = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "x" * 513, "expected_revision": "1"},
+        )
+        first = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "First edit", "expected_revision": "1"},
+        )
+        stale = client.post(
+            "/games/steam_10/comment",
+            data={"comment": "Stale edit", "expected_revision": "1"},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert blank.status_code == 422
+    assert "Comment cannot be empty" in blank.text
+    # The stored comment still exists, so the Clear the error points to stays.
+    assert "/comment/clear" in blank.text
+    assert oversized.status_code == 422
+    assert "512 characters or fewer" in oversized.text
+    assert first.status_code == 200
+    assert stale.status_code == 409
+    assert "changed while you were editing" in stale.text
+    assert repo.get_metadata("coopgame")["comment"] == "First edit"
+
+
+@pytest.mark.parametrize(
+    "submitted,expected,status_code",
+    [
+        ("a" * 510 + "\r\nb", "a" * 510 + "\nb", 200),
+        ("a\rb", "a\nb", 200),
+        ("a" * 511 + "\r\nb", None, 422),
+        ("\U0001f600" * 257, None, 422),
+        ("\U0001f600" * 256, "\U0001f600" * 256, 200),
+    ],
+    ids=["crlf-at-limit", "lone-cr", "crlf-over-limit", "emoji-over", "emoji-at"],
+)
+def test_comment_limit_matches_normalized_textarea(
+    repo, monkeypatch, submitted, expected, status_code
+):
+    user = _comment_route_game(repo)
+    monkeypatch.setitem(app.dependency_overrides, get_repo, lambda: repo)
+    monkeypatch.setitem(app.dependency_overrides, current_user_api, lambda: user)
+    response = TestClient(app).post(
+        "/games/steam_10/comment",
+        data={"comment": submitted, "expected_revision": "1"},
+    )
+    assert response.status_code == status_code
+    assert repo.get_metadata("coopgame")["comment"] == (
+        expected if expected is not None else "Original"
+    )
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_comment_author_never_exposes_email(repo, monkeypatch, legacy):
+    user = _comment_route_game(repo)
+    user.pop("username")
+    repo.put_user(user)
+    monkeypatch.setitem(app.dependency_overrides, get_repo, lambda: repo)
+    monkeypatch.setitem(app.dependency_overrides, current_user_api, lambda: user)
+    if legacy:
+        repo.put_metadata(
+            {
+                "slug": "coopgame",
+                "comment": "Legacy comment",
+                "comment_updated_by": user["email"],
+                "comment_updated_at": "2026-11-07T05:00:00+00:00",
+            }
+        )
+        response = TestClient(app).get("/games/steam_10/comment")
+    else:
+        response = TestClient(app).post(
+            "/games/steam_10/comment",
+            data={"comment": "New comment", "expected_revision": "1"},
+        )
+    assert response.status_code == 200
+    assert user["email"] not in response.text
+    assert "anonymous coward" in response.text
+
+
+def test_comment_api_keeps_editor_identity_private(repo, monkeypatch):
+    user = _comment_route_game(repo)
+    repo.replace_user_library("99", [{"release_key": "steam_10"}])
+    repo.put_metadata(
+        {
+            "slug": "coopgame",
+            "comment": "Comment",
+            "comment_updated_by": user["email"],
+            "comment_updated_at": "2026-11-07T05:00:00+00:00",
+            "comment_revision": 1,
+        }
+    )
+    monkeypatch.setitem(app.dependency_overrides, get_repo, lambda: repo)
+    monkeypatch.setitem(app.dependency_overrides, current_user_api, lambda: user)
+    response = TestClient(app).get("/api/games?user=99")
+    game = response.json()["games"][0]
+    assert game["comment"] == "Comment"
+    assert "comment_updated_by" not in game
+    assert "comment_updated_at" not in game
+    assert "comment_revision" not in game
+
+
+@pytest.mark.parametrize("clear", [False, True])
+def test_comment_write_uses_authoritative_result_without_second_reads(
+    repo, monkeypatch, clear
+):
+    user = _comment_route_game(repo)
+    monkeypatch.setitem(app.dependency_overrides, get_repo, lambda: repo)
+    monkeypatch.setitem(app.dependency_overrides, current_user_api, lambda: user)
+    with (
+        patch.object(repo, "get_game", wraps=repo.get_game) as game_read,
+        patch.object(repo, "get_metadata", wraps=repo.get_metadata) as metadata_read,
+    ):
+        response = TestClient(app).post(
+            "/games/steam_10/comment" + ("/clear" if clear else ""),
+            data={"comment": "Authoritative", "expected_revision": "1"},
+        )
+    assert response.status_code == 200
+    assert game_read.call_count == 1
+    assert metadata_read.call_count == 1
+    if not clear:
+        assert "Authoritative" in response.text
+
+
 def test_authenticated_ux_routes_remain_auth_gated(repo):
     app.dependency_overrides[get_repo] = lambda: repo
     try:
@@ -189,12 +385,20 @@ def test_authenticated_ux_routes_remain_auth_gated(repo):
             assert response.status_code == 302
             assert response.headers["location"] == "/auth/login"
 
-        for path in ("/games/table", "/api/games", "/api/jobs/not-found"):
+        for path in (
+            "/games/table",
+            "/api/games",
+            "/api/jobs/not-found",
+            "/games/steam_10/comment",
+            "/games/steam_10/comment/edit",
+        ):
             assert client.get(path).status_code == 401
 
         for path in (
             "/games/refresh-igdb",
             "/games/refresh-igdb-all",
+            "/games/steam_10/comment",
+            "/games/steam_10/comment/clear",
             "/library/platforms/steam/remove",
         ):
             assert client.post(path).status_code == 401

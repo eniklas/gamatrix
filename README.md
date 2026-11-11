@@ -36,7 +36,7 @@ Use the **Upload DB** link to upload your GOG Galaxy database. The file is at `C
 
 ## Local development
 
-Everything runs in Docker — you don't install Python or the app on your host.
+Everything runs in containers — you don't install Python or the app on your host.
 
 ⚠️ NOTE: There is breaking local development change after version 2.3 that will _break_
 a pre-existing local dynamodb-data volume mounted at `/home/dynamodblocal`. Re-creating
@@ -44,7 +44,7 @@ these volumes will fix the issue.
 
 **Prerequisites:**
 
-- **Docker** (Desktop or Engine) — the only hard host requirement.
+- **Docker** (Desktop or Engine), or **Podman** with a Compose provider.
 - **A local GOG Galaxy DB.** Sample data is generated from *your own* library, so you
   need GOG Galaxy installed with some games. The DB lives at
   `C:\ProgramData\GOG.com\Galaxy\storage\galaxy-2.0.db` (Windows) or
@@ -100,6 +100,31 @@ If that local DB already has users, rerun the last command with
 `--hard-reset-existing-users`; the script now refuses to mix an old user set
 with a new manifest unless you request the reset explicitly.
 
+### Podman
+
+The same Compose file works with Podman. Install a Compose provider (for example,
+`uv tool install podman-compose`) and start your Podman machine if needed. Use
+`podman compose` instead of `docker compose` in the commands above; the `just`
+container recipes still use Docker.
+
+```bash
+podman compose up -d --build
+```
+
+If rootless Podman on WSL reports that the `pids` cgroup controller is unavailable,
+recreate the dev containers with the provider's per-container workaround:
+
+```bash
+podman compose down
+podman compose --podman-run-args=--cgroups=disabled up -d --build
+```
+
+This preserves the data volumes and does not change machine-wide cgroup settings.
+
+The local MinIO service builds from a pinned upstream source release because
+community releases are now source-only. The first build takes longer; subsequent
+starts reuse the image.
+
 ### just
 
 [just](https://github.com/casey/just) runs this repo's task recipes (see the
@@ -151,6 +176,17 @@ uv run mypy
 If `pytest` fails while importing `aws_cdk` / `jsii` with a message like
 `FileNotFoundError: [WinError 2]`, your Python env is fine but `node.exe` is
 not on `PATH` for that shell.
+
+Comment interaction tests use Chromium and the real HTMX library. Install the
+test browser with `uv run playwright install chromium`, then run
+`uv run pytest tests/test_comment_browser.py`. Alternatively, set
+`GAMATRIX_TEST_BROWSER` to your installed Chrome executable. These tests are
+reported as skipped if neither browser is available.
+
+Re-running `scripts/migrate_metadata.py` replaces imported player-count and URL
+overrides but preserves user-edited comments, edit details, and deliberate
+clears. YAML comments are imported only for titles without a user edit.
+`--wipe` resets imported overrides, not user comments; `--dry-run` makes no writes.
 
 ## Deployment
 

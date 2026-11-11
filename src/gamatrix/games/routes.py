@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+import json
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from gamatrix.auth.dependencies import (
@@ -14,17 +16,77 @@ from gamatrix.auth.dependencies import (
 from gamatrix.constants import (
     ENRICHMENT_NOT_FOUND,
     ENRICHMENT_PENDING,
+    GAME_COMMENT_MAX_LENGTH,
     JOB_COMPLETED,
     JOB_FAILED,
 )
 from gamatrix.games import api, service, web
 from gamatrix.games.preferences import merge_preferences
+from gamatrix.helpers import comment_author
 from gamatrix.jobs import create_enrichment_job, is_job_stale
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import get_queue
 from gamatrix.templating import authenticated_fragment, authenticated_template
 
 router = APIRouter(tags=["games"])
+
+
+def _comment_game(repo: Repository, release_key: str) -> dict:
+    game = repo.get_game(release_key)
+    if not game or not game.get("slug"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Game not found",
+        )
+    override = repo.get_metadata(game["slug"]) or {}
+    return {
+        "release_key": release_key,
+        "title": game.get("title", release_key),
+        "slug": game["slug"],
+        "comment": override.get("comment", ""),
+        "comment_updated_at": override.get("comment_updated_at"),
+        "comment_updated_by": comment_author(override, repo.scan_users()),
+        "comment_revision": override.get("comment_revision", 0),
+    }
+
+
+def _comment_fragment(
+    request: Request,
+    game: dict,
+    *,
+    editing: bool = False,
+    error: str | None = None,
+    stored_comment: str | None = None,
+    draft: str | None = None,
+    status_code: int = 200,
+    changed: bool = False,
+):
+    return authenticated_fragment(
+        request,
+        "game_comment.html.jinja",
+        {
+            "game": game,
+            "editing": editing,
+            "error": error,
+            "stored_comment": stored_comment,
+            "draft": draft,
+        },
+        status_code=status_code,
+        headers=(
+            {
+                "HX-Trigger-After-Swap": json.dumps(
+                    {
+                        "commentChanged": {
+                            "slug": game["slug"],
+                            "releaseKey": game["release_key"],
+                        }
+                    }
+                )
+            }
+            if changed
+            else None
+        ),
+    )
 
 
 @router.get("/games", response_class=HTMLResponse)
@@ -91,6 +153,139 @@ def games_api(
     query = opts.to_query()
     result = service.compare(repo, query)
     return JSONResponse(api.serialize_comparison(query, result))
+
+
+@router.get("/games/{release_key}/comment", response_class=HTMLResponse)
+def game_comment(
+    release_key: str,
+    request: Request,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    return _comment_fragment(request, _comment_game(repo, release_key))
+
+
+@router.get("/games/{release_key}/comment/edit", response_class=HTMLResponse)
+def edit_game_comment(
+    release_key: str,
+    request: Request,
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    return _comment_fragment(
+        request,
+        _comment_game(repo, release_key),
+        editing=True,
+    )
+
+
+@router.post("/games/{release_key}/comment", response_class=HTMLResponse)
+def save_game_comment(
+    release_key: str,
+    request: Request,
+    comment: str = Form(""),
+    expected_revision: int = Form(...),
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    game = _comment_game(repo, release_key)
+    comment = comment.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not comment:
+        return _comment_fragment(
+            request,
+            game,
+            editing=True,
+            draft=comment,
+            error="Comment cannot be empty. Use Clear to remove an existing comment.",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+    # HTML maxlength counts UTF-16 units, not Python Unicode code points.
+    if len(comment.encode("utf-16-le")) // 2 > GAME_COMMENT_MAX_LENGTH:
+        return _comment_fragment(
+            request,
+            game,
+            editing=True,
+            draft=comment,
+            error=(f"Comment must be {GAME_COMMENT_MAX_LENGTH} characters or fewer."),
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
+    updated_by = user.get("username") or "anonymous coward"
+    updated = repo.update_metadata_comment(
+        game["slug"],
+        comment,
+        updated_by,
+        expected_revision,
+        updated_user_id=user.get("user_id"),
+    )
+    if updated is None:
+        current = _comment_game(repo, release_key)
+        return _comment_fragment(
+            request,
+            current,
+            editing=True,
+            draft=comment,
+            error=(
+                "This comment changed while you were editing. "
+                "Review the latest stored comment below. "
+                "Saving again will replace it with your draft."
+            ),
+            stored_comment=current["comment"],
+            status_code=status.HTTP_409_CONFLICT,
+        )
+    return _comment_fragment(
+        request,
+        {
+            **game,
+            **updated,
+            "comment": updated.get("comment", ""),
+            "comment_updated_by": comment_author(updated, repo.scan_users()),
+        },
+        changed=True,
+    )
+
+
+@router.post("/games/{release_key}/comment/clear", response_class=HTMLResponse)
+def clear_game_comment(
+    release_key: str,
+    request: Request,
+    expected_revision: int = Form(...),
+    user: dict = Depends(current_user_api),
+    repo: Repository = Depends(get_repo),
+):
+    game = _comment_game(repo, release_key)
+    updated_by = user.get("username") or "anonymous coward"
+    updated = repo.update_metadata_comment(
+        game["slug"],
+        None,
+        updated_by,
+        expected_revision,
+        updated_user_id=user.get("user_id"),
+    )
+    if updated is None:
+        current = _comment_game(repo, release_key)
+        return _comment_fragment(
+            request,
+            current,
+            editing=True,
+            error=(
+                "This comment changed while you were editing. "
+                "Review the latest stored comment below before trying again."
+            ),
+            stored_comment=current["comment"],
+            status_code=status.HTTP_409_CONFLICT,
+        )
+    return _comment_fragment(
+        request,
+        {
+            **game,
+            "comment": "",
+            "comment_updated_at": None,
+            "comment_updated_by": None,
+            "comment_revision": updated["comment_revision"],
+        },
+        changed=True,
+    )
 
 
 @router.get("/api/jobs/{job_id}", response_class=HTMLResponse)

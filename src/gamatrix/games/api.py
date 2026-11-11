@@ -25,5 +25,13 @@ def serialize_comparison(
         },
         "total": dataset.total,
         "excluded_user_ids": list(dataset.excluded_user_ids),
-        "games": [item.to_dict() for item in dataset.items],
+        "games": [
+            {
+                key: value
+                for key, value in item.to_dict().items()
+                if key
+                not in ("comment_updated_at", "comment_updated_by", "comment_revision")
+            }
+            for item in dataset.items
+        ],
     }

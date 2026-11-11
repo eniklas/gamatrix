@@ -19,7 +19,7 @@ from gamatrix.constants import (
     IGDB_MULTIPLAYER_GAME_MODES,
     PLATFORMS,
 )
-from gamatrix.helpers import parse_iso
+from gamatrix.helpers import comment_author, parse_iso
 from gamatrix.jobs import create_enrichment_job
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import EnrichmentQueue
@@ -78,6 +78,9 @@ class ComparisonItem:
     rating_count: int = 0
     enrichment_status: str | None = None
     comment: str = ""
+    comment_updated_at: str | None = None
+    comment_updated_by: str | None = None
+    comment_revision: int = 0
     url: str | None = None
 
     def to_dict(self) -> dict:
@@ -126,6 +129,10 @@ def compare(repo: ComparisonRepository, query: ComparisonQuery) -> ComparisonDat
         if meta is None:
             continue  # not yet ingested into the games table
         game = _build_game(rk, slot, meta, overrides)
+        if game.comment:
+            game.comment_updated_by = comment_author(
+                overrides.get(game.slug, {}), list(users.values())
+            )
         games.append(game)
 
     games = _merge_duplicates(games)
@@ -171,6 +178,9 @@ def _build_game(rk: str, slot: dict, meta: dict, overrides: dict) -> ComparisonI
             )
         if override.get("comment"):
             game.comment = override["comment"]
+            game.comment_updated_at = override.get("comment_updated_at")
+            game.comment_updated_by = override.get("comment_updated_by")
+        game.comment_revision = override.get("comment_revision", 0)
         if override.get("url"):
             game.url = override["url"]
     return game

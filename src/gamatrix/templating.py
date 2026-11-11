@@ -7,7 +7,7 @@ from starlette.background import BackgroundTask
 from starlette.responses import Response
 
 from gamatrix import __version__
-from gamatrix.constants import PLATFORMS
+from gamatrix.constants import GAME_COMMENT_MAX_LENGTH, PLATFORMS
 from gamatrix.games.preferences import merge_preferences
 from gamatrix.helpers import pic_url
 from gamatrix.ux_templates import (
@@ -19,6 +19,7 @@ AUTHENTICATED_TEMPLATE_NAMES = (
     "base.html.jinja",
     "games.html.jinja",
     "games_table.html.jinja",
+    "game_comment.html.jinja",
     "job_status.html.jinja",
     "library_platforms.html.jinja",
     "passkeys.html.jinja",
@@ -37,6 +38,7 @@ _authenticated_templates: Jinja2Templates | None = None
 def _configure(environment: Jinja2Templates) -> Jinja2Templates:
     environment.env.globals["version"] = __version__
     environment.env.globals["platforms"] = list(PLATFORMS)
+    environment.env.globals["game_comment_max_length"] = GAME_COMMENT_MAX_LENGTH
     environment.env.globals["pic_url"] = pic_url
     return environment
 
