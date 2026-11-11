@@ -57,6 +57,7 @@ def _comment_fragment(
     editing: bool = False,
     error: str | None = None,
     stored_comment: str | None = None,
+    draft: str | None = None,
     status_code: int = 200,
     changed: bool = False,
 ):
@@ -68,6 +69,7 @@ def _comment_fragment(
             "editing": editing,
             "error": error,
             "stored_comment": stored_comment,
+            "draft": draft,
         },
         status_code=status_code,
         headers=(
@@ -191,8 +193,9 @@ def save_game_comment(
     if not comment:
         return _comment_fragment(
             request,
-            {**game, "comment": comment},
+            game,
             editing=True,
+            draft=comment,
             error="Comment cannot be empty. Use Clear to remove an existing comment.",
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
@@ -200,8 +203,9 @@ def save_game_comment(
     if len(comment.encode("utf-16-le")) // 2 > GAME_COMMENT_MAX_LENGTH:
         return _comment_fragment(
             request,
-            {**game, "comment": comment},
+            game,
             editing=True,
+            draft=comment,
             error=(f"Comment must be {GAME_COMMENT_MAX_LENGTH} characters or fewer."),
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
@@ -218,8 +222,9 @@ def save_game_comment(
         current = _comment_game(repo, release_key)
         return _comment_fragment(
             request,
-            {**current, "comment": comment},
+            current,
             editing=True,
+            draft=comment,
             error=(
                 "This comment changed while you were editing. "
                 "Review the latest stored comment below. "

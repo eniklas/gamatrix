@@ -99,6 +99,7 @@ def test_comment_validation_error_is_visible(comment_page):
     cell.locator(".error").wait_for(timeout=3000)
     assert "cannot be empty" in cell.locator(".error").inner_text()
     assert textarea.input_value() == ""
+    assert cell.get_by_role("button", name="Clear", exact=True).is_visible()
     assert repo.get_metadata("alpha")["comment"] == "Original alpha"
 
 

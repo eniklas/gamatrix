@@ -14,7 +14,7 @@
         <span class="visually-hidden">Comment for {{ game.title }}</span>
         <textarea name="comment" rows="4"
                   maxlength="{{ game_comment_max_length }}"
-                  required>{{ game.comment }}</textarea>
+                  required>{{ draft if draft is not none else game.comment }}</textarea>
     </label>
     <input type="hidden" name="expected_revision" value="{{ game.comment_revision }}">
     <div class="comment-actions">

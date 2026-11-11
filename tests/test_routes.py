@@ -262,6 +262,8 @@ def test_game_comment_rejects_blank_stale_and_oversized_edits(repo):
 
     assert blank.status_code == 422
     assert "Comment cannot be empty" in blank.text
+    # The stored comment still exists, so the Clear the error points to stays.
+    assert "/comment/clear" in blank.text
     assert oversized.status_code == 422
     assert "512 characters or fewer" in oversized.text
     assert first.status_code == 200
