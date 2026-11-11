@@ -8,6 +8,9 @@ falling back to the user's saved preference.
 
 from __future__ import annotations
 
+import asyncio
+import base64
+import gzip
 import types
 from unittest.mock import patch
 
@@ -463,3 +466,57 @@ def test_remove_library_platform_drops_only_that_platform(repo):
     assert response.status_code == 200
     assert "Removed 1 epic title" in response.text
     assert {row["release_key"] for row in repo.get_user_library("1")} == {"steam_10"}
+
+
+def test_lambda_responses_are_gzipped_for_clients_that_accept_it(repo):
+    """Large pages must go out compressed: Lambda rejects responses over 6 MB,
+    and the all-games grid for a big group exceeds that as plain HTML."""
+    from gamatrix.lambda_handler import handler
+
+    user = _upload_page_user(repo)
+
+    def event(accept_encoding: str | None) -> dict:
+        headers = {"host": "testserver"}
+        if accept_encoding:
+            headers["accept-encoding"] = accept_encoding
+        return {
+            "version": "2.0",
+            "routeKey": "$default",
+            "rawPath": "/upload",
+            "rawQueryString": "",
+            "headers": headers,
+            "requestContext": {
+                "http": {
+                    "method": "GET",
+                    "path": "/upload",
+                    "protocol": "HTTP/1.1",
+                    "sourceIp": "203.0.113.1",
+                    "userAgent": "pytest",
+                },
+                "domainName": "testserver",
+                "stage": "$default",
+            },
+            "isBase64Encoded": False,
+        }
+
+    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[current_user] = lambda: user
+    # Mangum runs on the thread's current loop; async tests may have closed it.
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        compressed = handler(event("gzip, deflate, br"), types.SimpleNamespace())
+        plain = handler(event(None), types.SimpleNamespace())
+    finally:
+        app.dependency_overrides.clear()
+        asyncio.set_event_loop(None)
+        loop.close()
+
+    assert compressed["statusCode"] == 200
+    assert compressed["headers"]["content-encoding"] == "gzip"
+    assert compressed["isBase64Encoded"] is True
+    html = gzip.decompress(base64.b64decode(compressed["body"])).decode()
+    assert html == plain["body"]
+    assert "not in your latest upload" in html
+    assert plain["isBase64Encoded"] is False
+    assert "content-encoding" not in plain["headers"]

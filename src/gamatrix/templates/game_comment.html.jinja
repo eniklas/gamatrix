@@ -34,31 +34,26 @@
     </div>
 </form>
 {% else %}
+{#- Rendered on every table row, so keep it compact: the edit button is
+    wired up by a delegated listener in comment_popup.js rather than
+    per-row htmx attributes, and whitespace is trimmed. -#}
 <div class="game-comment-display">
-    {% if game.comment %}
-        {% if game.comment_updated_at %}
-            {% set provenance = (game.comment_updated_by or "anonymous coward") ~ " edited " ~ game.comment_updated_at %}
-        {% else %}
-            {% set provenance = "Comment edit details unavailable" %}
-        {% endif %}
-    <details class="game-comment-details" title="{{ provenance }}"
-             {% if game.comment_updated_at %}
-             data-comment-updated="{{ game.comment_updated_at }}"
-             data-comment-author="{{ game.comment_updated_by or 'anonymous coward' }}"
-             {% endif %}>
-        <summary class="game-comment-preview">{{ game.comment }}</summary>
-        <div class="game-comment-popup">{{ game.comment|urlize(target="_blank", rel="noopener noreferrer") }}</div>
-    </details>
-    {% else %}
-    <span></span>
-    {% endif %}
-    {% if game.slug %}
-    <button type="button" class="comment-edit"
-            aria-label="add/edit comment"
-            title="add/edit comment"
-            hx-get="/games/{{ game.release_key }}/comment/edit"
-            hx-target="closest td"
-            hx-swap="innerHTML">📝</button>
-    {% endif %}
+{%- if game.comment -%}
+    {%- if game.comment_updated_at -%}
+        {%- set provenance = (game.comment_updated_by or "anonymous coward") ~ " edited " ~ game.comment_updated_at -%}
+    {%- else -%}
+        {%- set provenance = "Comment edit details unavailable" -%}
+    {%- endif -%}
+<details class="game-comment-details" title="{{ provenance }}"
+{%- if game.comment_updated_at %} data-comment-updated="{{ game.comment_updated_at }}" data-comment-author="{{ game.comment_updated_by or 'anonymous coward' }}"{% endif %}>
+<summary class="game-comment-preview">{{ game.comment }}</summary>
+<div class="game-comment-popup">{{ game.comment|urlize(target="_blank", rel="noopener noreferrer") }}</div>
+</details>
+{%- else -%}
+<span></span>
+{%- endif -%}
+{%- if game.slug -%}
+<button type="button" class="comment-edit" aria-label="add/edit comment" title="add/edit comment">📝</button>
+{%- endif -%}
 </div>
 {% endif %}

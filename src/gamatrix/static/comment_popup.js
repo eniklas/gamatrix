@@ -44,18 +44,20 @@
             if (cell === source || cell.dataset.slug !== event.detail.slug) { continue; }
             if (cell.querySelector(".game-comment-form")) { continue; }
             cell.innerHTML = source.innerHTML;
-            const edit = cell.querySelector(".comment-edit");
-            if (edit) {
-                edit.setAttribute("hx-get", "/games/" +
-                    encodeURIComponent(cell.dataset.releaseKey) + "/comment/edit");
-            }
-            htmx.process(cell);
             updateCommentOverflow(cell);
         }
     });
 
     document.addEventListener("click", function (event) {
         if (!(event.target instanceof Element)) { return; }
+        // One listener for every row's edit button keeps the per-row markup
+        // small enough for large tables to fit Lambda's response limit.
+        const edit = event.target.closest(".game-comment-cell .comment-edit");
+        if (edit) {
+            const cell = edit.closest(".game-comment-cell");
+            htmx.ajax("GET", "/games/" + encodeURIComponent(cell.dataset.releaseKey) +
+                "/comment/edit", { target: cell, swap: "innerHTML" });
+        }
         if (!event.target.closest(".game-comment-details")) {
             for (const details of document.querySelectorAll(".game-comment-details[open]")) {
                 details.open = false;
