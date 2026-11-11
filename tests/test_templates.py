@@ -161,6 +161,8 @@ def test_comment_styles_and_overflow_script_keep_rows_compact():
     script = Path("src/gamatrix/static/comment_popup.js").read_text()
     assert "preview.scrollWidth > preview.clientWidth" in script
     assert 'classList.toggle("is-overflowing", overflowing)' in script
+    assert "if (!overflowing) { details.open = false; }" not in script
+    assert "event.preventDefault()" not in script
 
     for ux_template in UX_TEMPLATES:
         css = Path(STATIC_TEMPLATES_DIR / ux_template / "style.css").read_text()
