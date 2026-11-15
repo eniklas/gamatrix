@@ -60,7 +60,7 @@ class _FakeIGDBClient:
     async def __aexit__(self, *exc):
         return False
 
-    async def fetch_metadata(self, igdb_key, title):
+    async def fetch_metadata(self, igdb_key, title, igdb_slug=None):
         return GameMetadata()
 
 

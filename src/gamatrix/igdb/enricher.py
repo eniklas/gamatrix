@@ -81,8 +81,9 @@ async def run_job(
             for igdb_key, rks in by_igdb_key.items():
                 # Use any sharing release key's title for matching.
                 title = games[rks[0]].get("title", "")
+                igdb_slug = _manual_igdb_slug(repo, games[rks[0]])
                 try:
-                    meta = await client.fetch_metadata(igdb_key, title)
+                    meta = await client.fetch_metadata(igdb_key, title, igdb_slug)
                 except Exception:  # one game's failure shouldn't sink the chunk
                     log.exception("Failed to enrich %s (%s)", igdb_key, title)
                     meta = GameMetadata()
@@ -105,12 +106,29 @@ async def run_job(
         )
 
 
+def _manual_igdb_slug(repo: Repository, game: dict) -> str | None:
+    """The admin-set IGDB slug for this game's title, if any.
+
+    Read per game with a consistent read rather than via the cached
+    `get_all_metadata()`: a warm enricher could otherwise miss a slug saved
+    moments ago, which is exactly when the admin page queues this job.
+    """
+    slug = game.get("slug")
+    if not slug:
+        return None
+    override = repo.get_metadata(slug) or {}
+    return override.get("igdb_slug") or None
+
+
 def _write_metadata(repo: Repository, game: dict, meta: GameMetadata) -> None:
     status = ENRICHMENT_DONE if meta.found else ENRICHMENT_NOT_FOUND
     repo.put_game(
         {
             **game,
             "igdb_id": meta.igdb_id,
+            # What IGDB matched, so an admin can spot a wrong match.
+            "igdb_name": meta.name,
+            "igdb_matched_slug": meta.slug,
             "game_modes": meta.game_modes,
             "max_players": meta.max_players,
             "multiplayer": meta.multiplayer,

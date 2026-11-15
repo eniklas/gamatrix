@@ -1,0 +1,77 @@
+{# Shared partial: the admin IGDB-fix list. Every save/clear re-renders the
+   whole list (with the current search) and, when a job was queued, its
+   progress, which reloads the list once the re-fetch finishes. #}
+<div id="igdb-list">
+    {% if job_id %}{% include "admin_igdb_job.html.jinja" %}{% endif %}
+    {% if message %}<p class="muted" role="status">{{ message }}</p>{% endif %}
+    {% if rows %}
+    <table class="results">
+        <caption>{{ rows|length }} {{ 'game' if rows|length == 1 else 'games' }}</caption>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>IGDB match</th>
+                <th>Manual IGDB slug</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>
+                    {{ row.title }}
+                    <span class="platform-icons">
+                        {% for p in row.platforms %}
+                        {% if p in platforms %}
+                        <img src="/static/{{ p }}.png" width="20" height="20" title="{{ p }}">
+                        {% else %}
+                        <span class="muted">{{ p }}</span>
+                        {% endif %}
+                        {% endfor %}
+                    </span>
+                </td>
+                <td>{{ (row.status or 'unknown')|replace('_', ' ') }}</td>
+                <td>
+                    {% if row.igdb_matched_slug %}
+                    <a href="https://www.igdb.com/games/{{ row.igdb_matched_slug }}"
+                       target="_blank" rel="noopener noreferrer">{{ row.igdb_name or row.igdb_matched_slug }}</a>
+                    {% elif row.igdb_id %}
+                    <span class="muted">IGDB id {{ row.igdb_id }}</span>
+                    {% else %}
+                    <span class="muted">none</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <form hx-post="/admin/igdb/{{ row.slug }}"
+                          hx-include="#igdb-q"
+                          hx-target="#igdb-list"
+                          hx-swap="outerHTML">
+                        {% set has_error = error and error_slug == row.slug %}
+                        {% if has_error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+                        <label>
+                            <span class="visually-hidden">IGDB slug for {{ row.title }}</span>
+                            <input type="text" name="igdb_slug" required
+                                   placeholder="igdb.com/games/… or slug"
+                                   value="{{ draft if has_error else (row.igdb_slug or '') }}">
+                        </label>
+                        <button type="submit">Save</button>
+                        {% if row.igdb_slug %}
+                        <button type="button" class="secondary"
+                                hx-post="/admin/igdb/{{ row.slug }}/clear"
+                                hx-include="#igdb-q"
+                                hx-target="#igdb-list"
+                                hx-swap="outerHTML"
+                                hx-confirm="Clear the manual IGDB slug for {{ row.title }}?">Clear</button>
+                        {% endif %}
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% elif q %}
+    <p class="muted">No games match “{{ q }}”.</p>
+    {% else %}
+    <p class="muted">Nothing to fix: every game has an IGDB match.</p>
+    {% endif %}
+</div>

@@ -43,6 +43,7 @@ class GameMetadata:
 
     igdb_id: int = 0
     name: str | None = None
+    slug: str | None = None
     game_modes: list[int] = field(default_factory=list)
     max_players: int = 0
     multiplayer: bool = False
@@ -147,8 +148,23 @@ class IGDBClient:
     # ------------------------------------------------------------------
     # ID resolution
     # ------------------------------------------------------------------
-    async def resolve_igdb_id(self, igdb_key: str, title: str) -> int:
-        """Resolve a release key to an IGDB game id, 0 if not found."""
+    async def resolve_igdb_id(
+        self, igdb_key: str, title: str, igdb_slug: str | None = None
+    ) -> int:
+        """Resolve a release key to an IGDB game id, 0 if not found.
+
+        A manual `igdb_slug` (set by an admin) is authoritative: it's the only
+        lookup tried, so a wrong one surfaces as not-found rather than being
+        papered over by the automatic matching it was set to correct.
+        """
+        if igdb_slug:
+            igdb_id = await self._id_by_slug(igdb_slug)
+            if not igdb_id:
+                log.warning(
+                    "%s (%s): manual IGDB slug %r not found", igdb_key, title, igdb_slug
+                )
+            return igdb_id
+
         igdb_id = await self._id_by_external_uid(igdb_key)
         if igdb_id:
             return igdb_id
@@ -203,9 +219,11 @@ class IGDBClient:
     # ------------------------------------------------------------------
     # Metadata
     # ------------------------------------------------------------------
-    async def fetch_metadata(self, igdb_key: str, title: str) -> GameMetadata:
+    async def fetch_metadata(
+        self, igdb_key: str, title: str, igdb_slug: str | None = None
+    ) -> GameMetadata:
         meta = GameMetadata()
-        igdb_id = await self.resolve_igdb_id(igdb_key, title)
+        igdb_id = await self.resolve_igdb_id(igdb_key, title, igdb_slug)
         if not igdb_id:
             return meta
 
@@ -220,6 +238,7 @@ class IGDBClient:
         if info:
             game = info[0]
             meta.name = game.get("name")
+            meta.slug = game.get("slug")
             meta.game_modes = game.get("game_modes", [])
             if "rating" in game:
                 meta.rating = round(game["rating"])

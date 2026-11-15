@@ -64,5 +64,13 @@ def require_admin(user: dict = Depends(current_user_api)) -> dict:
     return user
 
 
+def require_admin_page(user: dict = Depends(current_user)) -> dict:
+    """Admin gate for full pages: sends anonymous browsers to login (rather than
+    a bare 401) and refuses signed-in non-admins."""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    return user
+
+
 def redirect_to_login() -> RedirectResponse:
     return RedirectResponse(url="/auth/login", status_code=status.HTTP_302_FOUND)

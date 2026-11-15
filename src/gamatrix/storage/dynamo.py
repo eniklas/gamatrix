@@ -502,14 +502,17 @@ class Repository:
         self._cache_invalidate("metadata")
 
     def reset_imported_metadata(self) -> int:
-        """Reset imported overrides, retaining user comment rows and clears."""
+        """Reset imported overrides, retaining user comments and IGDB slugs."""
         table = self._table(self.settings.metadata_table)
         rows = self._scan(self.settings.metadata_table)
         for row in rows:
             try:
                 table.delete_item(
                     Key={"slug": row["slug"]},
-                    ConditionExpression="attribute_not_exists(comment_revision)",
+                    ConditionExpression=(
+                        "attribute_not_exists(comment_revision) "
+                        "AND attribute_not_exists(igdb_slug)"
+                    ),
                 )
             except (
                 self._resource.meta.client.exceptions.ConditionalCheckFailedException
@@ -521,6 +524,34 @@ class Repository:
                 )
         self._cache_invalidate("metadata")
         return len(rows)
+
+    def set_metadata_igdb_slug(self, slug: str, igdb_slug: str | None) -> None:
+        """Set (or, with None, remove) the manual IGDB slug for a title.
+
+        Touches only `igdb_slug`, so comments, their revision, and imported
+        fields on the same row are left alone.
+        """
+        table = self._table(self.settings.metadata_table)
+        if igdb_slug:
+            table.update_item(
+                Key={"slug": slug},
+                UpdateExpression="SET igdb_slug = :igdb_slug",
+                ExpressionAttributeValues={":igdb_slug": igdb_slug},
+            )
+        else:
+            # Conditional so clearing a title with no override row doesn't
+            # create an empty one.
+            try:
+                table.update_item(
+                    Key={"slug": slug},
+                    UpdateExpression="REMOVE igdb_slug",
+                    ConditionExpression="attribute_exists(slug)",
+                )
+            except (
+                self._resource.meta.client.exceptions.ConditionalCheckFailedException
+            ):
+                pass
+        self._cache_invalidate("metadata")
 
     def update_metadata_comment(
         self,
