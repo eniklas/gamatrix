@@ -29,7 +29,7 @@ from gamatrix.constants import (
     IGDB_MULTIPLAYER_GAME_MODES,
     IGDB_PLATFORM_ID,
 )
-from gamatrix.helpers import get_slug_from_title
+from gamatrix.helpers import get_slug_from_title, is_igdb_slug
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ class GameMetadata:
 
     igdb_id: int = 0
     name: str | None = None
+    slug: str | None = None
     game_modes: list[int] = field(default_factory=list)
     max_players: int = 0
     multiplayer: bool = False
@@ -147,8 +148,23 @@ class IGDBClient:
     # ------------------------------------------------------------------
     # ID resolution
     # ------------------------------------------------------------------
-    async def resolve_igdb_id(self, igdb_key: str, title: str) -> int:
-        """Resolve a release key to an IGDB game id, 0 if not found."""
+    async def resolve_igdb_id(
+        self, igdb_key: str, title: str, igdb_slug: str | None = None
+    ) -> int:
+        """Resolve a release key to an IGDB game id, 0 if not found.
+
+        A manual `igdb_slug` (set by an admin) is authoritative: it's the only
+        lookup tried, so a wrong one surfaces as not-found rather than being
+        papered over by the automatic matching it was set to correct.
+        """
+        if igdb_slug:
+            igdb_id = await self._id_by_slug(igdb_slug)
+            if not igdb_id:
+                log.warning(
+                    "%s (%s): manual IGDB slug %r not found", igdb_key, title, igdb_slug
+                )
+            return igdb_id
+
         igdb_id = await self._id_by_external_uid(igdb_key)
         if igdb_id:
             return igdb_id
@@ -182,6 +198,12 @@ class IGDBClient:
         return result[0]["game"] if result else 0
 
     async def _id_by_slug(self, slug: str) -> int:
+        # The slug is interpolated into the query. A manual slug can be edited
+        # straight in DynamoDB, bypassing the admin page's check, so check here,
+        # at the query boundary, and treat a malformed one as not found.
+        if not is_igdb_slug(slug):
+            log.warning("Not querying IGDB for malformed slug %r", slug)
+            return 0
         result = await self._query("games", f'fields id; where slug = "{slug}";')
         return result[0]["id"] if result else 0
 
@@ -203,9 +225,11 @@ class IGDBClient:
     # ------------------------------------------------------------------
     # Metadata
     # ------------------------------------------------------------------
-    async def fetch_metadata(self, igdb_key: str, title: str) -> GameMetadata:
+    async def fetch_metadata(
+        self, igdb_key: str, title: str, igdb_slug: str | None = None
+    ) -> GameMetadata:
         meta = GameMetadata()
-        igdb_id = await self.resolve_igdb_id(igdb_key, title)
+        igdb_id = await self.resolve_igdb_id(igdb_key, title, igdb_slug)
         if not igdb_id:
             return meta
 
@@ -220,6 +244,7 @@ class IGDBClient:
         if info:
             game = info[0]
             meta.name = game.get("name")
+            meta.slug = game.get("slug")
             meta.game_modes = game.get("game_modes", [])
             if "rating" in game:
                 meta.rating = round(game["rating"])

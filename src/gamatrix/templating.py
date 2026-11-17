@@ -16,6 +16,9 @@ from gamatrix.ux_templates import (
 )
 
 AUTHENTICATED_TEMPLATE_NAMES = (
+    "admin_igdb.html.jinja",
+    "admin_igdb_job.html.jinja",
+    "admin_igdb_list.html.jinja",
     "base.html.jinja",
     "games.html.jinja",
     "games_table.html.jinja",

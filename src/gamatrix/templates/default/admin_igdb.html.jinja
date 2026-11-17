@@ -1,0 +1,38 @@
+{% extends "base.html.jinja" %}
+{% block title %}gamatrix — fix IGDB matches{% endblock %}
+{% block body %}
+<div class="topbar">
+    <h2>Fix IGDB matches</h2>
+    <div class="right"><a href="/games">Back to games</a></div>
+</div>
+
+<p class="muted">Lists games IGDB couldn't find, plus any with a manual slug.
+Search to find a game that was matched to the wrong IGDB entry. Paste the
+game's igdb.com link (or just its slug) and save, and that game alone is
+re-fetched from IGDB. Clear a slug to go back to automatic matching.</p>
+
+<form id="igdb-search" role="search"
+      hx-get="/admin/igdb/list"
+      hx-target="#igdb-list"
+      hx-swap="outerHTML"
+      hx-trigger="input changed delay:300ms from:#igdb-q, submit"
+      action="/admin/igdb">
+    <label for="igdb-q">Search all games</label>
+    <input type="search" id="igdb-q" name="q" value="{{ q }}"
+           placeholder="Title contains…">
+</form>
+
+{% include "admin_igdb_list.html.jinja" %}
+
+<script>
+// Validation errors come back as 422 with the re-rendered list; swap them in
+// so the inline error shows (htmx skips 4xx swaps by default).
+document.body.addEventListener("htmx:beforeSwap", function (event) {
+    const detail = event.detail;
+    if (detail.xhr.status === 422 && detail.target.id === "igdb-list") {
+        detail.shouldSwap = true;
+        detail.isError = false;
+    }
+});
+</script>
+{% endblock %}

@@ -114,15 +114,18 @@ class Repository:
                 result[game["release_key"]] = game
         return result
 
-    def get_all_games_map(self) -> dict[str, dict]:
+    def get_all_games_map(self, fresh: bool = False) -> dict[str, dict]:
         """Cached full games table keyed by release_key.
 
         The comparison service looks up metadata for whatever release keys the
         selected libraries contain. Serving every lookup from one cached scan
         replaces the per-request chain of BatchGetItem calls and lets repeated
         filter/sort changes hit memory instead of DynamoDB.
+
+        `fresh=True` skips the cached copy (and replaces it) for callers that
+        know another process just wrote, such as a finished enrichment job.
         """
-        cached = self._cache_get("games_map")
+        cached = None if fresh else self._cache_get("games_map")
         if cached is not None:
             return cached
         games = {g["release_key"]: g for g in self._scan(self.settings.games_table)}
@@ -502,14 +505,17 @@ class Repository:
         self._cache_invalidate("metadata")
 
     def reset_imported_metadata(self) -> int:
-        """Reset imported overrides, retaining user comment rows and clears."""
+        """Reset imported overrides, retaining user comments and IGDB slugs."""
         table = self._table(self.settings.metadata_table)
         rows = self._scan(self.settings.metadata_table)
         for row in rows:
             try:
                 table.delete_item(
                     Key={"slug": row["slug"]},
-                    ConditionExpression="attribute_not_exists(comment_revision)",
+                    ConditionExpression=(
+                        "attribute_not_exists(comment_revision) "
+                        "AND attribute_not_exists(igdb_slug)"
+                    ),
                 )
             except (
                 self._resource.meta.client.exceptions.ConditionalCheckFailedException
@@ -521,6 +527,34 @@ class Repository:
                 )
         self._cache_invalidate("metadata")
         return len(rows)
+
+    def set_metadata_igdb_slug(self, slug: str, igdb_slug: str | None) -> None:
+        """Set (or, with None, remove) the manual IGDB slug for a title.
+
+        Touches only `igdb_slug`, so comments, their revision, and imported
+        fields on the same row are left alone.
+        """
+        table = self._table(self.settings.metadata_table)
+        if igdb_slug:
+            table.update_item(
+                Key={"slug": slug},
+                UpdateExpression="SET igdb_slug = :igdb_slug",
+                ExpressionAttributeValues={":igdb_slug": igdb_slug},
+            )
+        else:
+            # Conditional so clearing a title with no override row doesn't
+            # create an empty one.
+            try:
+                table.update_item(
+                    Key={"slug": slug},
+                    UpdateExpression="REMOVE igdb_slug",
+                    ConditionExpression="attribute_exists(slug)",
+                )
+            except (
+                self._resource.meta.client.exceptions.ConditionalCheckFailedException
+            ):
+                pass
+        self._cache_invalidate("metadata")
 
     def update_metadata_comment(
         self,

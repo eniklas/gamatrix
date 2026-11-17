@@ -16,6 +16,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from gamatrix import __version__
+from gamatrix.admin import router as admin_router
 from gamatrix.auth.dependencies import RedirectToLogin
 from gamatrix.auth.routes import router as auth_router
 from gamatrix.config import get_settings
@@ -42,6 +43,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+app.include_router(admin_router)
 app.include_router(auth_router)
 app.include_router(games_router)
 app.include_router(preferences_router)

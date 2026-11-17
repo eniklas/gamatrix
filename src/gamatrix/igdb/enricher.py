@@ -81,8 +81,9 @@ async def run_job(
             for igdb_key, rks in by_igdb_key.items():
                 # Use any sharing release key's title for matching.
                 title = games[rks[0]].get("title", "")
+                igdb_slug = _manual_igdb_slug(repo, [games[rk] for rk in rks])
                 try:
-                    meta = await client.fetch_metadata(igdb_key, title)
+                    meta = await client.fetch_metadata(igdb_key, title, igdb_slug)
                 except Exception:  # one game's failure shouldn't sink the chunk
                     log.exception("Failed to enrich %s (%s)", igdb_key, title)
                     meta = GameMetadata()
@@ -105,12 +106,36 @@ async def run_job(
         )
 
 
+def _manual_igdb_slug(repo: Repository, group: list[dict]) -> str | None:
+    """The admin-set IGDB slug for a group of copies sharing an igdb_key.
+
+    Galaxy links a game's releases across platforms, and the copies can carry
+    different titles (so different slugs), e.g. "Foo" on GOG and "Foo: GOTY" on
+    Epic. They are one IGDB game, so a slug pinned on any of their titles
+    applies to all of them; checking only the first copy would make the result
+    depend on job order. Titles are checked in sorted order so that conflicting
+    overrides at least resolve the same way every run.
+
+    Read with a consistent read rather than via the cached
+    `get_all_metadata()`: a warm enricher could otherwise miss a slug saved
+    moments ago, which is exactly when the admin page queues this job.
+    """
+    for slug in sorted({g["slug"] for g in group if g.get("slug")}):
+        override = repo.get_metadata(slug) or {}
+        if override.get("igdb_slug"):
+            return override["igdb_slug"]
+    return None
+
+
 def _write_metadata(repo: Repository, game: dict, meta: GameMetadata) -> None:
     status = ENRICHMENT_DONE if meta.found else ENRICHMENT_NOT_FOUND
     repo.put_game(
         {
             **game,
             "igdb_id": meta.igdb_id,
+            # What IGDB matched, so an admin can spot a wrong match.
+            "igdb_name": meta.name,
+            "igdb_matched_slug": meta.slug,
             "game_modes": meta.game_modes,
             "max_players": meta.max_players,
             "multiplayer": meta.multiplayer,

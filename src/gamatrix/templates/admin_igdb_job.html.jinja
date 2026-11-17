@@ -1,0 +1,34 @@
+{# Re-enrichment progress on the admin IGDB page. Polls every 3s. When the job
+   finishes it reloads the list (bypassing the read cache, since the enricher
+   wrote from another process) so the new match (or miss) shows. A failed or
+   stalled job stops polling and says so rather than reloading as if it worked. #}
+{% if failed %}
+    <div class="job-progress" role="alert">
+        <p class="error">Your change is saved, but re-fetching from IGDB didn't
+        finish, so the list may not show it yet. Save (or clear) again to
+        retry.</p>
+        <button type="button" class="secondary"
+                hx-get="/admin/igdb/list?fresh=1"
+                hx-include="#igdb-q"
+                hx-target="#igdb-list"
+                hx-swap="outerHTML">Reload list</button>
+    </div>
+{% elif done %}
+    <div hx-get="/admin/igdb/list?fresh=1"
+         hx-include="#igdb-q"
+         hx-target="#igdb-list"
+         hx-swap="outerHTML"
+         hx-trigger="load">
+    </div>
+{% else %}
+    {% set total = job.total|default(1) if job else 1 %}
+    {% set done_count = [(job.completed_count|default(0)) if job else 0, total]|min %}
+    {% set pct = (done_count * 100 // total) if total else 0 %}
+    <div class="job-progress"
+         hx-get="/admin/igdb/jobs/{{ job_id }}"
+         hx-trigger="every 3s"
+         hx-swap="outerHTML">
+        Updating game data from IGDB… {{ done_count }} / {{ total }}
+        <div class="bar"><span style="width: {{ pct }}%;"></span></div>
+    </div>
+{% endif %}
