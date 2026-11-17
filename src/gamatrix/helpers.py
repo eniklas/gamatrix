@@ -30,6 +30,17 @@ def get_slug_from_title(title: str) -> str:
     return slug.strip("-")
 
 
+# IGDB slugs are lowercase alphanumerics joined by hyphens; repeated hyphens
+# occur in real slugs (``foo--1``). Anything else, quotes in particular, must
+# never reach an Apicalypse query.
+_IGDB_SLUG_RE = re.compile(r"^[a-z0-9]+(?:-+[a-z0-9]+)*$")
+
+
+def is_igdb_slug(value: str) -> bool:
+    """True if `value` is shaped like an IGDB slug."""
+    return bool(_IGDB_SLUG_RE.match(value))
+
+
 def pic_url(user: dict) -> str | None:
     """Resolve a user's profile-picture URL, or None if they have no pic.
 

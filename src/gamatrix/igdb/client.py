@@ -29,7 +29,7 @@ from gamatrix.constants import (
     IGDB_MULTIPLAYER_GAME_MODES,
     IGDB_PLATFORM_ID,
 )
-from gamatrix.helpers import get_slug_from_title
+from gamatrix.helpers import get_slug_from_title, is_igdb_slug
 
 log = logging.getLogger(__name__)
 
@@ -198,6 +198,12 @@ class IGDBClient:
         return result[0]["game"] if result else 0
 
     async def _id_by_slug(self, slug: str) -> int:
+        # The slug is interpolated into the query. A manual slug can be edited
+        # straight in DynamoDB, bypassing the admin page's check, so check here,
+        # at the query boundary, and treat a malformed one as not found.
+        if not is_igdb_slug(slug):
+            log.warning("Not querying IGDB for malformed slug %r", slug)
+            return 0
         result = await self._query("games", f'fields id; where slug = "{slug}";')
         return result[0]["id"] if result else 0
 

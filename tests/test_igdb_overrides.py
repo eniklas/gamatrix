@@ -24,6 +24,8 @@ from gamatrix.constants import (
     ENRICHMENT_NOT_FOUND,
     ENRICHMENT_PENDING,
     IGDB_API_CALL_DELAY,
+    JOB_COMPLETED,
+    JOB_FAILED,
 )
 from gamatrix.igdb.client import GameMetadata, IGDBClient
 from gamatrix.igdb.enricher import run_job
@@ -60,6 +62,16 @@ async def test_manual_slug_miss_does_not_fall_back():
     meta = await client.fetch_metadata("steam_1", "Alpha", "no-such-game")
     assert meta.found is False
     assert [endpoint for endpoint, _ in client.calls] == ["games"]
+
+
+@pytest.mark.parametrize("bad", ['alpha" | id > 0', "alpha;", "Alpha", "-alpha"])
+async def test_malformed_manual_slug_never_reaches_igdb(bad):
+    # A slug edited straight into DynamoDB skips the admin page's check; the
+    # client must not interpolate it into a query, and (being authoritative)
+    # must not fall back either: it's simply not found.
+    client = _FakeClient({"external_games": [{"game": 42}], "games": [{"id": 7}]})
+    assert await client.resolve_igdb_id("steam_1", "Alpha", bad) == 0
+    assert client.calls == []
 
 
 # ----------------------------------------------------------------------
@@ -126,6 +138,26 @@ async def test_enricher_passes_fresh_manual_slug(repo, monkeypatch):
     assert game["igdb_name"] == "Alpha Real"
     assert game["igdb_matched_slug"] == "alpha--1"
     assert game["max_players"] == 4
+
+
+async def test_enricher_applies_slug_from_any_title_in_igdb_key_group(
+    repo, monkeypatch
+):
+    # Galaxy links these as one game (shared igdb_key) under different titles;
+    # the override sits on the second title, not the first copy's.
+    _RecordingIGDBClient.calls = []
+    monkeypatch.setattr(enricher, "IGDBClient", _RecordingIGDBClient)
+    monkeypatch.setattr(
+        enricher, "resolve_igdb_credentials", lambda settings: ("id", "secret")
+    )
+    _game(repo, "gog_1", "alpha", igdb_key="gog_1")
+    _game(repo, "epic_1", "alpha-goty", igdb_key="gog_1", title="Alpha GOTY")
+    repo.set_metadata_igdb_slug("alpha-goty", "alpha--1")
+    job_id = create_enrichment_job(repo, _NullQueue(), ["gog_1", "epic_1"])
+
+    await run_job(job_id, repo)
+
+    assert [c[2] for c in _RecordingIGDBClient.calls] == ["alpha--1"]
 
 
 # ----------------------------------------------------------------------
@@ -266,6 +298,59 @@ def test_save_stores_slug_and_reenriches_every_copy(repo, client_as):
     assert sorted(job["release_keys"]) == ["gog_1", "steam_1"]
 
 
+def test_save_reenriches_linked_copies_under_other_titles(repo, client_as):
+    _game(repo, "gog_1", "alpha", ENRICHMENT_NOT_FOUND, igdb_key="gog_1")
+    _game(
+        repo,
+        "epic_1",
+        "alpha-goty",
+        ENRICHMENT_NOT_FOUND,
+        igdb_key="gog_1",
+        title="Alpha GOTY",
+    )
+    _game(repo, "steam_2", "beta", ENRICHMENT_NOT_FOUND)
+
+    client_as(ADMIN).post("/admin/igdb/alpha", data={"igdb_slug": "alpha--1"})
+
+    assert sorted(repo.get_active_job()["release_keys"]) == ["epic_1", "gog_1"]
+    assert repo.get_game("epic_1")["enrichment_status"] == ENRICHMENT_PENDING
+
+
+def test_search_reuses_the_cached_read_model(repo, client_as, monkeypatch):
+    _game(repo, "steam_1", "alpha", ENRICHMENT_NOT_FOUND)
+    client = client_as(ADMIN)
+    client.get("/admin/igdb/list", params={"q": "a"})
+    scans = []
+    real_scan = repo._scan
+    monkeypatch.setattr(
+        repo, "_scan", lambda table: scans.append(table) or real_scan(table)
+    )
+
+    for q in ("al", "alp", "alph"):
+        assert "Alpha" in client.get("/admin/igdb/list", params={"q": q}).text
+
+    assert scans == []
+
+
+def test_fresh_list_sees_writes_from_another_process(repo, client_as):
+    _game(repo, "steam_1", "alpha", ENRICHMENT_NOT_FOUND)
+    client = client_as(ADMIN)
+    assert "Alpha" in client.get("/admin/igdb/list").text
+    # The enricher (another process) writes the match behind the cache's back.
+    repo._table(repo.settings.games_table).put_item(
+        Item={
+            "release_key": "steam_1",
+            "slug": "alpha",
+            "title": "Alpha",
+            "igdb_key": "steam_1",
+            "enrichment_status": ENRICHMENT_DONE,
+        }
+    )
+
+    assert "Alpha" in client.get("/admin/igdb/list").text  # cached
+    assert "Alpha" not in client.get("/admin/igdb/list?fresh=1").text
+
+
 def test_save_rejects_junk(repo, client_as):
     _game(repo, "steam_1", "alpha", ENRICHMENT_NOT_FOUND)
 
@@ -295,8 +380,25 @@ def test_clear_removes_slug_and_reenriches(repo, client_as):
 
 
 def test_job_poll_reloads_list_when_done(repo, client_as):
-    html = client_as(ADMIN).get("/admin/igdb/jobs/missing").text
-    assert 'hx-get="/admin/igdb/list"' in html
+    job_id = create_enrichment_job(repo, _NullQueue(), ["steam_1"])
+    repo.update_job(job_id, {"status": JOB_COMPLETED})
+
+    html = client_as(ADMIN).get(f"/admin/igdb/jobs/{job_id}").text
+
+    assert 'hx-get="/admin/igdb/list?fresh=1"' in html
+    assert 'hx-trigger="load"' in html
+    assert 'role="alert"' not in html
+
+
+def test_job_poll_reports_failure_instead_of_reloading(repo, client_as):
+    job_id = create_enrichment_job(repo, _NullQueue(), ["steam_1"])
+    repo.update_job(job_id, {"status": JOB_FAILED})
+
+    html = client_as(ADMIN).get(f"/admin/igdb/jobs/{job_id}").text
+
+    assert 'role="alert"' in html
+    assert 'hx-trigger="load"' not in html
+    assert "every 3s" not in html
 
 
 def test_games_page_links_admins_to_fixer(repo, client_as):

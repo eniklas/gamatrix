@@ -114,15 +114,18 @@ class Repository:
                 result[game["release_key"]] = game
         return result
 
-    def get_all_games_map(self) -> dict[str, dict]:
+    def get_all_games_map(self, fresh: bool = False) -> dict[str, dict]:
         """Cached full games table keyed by release_key.
 
         The comparison service looks up metadata for whatever release keys the
         selected libraries contain. Serving every lookup from one cached scan
         replaces the per-request chain of BatchGetItem calls and lets repeated
         filter/sort changes hit memory instead of DynamoDB.
+
+        `fresh=True` skips the cached copy (and replaces it) for callers that
+        know another process just wrote, such as a finished enrichment job.
         """
-        cached = self._cache_get("games_map")
+        cached = None if fresh else self._cache_get("games_map")
         if cached is not None:
             return cached
         games = {g["release_key"]: g for g in self._scan(self.settings.games_table)}

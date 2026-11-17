@@ -9,7 +9,6 @@ and refreshes never revert it, and saving re-enriches just that title.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
@@ -18,6 +17,7 @@ from fastapi.responses import HTMLResponse
 
 from gamatrix.auth.dependencies import get_repo, require_admin, require_admin_page
 from gamatrix.constants import ENRICHMENT_NOT_FOUND, JOB_COMPLETED, JOB_FAILED
+from gamatrix.helpers import is_igdb_slug
 from gamatrix.jobs import create_enrichment_job, is_job_stale
 from gamatrix.storage.dynamo import Repository
 from gamatrix.storage.queue import get_queue
@@ -25,7 +25,6 @@ from gamatrix.templating import authenticated_fragment, authenticated_template
 
 router = APIRouter(prefix="/admin/igdb", tags=["admin"])
 
-IGDB_SLUG_RE = re.compile(r"^[a-z0-9]+(?:-+[a-z0-9]+)*$")
 IGDB_GAMES_HOSTS = {"igdb.com", "www.igdb.com"}
 
 
@@ -47,8 +46,8 @@ class IgdbRow:
 def normalize_igdb_slug(value: str) -> str | None:
     """Turn admin input (a bare slug or a pasted IGDB game URL) into a slug.
 
-    Returns None when the input isn't a plausible IGDB slug. The strict pattern
-    also keeps quotes out of the Apicalypse query the enricher builds from it.
+    Returns None when the input isn't a plausible IGDB slug. The IGDB client
+    checks again before querying, since a slug can also be set in DynamoDB.
     """
     value = value.strip()
     if "/" in value:
@@ -62,15 +61,21 @@ def normalize_igdb_slug(value: str) -> str | None:
             return None
         value = parts[1]
     value = value.lower()
-    return value if IGDB_SLUG_RE.match(value) else None
+    return value if is_igdb_slug(value) else None
 
 
-def _rows(repo: Repository, q: str = "") -> list[IgdbRow]:
+def _rows(repo: Repository, q: str = "", fresh: bool = False) -> list[IgdbRow]:
     """Titles to show: by default the misses plus any with a manual slug; with
-    a search term, every title whose name contains it."""
+    a search term, every title whose name contains it.
+
+    Built from the repository's cached read model (the same one the games page
+    uses), so the live search filters in memory rather than scanning the
+    games table per keystroke. `fresh` re-reads it, for the reload after a
+    re-enrichment job, whose writes come from another process.
+    """
     overrides = repo.get_all_metadata()
     by_slug: dict[str, IgdbRow] = {}
-    for game in repo.scan_all_games():
+    for game in repo.get_all_games_map(fresh=fresh).values():
         slug = game.get("slug")
         if not slug:
             continue
@@ -116,17 +121,19 @@ def _list_fragment(
     error: str | None = None,
     error_slug: str | None = None,
     draft: str | None = None,
+    fresh: bool = False,
     status_code: int = 200,
 ):
     return authenticated_fragment(
         request,
         "admin_igdb_list.html.jinja",
         {
-            "rows": _rows(repo, q),
+            "rows": _rows(repo, q, fresh),
             "q": q,
             "job_id": job_id,
             "job": repo.get_job(job_id) if job_id else None,
             "done": False,
+            "failed": False,
             "message": message,
             "error": error,
             "error_slug": error_slug,
@@ -137,10 +144,26 @@ def _list_fragment(
 
 
 def _reenrich(repo: Repository, slug: str) -> str | None:
-    """Mark every copy of a title pending and queue a job for just those."""
-    games = [g for g in repo.scan_all_games() if g.get("slug") == slug]
-    repo.mark_games_pending(games)
-    return create_enrichment_job(repo, get_queue(), [g["release_key"] for g in games])
+    """Mark every copy of a title pending and queue a job for just those.
+
+    "Every copy" includes copies under a different title that Galaxy links to
+    the same game (a shared igdb_key): the enricher applies a manual slug to
+    that whole group, so they must be re-fetched together.
+
+    The cached read model is enough to find the release keys, but the rows
+    themselves are re-read before being written back as pending, so a stale
+    cached copy can't overwrite newer data from another process.
+    """
+    games = repo.get_all_games_map().values()
+    igdb_keys = {g["igdb_key"] for g in games if g.get("slug") == slug}
+    keys = [
+        g["release_key"]
+        for g in games
+        if g.get("slug") == slug or g.get("igdb_key") in igdb_keys
+    ]
+    fresh = list(repo.batch_get_games(keys).values())
+    repo.mark_games_pending(fresh)
+    return create_enrichment_job(repo, get_queue(), [g["release_key"] for g in fresh])
 
 
 @router.get("", response_class=HTMLResponse)
@@ -160,6 +183,7 @@ def igdb_page(
             "job_id": None,
             "job": None,
             "done": False,
+            "failed": False,
         },
     )
 
@@ -168,10 +192,11 @@ def igdb_page(
 def igdb_list(
     request: Request,
     q: str = "",
+    fresh: bool = False,
     admin: dict = Depends(require_admin),
     repo: Repository = Depends(get_repo),
 ):
-    return _list_fragment(request, repo, q)
+    return _list_fragment(request, repo, q, fresh=fresh)
 
 
 @router.get("/jobs/{job_id}", response_class=HTMLResponse)
@@ -181,17 +206,19 @@ def igdb_job(
     admin: dict = Depends(require_admin),
     repo: Repository = Depends(get_repo),
 ):
-    """Progress for a slug fix's re-enrichment; when done, reloads the list."""
+    """Progress for a slug fix's re-enrichment.
+
+    On success it reloads the list. A failed or stalled job stops polling and
+    says so instead, leaving the admin to reload, so a failure can't vanish
+    behind a list that looks like it updated.
+    """
     job = repo.get_job(job_id)
-    done = (
-        job is None
-        or job.get("status") in (JOB_COMPLETED, JOB_FAILED)
-        or is_job_stale(job)
-    )
+    failed = job is not None and (job.get("status") == JOB_FAILED or is_job_stale(job))
+    done = job is None or job.get("status") == JOB_COMPLETED
     return authenticated_fragment(
         request,
         "admin_igdb_job.html.jinja",
-        {"job": job, "job_id": job_id, "done": done},
+        {"job": job, "job_id": job_id, "done": done, "failed": failed},
     )
 
 

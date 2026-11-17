@@ -81,7 +81,7 @@ async def run_job(
             for igdb_key, rks in by_igdb_key.items():
                 # Use any sharing release key's title for matching.
                 title = games[rks[0]].get("title", "")
-                igdb_slug = _manual_igdb_slug(repo, games[rks[0]])
+                igdb_slug = _manual_igdb_slug(repo, [games[rk] for rk in rks])
                 try:
                     meta = await client.fetch_metadata(igdb_key, title, igdb_slug)
                 except Exception:  # one game's failure shouldn't sink the chunk
@@ -106,18 +106,25 @@ async def run_job(
         )
 
 
-def _manual_igdb_slug(repo: Repository, game: dict) -> str | None:
-    """The admin-set IGDB slug for this game's title, if any.
+def _manual_igdb_slug(repo: Repository, group: list[dict]) -> str | None:
+    """The admin-set IGDB slug for a group of copies sharing an igdb_key.
 
-    Read per game with a consistent read rather than via the cached
+    Galaxy links a game's releases across platforms, and the copies can carry
+    different titles (so different slugs), e.g. "Foo" on GOG and "Foo: GOTY" on
+    Epic. They are one IGDB game, so a slug pinned on any of their titles
+    applies to all of them; checking only the first copy would make the result
+    depend on job order. Titles are checked in sorted order so that conflicting
+    overrides at least resolve the same way every run.
+
+    Read with a consistent read rather than via the cached
     `get_all_metadata()`: a warm enricher could otherwise miss a slug saved
     moments ago, which is exactly when the admin page queues this job.
     """
-    slug = game.get("slug")
-    if not slug:
-        return None
-    override = repo.get_metadata(slug) or {}
-    return override.get("igdb_slug") or None
+    for slug in sorted({g["slug"] for g in group if g.get("slug")}):
+        override = repo.get_metadata(slug) or {}
+        if override.get("igdb_slug"):
+            return override["igdb_slug"]
+    return None
 
 
 def _write_metadata(repo: Repository, game: dict, meta: GameMetadata) -> None:
